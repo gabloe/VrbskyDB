@@ -1,0 +1,17 @@
+document		: NAME block
+
+block			: OBRACE list CBRACE
+
+list			: NAME COLON primitive list
+                                 | NAME COLON primitive
+			| NAME block
+
+primitive		: STRING
+			| INT
+			| REAL
+			| BOOL
+			| BINARY
+			| LBRACKET array RBRACKET
+
+array			: primitive
+			| primitive COMMA array
