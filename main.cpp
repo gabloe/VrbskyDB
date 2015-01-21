@@ -7,7 +7,7 @@ main(int argc, char *argv[])
    {
    if (argc < 2)
       {
-      std::cerr << "Expected filename!" << std::endl;
+      std::cerr << "usage: " << argv[0] << " <FILENAME>" << std::endl;
       exit(1);
       }
    DBase *db = new DBase(std::string(argv[1]));
