@@ -15,3 +15,23 @@ primitive		: STRING
 
 array			: primitive
 			| primitive COMMA array
+
+Example:
+Employee {
+     Name {
+          First: “John”
+          Middle: “Jacob”
+          Last: “Doe”
+          Modifiers {
+               Prefix: “Doctor”
+               Suffix: “Junior”
+          }
+     }
+     Address {
+        Number: 5684
+        Street: “Main St.”
+        City: “San Francisco”
+        State: “CA”
+        ZIP: “94117”
+     }
+}
