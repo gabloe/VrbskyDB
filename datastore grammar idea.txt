@@ -3,7 +3,7 @@ document		: NAME block
 block			: OBRACE list CBRACE
 
 list			: NAME COLON primitive list
-                                 | NAME COLON primitive
+                        | NAME COLON primitive
 			| NAME block
 
 primitive		: STRING
