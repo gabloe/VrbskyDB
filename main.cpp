@@ -27,10 +27,17 @@ main(int argc, char *argv[])
          break;
          }
       std::cout << "Query: " << query << std::endl;
-      db->query(query);
+      ResultSet *rs = db->query(query);
+      //displayResults(rs);
       }
 
    // Destroy all the stuff
    delete db;
    return 0;
+   }
+
+void
+displayResults(ResultSet *rs)
+   {
+   std::cout << "Put the results here!" << std::endl;
    }

@@ -5,6 +5,8 @@
 #include <iostream>
 #include <fstream>
 #include "resultset.h"
+#include "dataset.h"
+#include "scanner.h"
 
 #define unimplemented() std::cout << __FUNCTION__ << " Not Implemented" << std::endl
 
@@ -14,14 +16,30 @@ DBase
    private:
    std::string fname;
    std::fstream file;
+   DataSet *data;
 
-   
+   DataSet *
+   load(std::fstream& file)
+      {
+      Scanner *sc = new Scanner(file);
+      while (sc->hasNext())
+         {
+         std::string s = sc->nextString();
+         std::cout << s << std::endl;
+         }
+      //Parser *parser = new Parser(sc);
+      //DataSet *ds = parser->getParseTree();
+      //return ds;
+      return 0;
+      }
 
    public:
    DBase(const std::string fname)
       {
       this->fname = fname;
-      this->file.open(fname);
+      this->file.open(fname.c_str());
+      this->data = load(this->file);
+      this->file.close();
       }
 
    ~DBase()
@@ -41,11 +59,11 @@ DBase
       return NULL;
       }
 
-   void
+   int
    commit()
       {
       unimplemented();
+      return 0;
       }
    };
-
 #endif
