@@ -4,6 +4,7 @@
 #include <string>
 #include <iostream>
 #include <fstream>
+#include "resultset.h"
 
 #define unimplemented() std::cout << __FUNCTION__ << " Not Implemented" << std::endl
 
@@ -13,6 +14,8 @@ DBase
    private:
    std::string fname;
    std::fstream file;
+
+   
 
    public:
    DBase(const std::string fname)
@@ -31,10 +34,11 @@ DBase
       return this->fname;
       }
 
-   void
+   ResultSet *
    query(const std::string query)
       {
       unimplemented();
+      return NULL;
       }
 
    void
