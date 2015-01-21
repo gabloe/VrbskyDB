@@ -8,3 +8,4 @@ ResultSet
    ResultSet();
    };
 #endif
+
