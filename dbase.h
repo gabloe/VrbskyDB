@@ -24,7 +24,7 @@ DBase
       Scanner *sc = new Scanner(file);
       while (sc->hasNext())
          {
-         std::string s = sc->nextString();
+         double s = sc->nextReal();
          std::cout << s << std::endl;
          }
       //Parser *parser = new Parser(sc);
