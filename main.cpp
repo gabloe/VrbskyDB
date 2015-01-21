@@ -1,5 +1,4 @@
 #include "dbase.h"
-#include <stdio.h>
 #include <stdlib.h>
 #include <iostream>
 
@@ -8,7 +7,7 @@ main(int argc, char *argv[])
    {
    if (argc < 2)
       {
-      fprintf(stderr, "Not enough arguments\n");
+      std::cerr << "Expected filename!" << std::endl;
       exit(1);
       }
    char *fname = argv[1];

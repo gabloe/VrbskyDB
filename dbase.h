@@ -26,6 +26,11 @@ DBase
       this->commit();
       }
 
+   std::string getFilename()
+      {
+      return this->fname;
+      }
+
    void
    query(const std::string query)
       {
@@ -37,12 +42,6 @@ DBase
       {
       unimplemented();
       }
-
-   std::string getFilename()
-      {
-      return this->fname;
-      }
-
    };
 
 #endif
