@@ -10,9 +10,8 @@ main(int argc, char *argv[])
       std::cerr << "Expected filename!" << std::endl;
       exit(1);
       }
-   char *fname = argv[1];
-   DBase *db = new DBase(std::string(fname));
-   std::cout << "Loading Database: `" << db->getFilename() << "'" << std::endl; 
+   DBase *db = new DBase(std::string(argv[1]));
+   std::cout << "Loading Database: `" << argv[1] << "'" << std::endl; 
    std::string query;
    while (1)
       {
