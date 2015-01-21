@@ -18,6 +18,7 @@ array			: primitive
 
 Example:
 Employee {
+  2130498 {
      Name {
           First: "John"
           Middle: "Jacob"
@@ -34,4 +35,5 @@ Employee {
         State: "CA"
         ZIP: "94117"
      }
+  }
 }
