@@ -3,6 +3,7 @@
 
 #include <fstream>
 #include <sstream>
+#include <algorithm>
 #include <ctype.h>
 #include <stdlib.h>
 
@@ -147,6 +148,24 @@ Scanner
          }
       }
 
+   bool
+   nextBool()
+      {
+      std::string s = next();
+      std::transform(s.begin(), s.end(), s.begin(), ::tolower);
+      if (!s.compare("true"))
+         {
+         return true;
+         }     
+      else if (!s.compare("false"))
+         {
+         return false;
+         }
+      else 
+         {
+         std::cerr << "SCAN ERROR: Failed to read a bool!" << std::endl;
+         exit(-1);
+         }
+      }
    };
-
 #endif
