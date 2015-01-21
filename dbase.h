@@ -7,6 +7,7 @@
 #include "resultset.h"
 #include "dataset.h"
 #include "scanner.h"
+#include "parser.h"
 
 #define unimplemented() std::cout << __FUNCTION__ << " Not Implemented" << std::endl
 
@@ -22,15 +23,9 @@ DBase
    load(std::fstream& file)
       {
       Scanner *sc = new Scanner(file);
-      while (sc->hasNext())
-         {
-         double s = sc->nextReal();
-         std::cout << s << std::endl;
-         }
-      //Parser *parser = new Parser(sc);
-      //DataSet *ds = parser->getParseTree();
-      //return ds;
-      return 0;
+      Parser *parser = new Parser(sc);
+      DataSet *ds = parser->getParseTree();
+      return ds;
       }
 
    public:
