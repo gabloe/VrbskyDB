@@ -39,10 +39,8 @@ Employee {
    }
 }
 
-CREATE DOCUMENT Employee;
+CREATE DOCUMENT Employee (KEY->{Name->{First, Middle, Last, Modifiers->{Prefix, Suffix}}, Address->{Number, Street, City, State, Zip}});
 INSERT INTO Employee 123495, 145896;
-INSERT INTO Employee.123495 Name Address;
-INSERT INTO Employee.123495.Name Modifiers;
 INSERT INTO Employee.123495.Name First="John", Middle="Jacob", Last="Doe";
 INSERT INTO Employee.123495.Name.Modifiers Prefix="Doctor", Suffix="Junior";
 INSERT INTO Employee.123495.Address Number=5684, Street="Main St.", City="San Francisco", State="CA", ZIP="94117;
