@@ -117,7 +117,6 @@ Scanner
       std::stringstream ss(s);
       int i;
       ss >> i;
-      ss >> std::ws;
       if (!ss.fail() && ss.eof())
          {
          return i;
@@ -136,7 +135,6 @@ Scanner
       std::stringstream ss(s);
       double d;
       ss >> d;
-      ss >> std::ws;
       if (!ss.fail() && ss.eof())
          {
          return d;
