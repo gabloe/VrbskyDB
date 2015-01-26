@@ -16,8 +16,7 @@ public:
    getHash(std::string key)
       {
       std::hash<std::string> hash_fn;
-      size_t h = hash_fn(key) % this->size;
-      return h;
+      return hash_fn(key) % this->size;
       }
 
    HashMap(const size_t size)
