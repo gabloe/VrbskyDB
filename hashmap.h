@@ -3,6 +3,8 @@
 
 #include "kvlist.h"
 
+#define DEFAULT_SIZE 255
+
 template <class T> class
 HashMap {
 private:
@@ -26,8 +28,8 @@ public:
 
    HashMap()
       {
-      this->size = 255;
-      this->bucket = new KVList<T>*[255];
+      this->size = DEFAULT_SIZE;
+      this->bucket = new KVList<T>*[DEFAULT_SIZE];
       }
 
    void
