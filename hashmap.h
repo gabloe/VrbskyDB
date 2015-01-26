@@ -63,7 +63,7 @@ public:
             }
          b = b->next;
          }
-      return std::string("NULL");
+      throw std::runtime_error("Key not found."); 
       }
 };
 
