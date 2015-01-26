@@ -10,7 +10,7 @@ private:
    size_t size;
 
 public:
-   int
+   size_t
    getHash(std::string key)
       {
       std::hash<std::string> hash_fn;
