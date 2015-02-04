@@ -1,6 +1,6 @@
 #include <math.h>
 #include <stdexcept>
-#include "Bucket.h"
+#include "bucket.h"
 #include <iostream>
 
 #define DEFAULT_BUCKETS 16
