@@ -68,7 +68,7 @@ class LinearHashTable
             {
             while (b)
                {
-               std::cout << b->getValue() << " ";
+               std::cout << "(" << b->getKey() << ", " << b->getValue() << ") ";
                b = b->getNext();
                }
             std::cout << std::endl;
