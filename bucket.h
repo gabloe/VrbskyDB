@@ -2,6 +2,7 @@
 
 #include <string>
 #include <iostream>
+#include <algorithm>
 
 template <class T, class U>
 class Bucket
@@ -10,7 +11,9 @@ class Bucket
    T key;
    U value;
    Bucket<T, U> *next;
+   Bucket<T, U> *prev;
    bool deleted;   
+   size_t count;
 
    public:
    Bucket() : Bucket(NULL, NULL) {}
@@ -20,7 +23,9 @@ class Bucket
       this->key = key;
       this->value = value;
       this->next = NULL; 
+      this->prev = NULL;
       this->deleted = false;
+      this->count = 1;
       }
 
    bool
@@ -53,25 +58,30 @@ class Bucket
       return this->value;
       }
 
+   size_t
+   getCount()
+      {
+      return this->count;
+      }
+
    void
    insert(T key, U value)
       {
       Bucket<T, U> *b = this;
-      if (b == NULL)
-         {
-         *b = *(new Bucket<T, U>(key, value));
-         }
-      else if (b->deleted == true)
+      if (b->deleted == true)
          {
          this->key = key;
          this->value = value;
          }
       else if (b->next == NULL)
          {
+         b->count++;
          b->next = new Bucket<T, U>(key, value);
+         b->next->prev = b;
          }
       else
          {
+         b->count++;
          b->next->insert(key, value);
          }
       }
