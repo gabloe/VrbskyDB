@@ -1,6 +1,6 @@
 #include <math.h>
 #include <stdexcept>
-#include "bucket.h"
+#include "Bucket.h"
 #include <iostream>
 
 #define DEFAULT_BUCKETS 16
@@ -24,12 +24,15 @@ class LinearHashTable
       std::hash<std::string> h;
       size_t hash = h(key);
 
-      if (hash % (size_t)(this->n * pow(2, this->l)) < this->s)
+      size_t h0 = hash % (size_t)(this->n * pow(2, this->l));
+      size_t h1 = hash % (size_t)(this->n * pow(2, this->l+1));
+
+      if (h0 < this->s)
          {
-         return hash % (size_t)(this->n * pow(2, this->l+1));
+         return h1; 
          }
 
-      return hash % (size_t)(this->n * pow(2, this->l));
+      return h0; 
       }
 
    public:
