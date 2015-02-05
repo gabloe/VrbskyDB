@@ -7,15 +7,24 @@
 int main(int argc, char **argv)
 {
     clock_t start;
-    LinearHashTable<std::string> *ht = new LinearHashTable<std::string>(4,16);
+    LinearHashTable<std::string> *ht = new LinearHashTable<std::string>(16,16);
     start = std::clock();
-    std::string s="ABCDEFG";
+    std::string s="ABCDEFGHI";
     do
        {
        ht->put(s, s);
        }while(std::next_permutation(s.begin(),s.end()));
 
+    //ht->print();
     std::cout << "Took " << 1000 * (float)(std::clock() - start) / CLOCKS_PER_SEC << "ms to insert." << std::endl;
-    ht->print();
+
+    start = std::clock();
+    s="ABCDEFGHI";
+    do
+       {
+       ht->get(s);
+       }while(std::next_permutation(s.begin(),s.end()));
+
+    std::cout << "Took " << 1000 * (float)(std::clock() - start) / CLOCKS_PER_SEC << "ms to look up." << std::endl;
     return 0;
 }

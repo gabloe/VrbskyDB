@@ -1,6 +1,6 @@
 #include <math.h>
 #include <stdexcept>
-#include "Bucket.h"
+#include "bucket.h"
 #include <iostream>
 
 #define DEFAULT_BUCKETS 16
@@ -33,6 +33,50 @@ class LinearHashTable
          }
 
       return h0; 
+      }
+
+   void
+   split()
+      {
+      // Overflow!
+      Bucket<std::string, U> *overflow = this->buckets[this->s];
+      this->buckets[this->s] = NULL;
+      Bucket<std::string, U> **newArr = new Bucket<std::string, U>*[this->num_buckets+1];
+      std::copy(this->buckets, this->buckets+this->num_buckets, newArr);
+      newArr[num_buckets++] = NULL;
+      delete[] this->buckets;
+      this->buckets = newArr;
+
+      if (this->s >= this->n * pow(2, this->l))
+         {
+         this->s = 0;
+         this->l++;
+         }
+      else
+         {
+         this->s++; 
+         }
+        
+      // Rehash overflow spot
+      while (overflow != NULL)
+         {
+         // Insert the item into a new spot
+         size_t h2 = hash(overflow->getKey());
+         if (this->buckets[h2] == NULL)
+            {
+            this->buckets[h2] = new Bucket<std::string, U>(overflow->getKey(), overflow->getValue());
+            } 
+         else
+            {
+            Bucket<std::string, U> *tmp = new Bucket<std::string, U>(overflow->getKey(), overflow->getValue());
+            tmp->setNext(this->buckets[h2]);
+            this->buckets[h2]->setPrev(tmp);
+            tmp->setCount(this->buckets[h2]->getCount()+1);
+            this->buckets[h2] = tmp;
+            }
+         overflow = overflow->getNext();
+         }
+      delete overflow;
       }
 
    public:
@@ -137,44 +181,14 @@ class LinearHashTable
          }
       else
          {
-         this->buckets[h]->insert(key, value);
+         Bucket<std::string, U> *tmp = new Bucket<std::string, U>(key, value);
+         tmp->setNext(this->buckets[h]);
+         this->buckets[h]->setPrev(tmp);
+         tmp->setCount(this->buckets[h]->getCount()+1);
+         this->buckets[h] = tmp;
          if (this->buckets[h]->getCount() > this->bucket_size)
             {
-            // Overflow!
-            Bucket<std::string, U> *overflow = this->buckets[this->s];
-            this->buckets[this->s] = NULL;
-            Bucket<std::string, U> **newArr = new Bucket<std::string, U>*[this->num_buckets+1];
-            std::copy(this->buckets, this->buckets+this->num_buckets, newArr);
-            newArr[num_buckets++] = NULL;
-            delete[] this->buckets;
-            this->buckets = newArr;
-
-            if (this->s >= this->n * pow(2, this->l))
-               {
-               this->s = 0;
-               this->l++;
-               }
-            else
-               {
-               this->s++; 
-               }
-              
-            // Rehash overflow spot
-            while (overflow != NULL)
-               {
-               // Insert the item into a new spot
-               size_t h2 = hash(overflow->getKey());
-               if (this->buckets[h2] == NULL)
-                  {
-                  this->buckets[h2] = new Bucket<std::string, U>(overflow->getKey(), overflow->getValue());
-                  } 
-               else
-                  {
-                  this->buckets[h2]->insert(overflow->getKey(), overflow->getValue());
-                  }
-               overflow = overflow->getNext();
-               }
-            delete overflow;
+            split();
             }
          }
       this->num_items++;

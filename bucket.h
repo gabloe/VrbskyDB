@@ -46,6 +46,30 @@ class Bucket
       return this->next;
       }
 
+   void
+   setNext(Bucket<T, U> *n)
+      {
+      this->next = n;
+      }
+
+   void
+   setPrev(Bucket<T, U> *p)
+      {
+      this->prev = p;
+      }
+
+   void
+   setCount(size_t c)
+      {
+      this->count = c;
+      }
+
+   size_t
+   getCount()
+      {
+      return this->count;
+      }
+
    T
    getKey()
       {
@@ -56,33 +80,5 @@ class Bucket
    getValue()
       {
       return this->value;
-      }
-
-   size_t
-   getCount()
-      {
-      return this->count;
-      }
-
-   void
-   insert(T key, U value)
-      {
-      Bucket<T, U> *b = this;
-      if (b->deleted == true)
-         {
-         this->key = key;
-         this->value = value;
-         }
-      else if (b->next == NULL)
-         {
-         b->count++;
-         b->next = new Bucket<T, U>(key, value);
-         b->next->prev = b;
-         }
-      else
-         {
-         b->count++;
-         b->next->insert(key, value);
-         }
       }
    };
