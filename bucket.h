@@ -29,9 +29,20 @@ class Bucket
       }
 
    bool
-   compare(T key)
+   isDeleted()
       {
-      return this->deleted || this->key.compare(key);
+      return this->deleted;
+      }
+
+   bool
+   same(T key)
+      {
+      if (this->deleted)
+         {
+         return false;
+         }
+
+         return this->key == key;
       }
 
    void

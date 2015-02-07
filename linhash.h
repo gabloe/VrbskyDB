@@ -6,30 +6,29 @@
 #define DEFAULT_BUCKETS 16
 #define DEFAULT_BUCKET_SIZE 16
 
-template <class U>
+template <class T, class U>
 class LinearHashTable
    {
    private:
    size_t n;
    size_t s;
    size_t l;
-   Bucket<std::string, U> **buckets;
+   Bucket<T, U> **buckets;
    size_t num_buckets;
    size_t num_items;
    size_t bucket_size;
 
    size_t
-   hash(std::string key)
+   hash(T key)
       {
-      std::hash<std::string> h;
+      std::hash<T> h;
       size_t hash = h(key);
 
       size_t h0 = hash % (size_t)(this->n * pow(2, this->l));
-      size_t h1 = hash % (size_t)(this->n * pow(2, this->l+1));
-
       if (h0 < this->s)
          {
-         return h1; 
+         // h1
+         return hash % (size_t)(this->n * pow(2, this->l+1));; 
          }
 
       return h0; 
@@ -39,9 +38,9 @@ class LinearHashTable
    split()
       {
       // Overflow!
-      Bucket<std::string, U> *overflow = this->buckets[this->s];
+      Bucket<T, U> *overflow = this->buckets[this->s];
       this->buckets[this->s] = NULL;
-      Bucket<std::string, U> **newArr = new Bucket<std::string, U>*[this->num_buckets+1];
+      Bucket<T, U> **newArr = new Bucket<T, U>*[this->num_buckets+1];
       std::copy(this->buckets, this->buckets+this->num_buckets, newArr);
       newArr[num_buckets++] = NULL;
       delete[] this->buckets;
@@ -60,15 +59,20 @@ class LinearHashTable
       // Rehash overflow spot
       while (overflow != NULL)
          {
+         if (overflow->isDeleted())
+            {
+            overflow = overflow->getNext();
+            continue;
+            }
          // Insert the item into a new spot
          size_t h2 = hash(overflow->getKey());
          if (this->buckets[h2] == NULL)
             {
-            this->buckets[h2] = new Bucket<std::string, U>(overflow->getKey(), overflow->getValue());
+            this->buckets[h2] = new Bucket<T, U>(overflow->getKey(), overflow->getValue());
             } 
          else
             {
-            Bucket<std::string, U> *tmp = new Bucket<std::string, U>(overflow->getKey(), overflow->getValue());
+            Bucket<T, U> *tmp = new Bucket<T, U>(overflow->getKey(), overflow->getValue());
             tmp->setNext(this->buckets[h2]);
             this->buckets[h2]->setPrev(tmp);
             tmp->setCount(this->buckets[h2]->getCount()+1);
@@ -88,7 +92,7 @@ class LinearHashTable
       this->s = 0;
       this->l = 0;
       this->bucket_size = mbs;
-      this->buckets = new Bucket<std::string, U>*[n];
+      this->buckets = new Bucket<T, U>*[n];
       for (int i = 0; i < n; ++i)
          {
          this->buckets[i] = NULL;
@@ -103,7 +107,7 @@ class LinearHashTable
       for (int i=0; i<this->num_buckets; ++i)
          {
          std::cout << i << ": ";
-         Bucket<std::string, U> *b = this->buckets[i];
+         Bucket<T, U> *b = this->buckets[i];
          if (!b)
             {
             std::cout << "Empty!" << std::endl;
@@ -139,13 +143,13 @@ class LinearHashTable
       }
 
    U
-   get(std::string key)
+   get(T key)
       {
       size_t h = hash(key);
-      Bucket<std::string, U> *b = this->buckets[h];
+      Bucket<T, U> *b = this->buckets[h];
       while (b != NULL)
          {
-         if (!b->compare(key))
+         if (b->same(key))
             {
             return b->getValue();
             }
@@ -155,10 +159,10 @@ class LinearHashTable
       }
 
    bool
-   remove(std::string key)
+   remove(T key)
       {
       size_t h = hash(key);
-      Bucket<std::string, U> *b = this->buckets[h];
+      Bucket<T, U> *b = this->buckets[h];
       while (b)
          {
          if (!b->getKey().compare(key)) 
@@ -172,16 +176,16 @@ class LinearHashTable
       }
 
    void
-   put(std::string key, U value)
+   put(T key, U value)
       {
       size_t h = hash(key);
       if (this->buckets[h] == NULL)
          {
-         this->buckets[h] = new Bucket<std::string, U>(key, value);
+         this->buckets[h] = new Bucket<T, U>(key, value);
          }
       else
          {
-         Bucket<std::string, U> *tmp = new Bucket<std::string, U>(key, value);
+         Bucket<T, U> *tmp = new Bucket<T, U>(key, value);
          tmp->setNext(this->buckets[h]);
          this->buckets[h]->setPrev(tmp);
          tmp->setCount(this->buckets[h]->getCount()+1);
