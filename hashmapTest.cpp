@@ -1,4 +1,4 @@
-#include "linhash.h"
+#include "hashtable.h"
 #include <iostream>
 #include <string>
 #include <algorithm>
