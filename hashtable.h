@@ -173,7 +173,7 @@ class LinearHashTable
       Bucket<T, U> *b = this->buckets[h];
       while (b)
          {
-         if (!b->getKey().compare(key)) 
+         if (b->getKey() == key) 
             {
             b->remove();
             return true;
