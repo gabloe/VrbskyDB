@@ -3,17 +3,25 @@
 #include "bucket.h"
 #include <iostream>
 
-#define DEFAULT_BUCKETS 16
-#define DEFAULT_BUCKET_SIZE 16
-
+namespace HashTable
+{
 template <class T, class U>
 class LinearHashTable
    {
    private:
+   // Constants
+   const size_t DEFAULT_BUCKETS = 16;
+   const size_t DEFAULT_BUCKET_SIZE = 16;
+
+   // Linear hashing -- # buckets (n), split pointer (s), level (l)
    size_t n;
    size_t s;
    size_t l;
+
+   // Array of buckets
    Bucket<T, U> **buckets;
+
+   // Size info
    size_t num_buckets;
    size_t num_items;
    size_t bucket_size;
@@ -198,3 +206,4 @@ class LinearHashTable
       this->num_items++;
       }
    };
+}
