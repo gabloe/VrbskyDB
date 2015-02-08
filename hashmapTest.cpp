@@ -7,7 +7,7 @@
 int main(int argc, char **argv)
 {
     clock_t start;
-    HashTable::LinearHashTable<std::string,std::string> *ht = new HashTable::LinearHashTable<std::string,std::string>(16,16);
+    HashTable::LinearHashTable<std::string,std::string> *ht = new HashTable::LinearHashTable<std::string,std::string>();
     start = std::clock();
     std::string s="ABCDEFGHI";
     do

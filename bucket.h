@@ -42,7 +42,7 @@ class Bucket
          return false;
          }
 
-         return this->key == key;
+      return this->key == key;
       }
 
    void
