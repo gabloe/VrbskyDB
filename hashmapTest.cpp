@@ -32,7 +32,7 @@ int main(int argc, char **argv)
        }
 
     start = std::clock();
-    std::string s="ABCDEFGHI";
+    std::string s="ABCDEFGH";
     do
        {
        ht->put(s, s);
@@ -41,7 +41,7 @@ int main(int argc, char **argv)
     std::cout << "Took " << 1000 * (float)(std::clock() - start) / CLOCKS_PER_SEC << "ms to insert." << std::endl;
 
     start = std::clock();
-    s="ABCDEFGHI";
+    s="ABCDEFGH";
     do
        {
        ht->get(s);
