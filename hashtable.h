@@ -33,7 +33,7 @@ class ChainingHashTable
       }
  
    public:
-   ChainingHashTable() : num_buckets(1024), num_items(0) {};
+   ChainingHashTable() : ChainingHashTable(1024) {};
 
    ChainingHashTable(size_t n) : num_buckets(n), num_items(0)
       {
@@ -121,6 +121,12 @@ class ChainingHashTable
       return this->num_buckets;
       }
 
+   virtual size_t
+   getNumItems()
+      {
+      return this->num_items;
+      }
+
    virtual void
    print()
       {
@@ -142,6 +148,61 @@ class ChainingHashTable
             std::cout << std::endl;
             }
          }
+      }
+
+   };
+
+/*
+ *  Chaining hash table implementation that grows dynamically when the load factor becomes too large.
+ */
+
+template<class T, class U>
+class DynamicChainingHashTable : public ChainingHashTable<T, U>
+   {
+   private:
+   static constexpr float DEFAULT_LF = 0.75f;
+   static const size_t DEFAULT_BUCKETS = 1024;
+   float load_factor;
+
+   void
+   rehash()
+      {
+      size_t oldsize = ChainingHashTable<T, U>::num_buckets;
+      ChainingHashTable<T, U>::num_buckets *= 2;
+      Bucket<T, U> **old = ChainingHashTable<T, U>::buckets;
+      Bucket<T, U> **buckets = new Bucket<T, U>*[ChainingHashTable<T, U>::num_buckets*2];
+      for (int i=0; i<ChainingHashTable<T, U>::num_buckets; ++i)
+         {
+         buckets[i] = NULL;
+         }
+      ChainingHashTable<T, U>::buckets = buckets;
+      ChainingHashTable<T, U>::num_items = 0;
+      for (int i=0; i<oldsize; ++i)
+         {
+         Bucket<T, U> *b = old[i];
+         while (b)
+            {
+            ChainingHashTable<T, U>::put(b->getKey(), b->getValue());
+            b = b->getNext();
+            }
+         }
+      delete[] old;
+      }
+
+   public:
+   DynamicChainingHashTable() : ChainingHashTable<T, U>(DEFAULT_BUCKETS), load_factor(DEFAULT_LF) {};
+   DynamicChainingHashTable(const size_t n) : ChainingHashTable<T, U>(n), load_factor(DEFAULT_LF) {};
+   DynamicChainingHashTable(const double lf, const size_t n) : ChainingHashTable<T, U>(n), load_factor(lf) {};
+
+   size_t
+   put(T key, U value)
+      {
+      size_t h = ChainingHashTable<T, U>::put(key, value);
+      if (ChainingHashTable<T, U>::num_items / ChainingHashTable<T, U>::num_buckets > this->load_factor)
+         {
+         rehash();
+         }
+      return h;
       }
 
    };
@@ -262,5 +323,4 @@ class ProbingHashTable
    ProbingHashTable() {};
    virtual ~ProbingHashTable() {};
    };
-
 }
