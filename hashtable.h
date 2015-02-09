@@ -170,7 +170,7 @@ class DynamicChainingHashTable : public ChainingHashTable<T, U>
       size_t oldsize = ChainingHashTable<T, U>::num_buckets;
       ChainingHashTable<T, U>::num_buckets *= 2;
       Bucket<T, U> **old = ChainingHashTable<T, U>::buckets;
-      Bucket<T, U> **buckets = new Bucket<T, U>*[ChainingHashTable<T, U>::num_buckets*2];
+      Bucket<T, U> **buckets = new Bucket<T, U>*[ChainingHashTable<T, U>::num_buckets];
       for (int i=0; i<ChainingHashTable<T, U>::num_buckets; ++i)
          {
          buckets[i] = NULL;
@@ -182,6 +182,7 @@ class DynamicChainingHashTable : public ChainingHashTable<T, U>
          Bucket<T, U> *b = old[i];
          while (b)
             {
+            if (b->isDeleted()) continue;
             ChainingHashTable<T, U>::put(b->getKey(), b->getValue());
             b = b->getNext();
             }
@@ -317,10 +318,156 @@ class LinearHashTable : public ChainingHashTable<T, U>
  */
 
 template<class T, class U>
-class ProbingHashTable
+class ProbingHashTable : public ChainingHashTable<T, U>
    {
    public:
-   ProbingHashTable() {};
+   ProbingHashTable() : ChainingHashTable<T, U>() {};
+   ProbingHashTable(size_t n) : ChainingHashTable<T, U>(n) {};
+
    virtual ~ProbingHashTable() {};
+
+   virtual size_t
+   hash(T key)
+      {
+      std::hash<T> h;
+      size_t hash = h(key);
+      return hash % this->num_buckets;
+      }
+
+   virtual U
+   get(T key)
+      {
+      size_t h = hash(key);
+      int i=0;
+      while (h+i<this->num_buckets)
+         {
+         Bucket<T, U> *b = this->buckets[h+i];
+         if (b == NULL)
+            {
+            throw std::runtime_error("Key not found.");
+            }
+         if (b->same(key))
+           {
+           return b->getValue();
+           }
+         ++i;
+         }
+      throw std::runtime_error("Key not found.");
+      }
+
+   virtual size_t
+   put(T key, U value)
+      {
+      size_t h = hash(key);
+      int i=0;
+      while (h+i<this->num_buckets)
+         {
+         Bucket<T, U> *b = this->buckets[h+i];
+         if (b == NULL)
+            {
+            this->buckets[h+i] = new Bucket<T, U>(key, value);
+            this->num_items++;
+            return h+i;
+            }
+         ++i;
+         }
+      throw std::runtime_error("Hash table is full.");
+      }
+   };
+
+template<class T, class U>
+class DynamicProbingHashTable : public ProbingHashTable<T, U>
+   {
+   protected:
+   virtual void
+   rehash()
+      {
+      size_t oldsize = ProbingHashTable<T, U>::num_buckets;
+      ProbingHashTable<T, U>::num_buckets *= 2;
+      Bucket<T, U> **old = ProbingHashTable<T, U>::buckets;
+      Bucket<T, U> **buckets = new Bucket<T, U>*[ProbingHashTable<T, U>::num_buckets];
+      for (int i=0; i<ProbingHashTable<T, U>::num_buckets; ++i)
+         {
+         buckets[i] = NULL;
+         }
+      ProbingHashTable<T, U>::buckets = buckets;
+      ProbingHashTable<T, U>::num_items = 0;
+      for (int i=0; i<oldsize; ++i)
+         {
+         Bucket<T, U> *b = old[i];
+         if (b && !b->isDeleted())
+            {
+            put(b->getKey(), b->getValue());
+            }
+         }
+      delete[] old;
+      }
+
+   public:
+   size_t
+   put(T key, U value)
+      {
+      try
+         {
+         return ProbingHashTable<T, U>::put(key, value);
+         }
+      catch (std::exception &e)
+         {
+         rehash();
+         return put(key, value);
+         }
+      }
+   };
+
+template<class T, class U>
+class RobinHoodHashTable : public DynamicProbingHashTable<T, U>
+   {
+   public:
+   virtual size_t
+   put(T key, U value)
+      {
+      size_t h = DynamicProbingHashTable<T, U>::hash(key);
+      int i=0;
+      while (h+i<this->num_buckets)
+         {
+         Bucket<T, U> *b = this->buckets[h+i];
+         if (b == NULL)
+            {
+            this->buckets[h+i] = new Bucket<T, U>(key, value);
+            this->buckets[h+i]->setCount(h);
+            this->num_items++;
+            return h+i;
+            }
+         else if (i > h + i - b->getCount())
+            {
+            Bucket<T, U> *tmp = this->buckets[h+i];
+            this->buckets[h+i] = new Bucket<T, U>(key, value);
+            this->buckets[h+i]->setCount(h);
+            DynamicProbingHashTable<T, U>::put(tmp->getKey(), tmp->getValue());
+            return h+i;
+            }
+         ++i;
+         }
+      throw std::runtime_error("Hash table is full.");
+      }
+   };
+
+template<class T, class U>
+class DynamicRobinHoodHashTable : public RobinHoodHashTable<T, U>
+   {
+   public:
+   size_t
+   put(T key, U value)
+      {
+      try
+         {
+         return RobinHoodHashTable<T, U>::put(key, value);
+         }
+      catch (std::exception &e)
+         {
+         DynamicProbingHashTable<T, U>::rehash();
+         return put(key, value);
+         }
+      }
    };
 }
