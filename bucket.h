@@ -24,7 +24,7 @@ class Bucket
    Bucket<T, U> *chain;
 
    public:
-   Bucket() : Bucket(32) {};
+   Bucket() : Bucket(8) {};
    Bucket(size_t n) : size(n), spot(0), num_deleted(0), chain(NULL) 
       {
       this->data = new Tuple<T, U>[n];
@@ -34,6 +34,12 @@ class Bucket
    count()
       {
       return this->spot;
+      }
+
+   bool
+   comp(Tuple<T, U> t1, Tuple<T, U> t2)
+      {
+      return t1.key.compare(t2.key) < 0;
       }
 
    bool

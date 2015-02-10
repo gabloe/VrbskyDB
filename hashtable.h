@@ -151,7 +151,7 @@ class LinearHashTable : public ChainingHashTable<T, U>
    {
    private:
    // Constants
-   static const size_t DEFAULT_BUCKETS = 4096;
+   static const size_t DEFAULT_BUCKETS = 1024;
 
    // Linear hashing specific -- initial buckets (n), # split pointer (s), level (l)
    size_t n;
