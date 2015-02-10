@@ -3,6 +3,7 @@
 #include <string>
 #include <algorithm>
 #include <ctime>
+#include <cstring>
 
 int main(int argc, char **argv)
 {
@@ -11,7 +12,6 @@ int main(int argc, char **argv)
        std::cout << "Usage: " << argv[0] << " <chain | linear | dynamic | probing>" << std::endl;
        exit(1);
        }
-
     HashTable::ChainingHashTable<std::string,std::string> *ht;
     if (!strcmp(argv[1], "chain"))
        {
@@ -28,10 +28,6 @@ int main(int argc, char **argv)
     else if (!strcmp(argv[1], "probing"))
        {
        ht = new HashTable::DynamicProbingHashTable<std::string, std::string>();
-       }
-    else if (!strcmp(argv[1], "robinhood"))
-       {
-       ht = new HashTable::DynamicRobinHoodHashTable<std::string, std::string>();
        }
     else
        {
@@ -57,6 +53,5 @@ int main(int argc, char **argv)
     std::cout << "Took " << 1000 * (float)(std::clock() - start) / CLOCKS_PER_SEC << "ms to look up." << std::endl;
     std::cout << "Hashmap contains " << ht->getNumItems() << " items" << std::endl;
     std::cout << "Total buckets: " << ht->getSize() << std::endl;
-    std::cout << "Empty buckets: " << ht->countEmpty() << std::endl;
     return 0;
 }
