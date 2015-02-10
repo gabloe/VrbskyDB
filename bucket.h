@@ -21,11 +21,10 @@ class Bucket
    size_t size;
    size_t spot;
    size_t num_deleted;
-   Bucket<T, U> *chain;
 
    public:
    Bucket() : Bucket(8) {};
-   Bucket(size_t n) : size(n), spot(0), num_deleted(0), chain(NULL) 
+   Bucket(size_t n) : size(n), spot(0), num_deleted(0)
       {
       this->data = new Tuple<T, U>[n];
       }
@@ -34,12 +33,6 @@ class Bucket
    count()
       {
       return this->spot;
-      }
-
-   bool
-   comp(Tuple<T, U> t1, Tuple<T, U> t2)
-      {
-      return t1.key.compare(t2.key) < 0;
       }
 
    bool
@@ -61,23 +54,23 @@ class Bucket
          return true;
          }
       
-      if (this->spot < this->size)
+      bool normal = true;
+      if (this->spot == this->size)
          {
-         this->data[this->spot].key = key;
-         this->data[this->spot].value = value;
-         this->data[this->spot].deleted = false;
-         this->spot = this->spot+1;
-         return true;
+         Tuple<T, U> *newArr = new Tuple<T, U>[this->size*4];
+         std::copy(this->data, this->data+this->spot, newArr);
+         this->size*=4;
+         delete[] this->data;
+         this->data = newArr;
+         normal = false;
          }
-      else
-         {
-         if (!this->chain)
-            {
-            this->chain = new Bucket<T, U>(size);
-            }
-         this->chain->insert(key, value);
-         return false;
-         }
+
+      this->data[this->spot].key = key;
+      this->data[this->spot].value = value;
+      this->data[this->spot].deleted = false;
+      this->spot++;
+
+      return normal;
       }
 
    bool
@@ -105,17 +98,7 @@ class Bucket
             return this->data[i].value; 
             }
          }
-      if (this->chain)
-         {
-         return this->chain->get(key);
-         }
       throw std::runtime_error("Key not found.");
-      }
-
-   Bucket<T, U>*
-   getNext()
-      {
-      return this->chain;
       }
 
    Tuple<T, U>*

@@ -9,6 +9,8 @@
 #include <iostream>
 #include <vector>
 
+#define NUM_BUCKETS 100000
+
 namespace HashTable
 {
 
@@ -34,7 +36,7 @@ class ChainingHashTable
       }
  
    public:
-   ChainingHashTable() : ChainingHashTable(1024) {};
+   ChainingHashTable() : ChainingHashTable(NUM_BUCKETS) {};
 
    ChainingHashTable(size_t n) : num_buckets(n), num_items(0)
       {
@@ -96,7 +98,7 @@ template<class T, class U>
 class DynamicChainingHashTable : public ChainingHashTable<T, U>
    {
    private:
-   static const size_t DEFAULT_BUCKETS = 1024;
+   static const size_t DEFAULT_BUCKETS = NUM_BUCKETS;
    float load_factor;
 
    void
@@ -115,15 +117,11 @@ class DynamicChainingHashTable : public ChainingHashTable<T, U>
       for (int i=0; i<oldsize; ++i)
          {
          Bucket<T, U> *b = old->at(i);
-         while (b)
+         Tuple<T, U> *tuple = b->getData();
+         for (int j=0; j<b->count(); ++j)
             {
-            Tuple<T, U> *tuple = b->getData();
-            for (int j=0; j<b->count(); ++j)
-               {
-               if (tuple[j].deleted) continue;
-               ChainingHashTable<T, U>::put(tuple[j].key, tuple[j].value);
-               }
-            b = b->getNext();
+            if (tuple[j].deleted) continue;
+            ChainingHashTable<T, U>::put(tuple[j].key, tuple[j].value);
             }
          }
       delete old;
@@ -151,7 +149,7 @@ class LinearHashTable : public ChainingHashTable<T, U>
    {
    private:
    // Constants
-   static const size_t DEFAULT_BUCKETS = 1024;
+   static const size_t DEFAULT_BUCKETS = NUM_BUCKETS;
 
    // Linear hashing specific -- initial buckets (n), # split pointer (s), level (l)
    size_t n;
@@ -182,6 +180,7 @@ class LinearHashTable : public ChainingHashTable<T, U>
       ChainingHashTable<T, U>::buckets->at(this->s) = new Bucket<T, U>();
       ChainingHashTable<T, U>::buckets->push_back(new Bucket<T, U>());
       ChainingHashTable<T, U>::num_buckets++;
+
       if (this->s >= this->n * pow(2, this->l))
          {
          this->s = 0;
@@ -192,19 +191,14 @@ class LinearHashTable : public ChainingHashTable<T, U>
          this->s++; 
          }
       
-      Bucket<T, U> *spot = overflow;
       // Rehash overflow spot
-      while (spot)
+      Tuple<T, U> *data = overflow->getData();
+      for (int i=0; i<overflow->count(); ++i)
          {
-         Tuple<T, U> *data = spot->getData();
-         for (int i=0; i<spot->count(); ++i)
-            {
-            if (data[i].deleted) continue;
-            size_t h2 = hash(data[i].key);
-            this->buckets->at(h2)->insert(data[i].key, data[i].value);
-            }
-         spot = spot->getNext();
+         if (data[i].deleted) continue;
+         put(data[i].key, data[i].value);
          }
+      ChainingHashTable<T, U>::num_items -= overflow->count();
       delete overflow;
       }
 
