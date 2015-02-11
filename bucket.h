@@ -4,104 +4,94 @@
 #include <iostream>
 #include <algorithm>
 #include <stdexcept>
+#include <vector>
 
 template <class T, class U>
 struct Tuple
    {
    T key;
    U value;
-   bool deleted;
+   Tuple(T key_, U value_) : key(key_), value(value_) {};
+   Tuple(T key_) : key(key_) {};
+   bool operator<(const Tuple<T, U> &a) const;
+   bool operator==(const Tuple<T, U> &a) const;
    };
+
+template <class T, class U>
+bool Tuple<T, U>::operator<(const Tuple<T, U> &a) const
+   {
+   return key < a.key;
+   }
+
+template <class T, class U>
+bool Tuple<T, U>::operator==(const Tuple<T, U> &a) const
+   {
+   return key == a.key;
+   }
 
 template <class T, class U>
 class Bucket
    {
    private:
-   Tuple<T, U> *data;
-   size_t size;
-   size_t spot;
-   size_t num_deleted;
+   size_t bucket_size;
+   std::vector<Tuple<T, U>> data;
+   bool overflow;
 
    public:
-   Bucket() : Bucket(8) {};
-   Bucket(size_t n) : size(n), spot(0), num_deleted(0)
+   Bucket() : bucket_size(32), overflow(false)
       {
-      this->data = new Tuple<T, U>[n];
+      this->data.reserve(bucket_size);
       }
 
    size_t
    count()
       {
-      return this->spot;
+      return this->data.size();
+      }
+
+   bool
+   isOverflow()
+      {
+      return this->overflow;
       }
 
    bool
    insert(T key, U value)
       {
-      if (this->num_deleted)
+      this->data.push_back(Tuple<T, U>(key, value));
+      if (this->data.size() > this->bucket_size)
          {
-         for (int i=0; i<size; ++i)
-            {
-            if (this->data[i].deleted)
-               {
-               this->data[i].deleted = false;
-               this->data[i].key = key;
-               this->data[i].value = value;
-               break;
-               }
-            }
-         num_deleted--;
-         return true;
+         this->bucket_size *= 2;
+         this->data.reserve(this->bucket_size);
+         this->overflow = true;
+         return false;
          }
-      
-      bool normal = true;
-      if (this->spot == this->size)
-         {
-         Tuple<T, U> *newArr = new Tuple<T, U>[this->size*4];
-         std::copy(this->data, this->data+this->spot, newArr);
-         this->size*=4;
-         delete[] this->data;
-         this->data = newArr;
-         normal = false;
-         }
-
-      this->data[this->spot].key = key;
-      this->data[this->spot].value = value;
-      this->data[this->spot].deleted = false;
-      this->spot++;
-
-      return normal;
+      return true;
       }
 
    bool
    remove(T key)
       {
-      for (int i=0; i<this->spot; ++i)
+      typename std::vector<Tuple<T, U>>::iterator it = std::find(this->data.begin(), this->data.end(), Tuple<T, U>(key));
+      if (it == this->data.end())
          {
-         if (!this->data[i].deleted && this->data[i].key == key)
-            {
-            this->data[i].deleted = true;
-            this->num_deleted++;
-            return true;
-            }
+         return false;
          }
-      return false;
+      this->data.erase(it);
+      return true; 
       }
 
    U
    get(T key)
       {
-      for (int i=0; i<this->size; ++i)
-         {
-         if (!this->data[i].deleted && this->data[i].key == key)
-            {
-            return this->data[i].value; 
-            }
-         }
-      throw std::runtime_error("Key not found.");
+      typename std::vector<Tuple<T, U>>::iterator it = std::find(this->data.begin(), this->data.end(), Tuple<T, U>(key));
+      if (it == this->data.end())
+         throw std::runtime_error("Key not found.");
+      Tuple<T, U> kv = *it;
+      return kv.value; 
       }
 
-   Tuple<T, U>*
+   std::vector<Tuple<T, U>>
    getData()
       {
       return this->data;
@@ -110,7 +100,7 @@ class Bucket
    size_t
    getSize()
       {
-      return this->size;
+      return this->bucket_size;
       }
 
    };
