@@ -1,6 +1,7 @@
 #include "hashtable.h"
 #include <iostream>
 #include <string>
+#include <cstring>
 #include <algorithm>
 #include <ctime>
 
@@ -55,7 +56,8 @@ int main(int argc, char **argv)
        ht->get(s);
        }while(std::next_permutation(s.begin(),s.end()));
     std::cout << "Took " << 1000 * (float)(std::clock() - start) / CLOCKS_PER_SEC << "ms to look up." << std::endl;
-    std::cout << "Hashmap contains " << ht->getNumItems() << " items" << std::endl;
+    
+	std::cout << "Hashmap contains " << ht->getNumItems() << " items" << std::endl;
     std::cout << "Total buckets: " << ht->getSize() << std::endl;
     std::cout << "Empty buckets: " << ht->countEmpty() << std::endl;
     return 0;

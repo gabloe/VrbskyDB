@@ -110,7 +110,7 @@ namespace Storage {
 	}
 	
 	// 
-	//
+	//	We might have to load the page that we are about to write to
 	//
 	void LinearHash::put( Util::count_t key , const char* data ) {
 		// calculate the position
