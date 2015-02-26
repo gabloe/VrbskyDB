@@ -7,6 +7,9 @@
 #include <stdexcept>
 #include "bucket.h"
 #include <iostream>
+#include <vector>
+
+#define NUM_BUCKETS 100
 
 namespace HashTable
 {
@@ -20,7 +23,7 @@ class ChainingHashTable
    {
    protected:
    // Array of buckets
-   Bucket<T, U> **buckets;
+   std::vector<Bucket<T, U>*> *buckets;
    size_t num_buckets;
    size_t num_items;
 
@@ -33,86 +36,45 @@ class ChainingHashTable
       }
  
    public:
-   ChainingHashTable() : ChainingHashTable(1024) {};
+   ChainingHashTable() : ChainingHashTable(NUM_BUCKETS) {};
 
    ChainingHashTable(size_t n) : num_buckets(n), num_items(0)
       {
-      this->buckets = new Bucket<T, U> *[n];
-      for (int i=0; i<n; ++i)
+      this->buckets = new std::vector<Bucket<T, U>*>();
+      for (int i=0; i<num_buckets; ++i)
          {
-         this->buckets[i] = NULL;
+         this->buckets->push_back(new Bucket<T, U>());
          }
       }
 
    virtual ~ChainingHashTable()
       {
-      delete[] this->buckets;
       }
 
-   virtual size_t
+   virtual Bucket<T, U>*
    put(T key, U value)
       {
       size_t h = hash(key);
-      Bucket<T, U> *b = this->buckets[h];
-      if (!b)
-         {
-         this->buckets[h] = new Bucket<T, U>(key, value);
-         }
-      else
-         {
-         Bucket<T, U> *tmp = new Bucket<T, U>(key, value);
-         tmp->setNext(this->buckets[h]);
-         tmp->setCount(this->buckets[h]->getCount()+1);
-         this->buckets[h]->setPrev(tmp);
-         this->buckets[h] = tmp;
-         }
+      Bucket<T, U> *b = this->buckets->at(h);
+      b->insert(key, value);
       this->num_items++;
-      return h;
+      return b;
       }
 
    virtual U
    get(T key)
       {
       size_t h = hash(key);
-      Bucket<T, U> *b = this->buckets[h];
-      while (b)
-         {
-         if (b->same(key))
-            {
-            return b->getValue();
-            }
-         b = b->getNext();
-         }
-      throw std::runtime_error("Key not found.");
+      Bucket<T, U> *b = this->buckets->at(h);
+      return b->get(key);
       }
 
    virtual bool
    remove(T key)
       {
       size_t h = hash(key);
-      Bucket<T, U> *b = this->buckets[h];
-      while (b)
-         {
-         if (b->same(key)) 
-            {
-            b->remove();
-            return true;
-            }
-         b = b->getNext();
-         }
-      return false;
-      }
-
-   virtual size_t
-   countEmpty()
-      {
-      size_t c = 0;
-      for (int i=0; i<this->num_buckets; ++i)
-         {
-         if (!this->buckets[i])
-            c++;
-         }
-      return c;
+      Bucket<T, U> *b = this->buckets->at(h);
+      return b->remove(key);
       }
 
    virtual size_t
@@ -127,108 +89,73 @@ class ChainingHashTable
       return this->num_items;
       }
 
-   virtual void
-   print()
-      {
-      for (int i=0; i<this->num_buckets; ++i)
-         {
-         std::cout << i << ": ";
-         Bucket<T, U> *b = this->buckets[i];
-         if (!b)
-            {
-            std::cout << "Empty!" << std::endl;
-            }
-         else
-            {
-            while (b)
-               {
-               std::cout << "(" << b->getKey() << ", " << b->getValue() << ") ";
-               b = b->getNext();
-               }
-            std::cout << std::endl;
-            }
-         }
-      }
-
    };
 
 /*
  *  Chaining hash table implementation that grows dynamically when the load factor becomes too large.
  */
-
 template<class T, class U>
 class DynamicChainingHashTable : public ChainingHashTable<T, U>
    {
    private:
-   static constexpr float DEFAULT_LF = 0.75f;
-   static const size_t DEFAULT_BUCKETS = 1024;
-   float load_factor;
+   static constexpr float LOAD_FACTOR = 0.75f;
 
    void
    rehash()
       {
       size_t oldsize = ChainingHashTable<T, U>::num_buckets;
       ChainingHashTable<T, U>::num_buckets *= 2;
-      Bucket<T, U> **old = ChainingHashTable<T, U>::buckets;
-      Bucket<T, U> **buckets = new Bucket<T, U>*[ChainingHashTable<T, U>::num_buckets];
+      std::vector<Bucket<T, U>*> *old = ChainingHashTable<T, U>::buckets;
+      std::vector<Bucket<T, U>*> *buckets = new std::vector<Bucket<T, U>*>(); 
       for (int i=0; i<ChainingHashTable<T, U>::num_buckets; ++i)
          {
-         buckets[i] = NULL;
+         buckets->push_back(new Bucket<T, U>());
          }
       ChainingHashTable<T, U>::buckets = buckets;
       ChainingHashTable<T, U>::num_items = 0;
       for (int i=0; i<oldsize; ++i)
          {
-         Bucket<T, U> *b = old[i];
-         while (b)
+         Bucket<T, U> *b = old->at(i);
+         std::vector<Tuple<T, U>> tuples = b->getData();
+         typename std::vector<Tuple<T, U>>::iterator it;
+         for (it = tuples.begin(); it != tuples.end(); ++it)
             {
-            if (b->isDeleted()) continue;
-            ChainingHashTable<T, U>::put(b->getKey(), b->getValue());
-            b = b->getNext();
+            Tuple<T, U> kv = *it;
+            ChainingHashTable<T, U>::put(kv.key, kv.value);
             }
          }
-      delete[] old;
+      delete old;
       }
 
    public:
-   DynamicChainingHashTable() : ChainingHashTable<T, U>(DEFAULT_BUCKETS), load_factor(DEFAULT_LF) {};
-   DynamicChainingHashTable(const size_t n) : ChainingHashTable<T, U>(n), load_factor(DEFAULT_LF) {};
-   DynamicChainingHashTable(const double lf, const size_t n) : ChainingHashTable<T, U>(n), load_factor(lf) {};
+   DynamicChainingHashTable() : ChainingHashTable<T, U>(NUM_BUCKETS){};
+   DynamicChainingHashTable(const size_t n) : ChainingHashTable<T, U>(n){};
 
-   size_t
+   Bucket<T, U>*
    put(T key, U value)
       {
-      size_t h = ChainingHashTable<T, U>::put(key, value);
-      if (ChainingHashTable<T, U>::num_items / ChainingHashTable<T, U>::num_buckets > this->load_factor)
+      Bucket<T, U> *b = ChainingHashTable<T, U>::put(key, value);
+      if (ChainingHashTable<T, U>::num_items / ChainingHashTable<T, U>::num_buckets > LOAD_FACTOR)
          {
          rehash();
          }
-      return h;
+      return b;
       }
 
    };
-
-/*
- *  Linear hashing hash table implementation.  Extends the basic seperate chaining hash table.
- */
 
 template <class T, class U>
 class LinearHashTable : public ChainingHashTable<T, U>
    {
    private:
    // Constants
-   static const size_t DEFAULT_BUCKETS = 1024;
-   static const size_t DEFAULT_BUCKET_SIZE = 32;
 
    // Linear hashing specific -- initial buckets (n), # split pointer (s), level (l)
    size_t n;
    size_t s;
    size_t l;
 
-   // Size info
-   size_t bucket_size;
-
-   size_t
+   inline size_t
    hash(T key)
       {
       std::hash<T> h;
@@ -248,13 +175,10 @@ class LinearHashTable : public ChainingHashTable<T, U>
    split()
       {
       // Overflow!
-      Bucket<T, U> *overflow = ChainingHashTable<T, U>::buckets[this->s];
-      this->buckets[this->s] = NULL;
-      Bucket<T, U> **newArr = new Bucket<T, U>*[ChainingHashTable<T, U>::num_buckets+1];
-      std::copy(ChainingHashTable<T, U>::buckets, ChainingHashTable<T, U>::buckets+ChainingHashTable<T, U>::num_buckets, newArr);
-      newArr[ChainingHashTable<T, U>::num_buckets++] = NULL;
-      delete[] ChainingHashTable<T, U>::buckets;
-      ChainingHashTable<T, U>::buckets = newArr;
+      Bucket<T, U> *overflow = ChainingHashTable<T, U>::buckets->at(this->s);
+      ChainingHashTable<T, U>::buckets->at(this->s) = new Bucket<T, U>();
+      ChainingHashTable<T, U>::buckets->push_back(new Bucket<T, U>());
+      ChainingHashTable<T, U>::num_buckets++;
 
       if (this->s >= this->n * pow(2, this->l))
          {
@@ -265,57 +189,35 @@ class LinearHashTable : public ChainingHashTable<T, U>
          {
          this->s++; 
          }
-        
+      
       // Rehash overflow spot
-      while (overflow != NULL)
+      std::vector<Tuple<T, U>> data = overflow->getData();
+      typename std::vector<Tuple<T, U>>::iterator it;
+      for (it = data.begin(); it != data.end(); ++it)
          {
-         if (overflow->isDeleted())
-            {
-            overflow = overflow->getNext();
-            continue;
-            }
-         // Insert the item into a new spot
-         size_t h2 = hash(overflow->getKey());
-         if (this->buckets[h2] == NULL)
-            {
-            ChainingHashTable<T, U>::buckets[h2] = new Bucket<T, U>(overflow->getKey(), overflow->getValue());
-            } 
-         else
-            {
-            Bucket<T, U> *tmp = new Bucket<T, U>(overflow->getKey(), overflow->getValue());
-            tmp->setNext(ChainingHashTable<T, U>::buckets[h2]);
-            ChainingHashTable<T, U>::buckets[h2]->setPrev(tmp);
-            tmp->setCount(ChainingHashTable<T, U>::buckets[h2]->getCount()+1);
-            ChainingHashTable<T, U>::buckets[h2] = tmp;
-            }
-         overflow = overflow->getNext();
+         Tuple<T, U> kv = *it;
+         ChainingHashTable<T, U>::put(kv.key, kv.value);
          }
+      ChainingHashTable<T, U>::num_items -= overflow->count();
       delete overflow;
       }
 
    public:
-   LinearHashTable(size_t mbs, size_t n_) : ChainingHashTable<T, U>(n_), n(n_), s(0), l(0), bucket_size(mbs) {};
+   LinearHashTable(size_t n_) : ChainingHashTable<T, U>(n_), n(n_), s(0), l(0){};
 
-   LinearHashTable() : LinearHashTable(DEFAULT_BUCKET_SIZE, DEFAULT_BUCKETS) {};
+   LinearHashTable() : LinearHashTable(NUM_BUCKETS) {};
 
-   ~LinearHashTable(){}
-
-   size_t
+   Bucket<T, U>*
    put(T key, U value)
       {
-      size_t h = ChainingHashTable<T, U>::put(key, value);
-      if (ChainingHashTable<T, U>::buckets[h]->getCount() > this->bucket_size)
+      Bucket<T, U> *b = ChainingHashTable<T, U>::put(key, value);
+      if (b->isOverflow())
          {
          split();
          }
-      return h;
+      return b;
       }
    };
-
-
-/*
- *  TODO: open addressing hash table (linear probing, robin hood, etc.)
- */
 
 template<class T, class U>
 class ProbingHashTable : public ChainingHashTable<T, U>
@@ -341,33 +243,33 @@ class ProbingHashTable : public ChainingHashTable<T, U>
       int i=0;
       while (h+i<this->num_buckets)
          {
-         Bucket<T, U> *b = this->buckets[h+i];
-         if (b == NULL)
+         Bucket<T, U> *b = this->buckets->at(h+i);
+         try
             {
-            throw std::runtime_error("Key not found.");
+            return b->get(key);
             }
-         if (b->same(key))
-           {
-           return b->getValue();
-           }
+         catch (std::exception &e)
+            {
+            // Try next bucket.
+            }         
          ++i;
          }
       throw std::runtime_error("Key not found.");
       }
 
-   virtual size_t
+   virtual Bucket<T, U>*
    put(T key, U value)
       {
       size_t h = hash(key);
       int i=0;
       while (h+i<this->num_buckets)
          {
-         Bucket<T, U> *b = this->buckets[h+i];
-         if (b == NULL)
+         Bucket<T, U> *b = this->buckets->at(h+i);
+         if (b->count() < b->getSize())
             {
-            this->buckets[h+i] = new Bucket<T, U>(key, value);
-            this->num_items++;
-            return h+i;
+            b->insert(key, value);
+            ChainingHashTable<T, U>::num_items++;
+            return b;
             }
          ++i;
          }
@@ -382,29 +284,34 @@ class DynamicProbingHashTable : public ProbingHashTable<T, U>
    virtual void
    rehash()
       {
+      std::vector<Bucket<T, U>*> *old = ProbingHashTable<T, U>::buckets;
+      std::vector<Bucket<T, U>*> *tmp = new std::vector<Bucket<T, U>*>();
       size_t oldsize = ProbingHashTable<T, U>::num_buckets;
       ProbingHashTable<T, U>::num_buckets *= 2;
-      Bucket<T, U> **old = ProbingHashTable<T, U>::buckets;
-      Bucket<T, U> **buckets = new Bucket<T, U>*[ProbingHashTable<T, U>::num_buckets];
       for (int i=0; i<ProbingHashTable<T, U>::num_buckets; ++i)
          {
-         buckets[i] = NULL;
+         tmp->push_back(new Bucket<T, U>());
          }
-      ProbingHashTable<T, U>::buckets = buckets;
+      ProbingHashTable<T, U>::buckets = tmp;
       ProbingHashTable<T, U>::num_items = 0;
       for (int i=0; i<oldsize; ++i)
          {
-         Bucket<T, U> *b = old[i];
-         if (b && !b->isDeleted())
+         Bucket<T, U> *b = old->at(i);
+         std::vector<Tuple<T, U>> tuples = b->getData();
+         typename std::vector<Tuple<T, U>>::iterator it;
+         for (it = tuples.begin(); it != tuples.end(); ++it)
             {
-            put(b->getKey(), b->getValue());
+            Tuple<T, U> kv = *it;
+            put(kv.key, kv.value);
             }
          }
-      delete[] old;
+      delete old;
       }
 
    public:
-   size_t
+   DynamicProbingHashTable(size_t n) : ProbingHashTable<T, U>(n) {};
+
+   Bucket<T, U>*
    put(T key, U value)
       {
       try
@@ -414,58 +321,6 @@ class DynamicProbingHashTable : public ProbingHashTable<T, U>
       catch (std::exception &e)
          {
          rehash();
-         return put(key, value);
-         }
-      }
-   };
-
-template<class T, class U>
-class RobinHoodHashTable : public DynamicProbingHashTable<T, U>
-   {
-   public:
-   virtual size_t
-   put(T key, U value)
-      {
-      size_t h = DynamicProbingHashTable<T, U>::hash(key);
-      int i=0;
-      while (h+i<this->num_buckets)
-         {
-         Bucket<T, U> *b = this->buckets[h+i];
-         if (b == NULL)
-            {
-            this->buckets[h+i] = new Bucket<T, U>(key, value);
-            this->buckets[h+i]->setCount(h);
-            this->num_items++;
-            return h+i;
-            }
-         else if (i > h + i - b->getCount())
-            {
-            Bucket<T, U> *tmp = this->buckets[h+i];
-            this->buckets[h+i] = new Bucket<T, U>(key, value);
-            this->buckets[h+i]->setCount(h);
-            DynamicProbingHashTable<T, U>::put(tmp->getKey(), tmp->getValue());
-            return h+i;
-            }
-         ++i;
-         }
-      throw std::runtime_error("Hash table is full.");
-      }
-   };
-
-template<class T, class U>
-class DynamicRobinHoodHashTable : public RobinHoodHashTable<T, U>
-   {
-   public:
-   size_t
-   put(T key, U value)
-      {
-      try
-         {
-         return RobinHoodHashTable<T, U>::put(key, value);
-         }
-      catch (std::exception &e)
-         {
-         DynamicProbingHashTable<T, U>::rehash();
          return put(key, value);
          }
       }
