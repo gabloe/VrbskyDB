@@ -9,7 +9,8 @@
 #include <fstream>
 #include <limits>
 
-const size_t INF = std::numeric_limits<size_t>::max();
+
+const uint64_t INF = std::numeric_limits<uint64_t>::max();
 
 
 #define DoSort false
@@ -28,7 +29,7 @@ void Assert(std::string msg, bool test) {
 
 // Given an array d, we swap elements i and j
 template <typename K>
-void swap(K *d, size_t i, size_t j) {
+void swap(K *d, uint64_t i, uint64_t j) {
 	K t = d[i];
 	d[i] = d[j];
 	d[j] = t;
@@ -37,7 +38,7 @@ void swap(K *d, size_t i, size_t j) {
 // Given an array d, we copy the contents of d[src] 
 // to d[dest].  Anything in det is lost.
 template <typename K>
-void move(K *d, int dest, int src) {
+void move(K *d, uint64_t dest, uint64_t src) {
 	d[dest] = d[src];
 }
 
@@ -45,7 +46,7 @@ void move(K *d, int dest, int src) {
 // the value v.  If found return its index, otherwise return
 // INF
 template <typename K>
-size_t linearSearch(const K* s, K v, int start, int end) {
+uint64_t linearSearch(const K* s, K v, uint64_t start, uint64_t end) {
 	while (start + 7 < end) {
 		
 		if(s[start + 0] == v) return start + 0;
@@ -72,10 +73,10 @@ size_t linearSearch(const K* s, K v, int start, int end) {
 // the value v and return its position.  If not found we
 // return INF
 template <typename K>
-size_t binarySearch(const K* s, K v, int left, int right) {
+uint64_t binarySearch(const K* s, K v, uint64_t left, uint64_t right) {
 	
 	while (left < right) {
-		int mid = (left + right) / 2;
+		uint64_t mid = (left + right) / 2;
 		if (s[mid] == v) {
 			return mid;
 		} else if (s[mid] < v) {	//  [left ... mid .V.. right]
@@ -97,7 +98,7 @@ std::string to_string(T v) {
 }
 
 template <typename K>
-size_t search(K* s, K v, int start, int end) {
+uint64_t search(K* s, K v, uint64_t start, uint64_t end) {
 	if (DoSort) {
 		return binarySearch(s, v, start, end);
 	} else {
@@ -111,8 +112,8 @@ namespace DataStructures {
 	class LinearHash {
 
 		// Hard-coded defaults
-		static const size_t NUM_BUCKETS = 100;
-		static const size_t NUM_ELEMENTS = 32;
+		static const uint64_t NUM_BUCKETS = 100;
+		static const uint64_t NUM_ELEMENTS = 32;
 
 		// Forward declaration
 		class Bucket;
@@ -123,12 +124,12 @@ namespace DataStructures {
 			init();
 		}
 
-		LinearHash(size_t num_buckets) {
+		LinearHash(uint64_t num_buckets) {
 			num_buckets_ = num_buckets;
 			init();
 		}
 
-		LinearHash(size_t num_buckets, size_t num_elements) {
+		LinearHash(uint64_t num_buckets, uint64_t num_elements) {
 			num_buckets_ = num_buckets;
 			num_elements_ = num_elements;
 
@@ -136,7 +137,7 @@ namespace DataStructures {
 		}
 
 		~LinearHash() {
-			for (size_t i = 0; i < num_buckets_; ++i) {
+			for (uint64_t i = 0; i < num_buckets_; ++i) {
 				if (buckets_[i] != NULL) {
 					delete buckets_[i];
 				}
@@ -145,10 +146,10 @@ namespace DataStructures {
 		}
 
 		// Given a key and value we place it in the hash table
-		void put(size_t key, T *value) {
+		void put(uint64_t key, T *value) {
 
 			// Get the bucket to place into
-			int index = computeIndex(key);
+			uint64_t index = computeIndex(key);
 			Bucket *b = getBucket(index);
 
 			// If full we need to "split"
@@ -172,8 +173,8 @@ namespace DataStructures {
 			++num_items_;	// How many items in the table
 		}
 
-		T *get(size_t key) {
-			size_t index = computeIndex(key);
+		T *get(uint64_t key) {
+			uint64_t index = computeIndex(key);
 			Bucket *b = getBucket(index);
 			if (b == NULL) {
 				return NULL;
@@ -181,8 +182,8 @@ namespace DataStructures {
 			return b->get(key);
 		}
 
-		T *remove( size_t key ) {
-			size_t index = computeIndex(key);
+		T *remove( uint64_t key ) {
+			uint64_t index = computeIndex(key);
 			Bucket *b = getBucket(index);
 			if (b == NULL) {
 				return NULL;
@@ -190,23 +191,23 @@ namespace DataStructures {
 			return b->remove(key);
 		}
 		
-		bool contains(size_t key) {
+		bool contains(uint64_t key) {
 			return get(key) != NULL;
 		}
 
-		size_t bucket_count() {
+		uint64_t bucket_count() {
 			return num_buckets_;
 		}
 
-		size_t split_count() {
+		uint64_t split_count() {
 			return num_splits_;
 		}
 		
-		size_t bucket_size() {
+		uint64_t bucket_size() {
 			return num_elements_;
 		}
 
-		size_t count() {
+		uint64_t count() {
 			return num_items_;
 		}
 
@@ -228,7 +229,7 @@ namespace DataStructures {
 
 				memset(r, 0, sizeof(Bucket*)* 2 * num_buckets_);
 
-				for (size_t i = 0; i < num_buckets_; ++i) {
+				for (uint64_t i = 0; i < num_buckets_; ++i) {
 					r[i] = buckets_[i];
 				}
 				delete[] buckets_;
@@ -237,19 +238,19 @@ namespace DataStructures {
 		}
 
 		void split() {
-			const size_t second = num_buckets_ + num_splits_;
+			const uint64_t second = num_buckets_ + num_splits_;
 			Bucket *prev = getBucket(num_splits_);
 			Bucket *next = getBucket(second);
 			++num_splits_;
 
 			while (prev != NULL) {
 
-				int unmoved = 0;
-				int end = prev->count_;
+				uint64_t unmoved = 0;
+				uint64_t end = prev->count_;
 
-				for (int i = 0; i < end; ++i) {
+				for (uint64_t i = 0; i < end; ++i) {
 
-					size_t idx = computeIndex(prev->keys_[i]);
+					uint64_t idx = computeIndex(prev->keys_[i]);
 
 					if (idx == second) {		// Move to other
 
@@ -285,15 +286,15 @@ namespace DataStructures {
 			memset(buckets_, 0, sizeof(Bucket*)* num_buckets_);
 		}
 
-		size_t computeIndex(size_t key) {
-			size_t m = key % num_buckets_;
+		uint64_t computeIndex(uint64_t key) {
+			uint64_t m = key % num_buckets_;
 			if (m < num_splits_) {
 				m = key % (2 * num_buckets_);
 			}
 			return m;
 		}
 
-		Bucket *getBucket(size_t index) {
+		Bucket *getBucket(uint64_t index) {
 			if (buckets_[index] == NULL) {
 				buckets_[index] = new Bucket(num_elements_);
 			}
@@ -302,15 +303,15 @@ namespace DataStructures {
 
 		class MyTuple {
 		public:
-			size_t key;
+			uint64_t key;
 			T* value;
 
-			MyTuple(size_t k, T* v) {
+			MyTuple(uint64_t k, T* v) {
 				key = k;
 				value = v;
 			}
 
-			size_t getKey() {
+			uint64_t getKey() {
 				return key;
 			}
 
@@ -323,9 +324,9 @@ namespace DataStructures {
 		private:
 			Bucket **buckets;
 			Bucket *bucket;
-			size_t b_pos;
-			size_t pos;
-			size_t total;
+			uint64_t b_pos;
+			uint64_t pos;
+			uint64_t total;
 			MyIterator end();
 
 		public:
@@ -336,7 +337,7 @@ namespace DataStructures {
 				b_pos = pos = total = 0;
 			}
 
-			MyIterator(Bucket **bs, size_t num_buckets, size_t splits) {
+			MyIterator(Bucket **bs, uint64_t num_buckets, uint64_t splits) {
 
 				buckets = bs;
 				bucket = bs[0];
@@ -395,28 +396,28 @@ namespace DataStructures {
 
 		public:
 			// Global values
-			size_t total_elements_;
-			size_t total_count_;
+			uint64_t total_elements_;
+			uint64_t total_count_;
 
 			// Local values
-			size_t num_elements_;
-			size_t count_;
+			uint64_t num_elements_;
+			uint64_t count_;
 
 			// Data
-			size_t *keys_;
+			uint64_t *keys_;
 			T **values_;
 
 			// Chain
 			Bucket *chain_;
 
-			Bucket(size_t num_elements) {
+			Bucket(uint64_t num_elements) {
 
 				total_elements_ = num_elements_ = num_elements;
 
 				total_count_ = count_ = 0;
 
 				// Data
-				keys_ = new size_t[num_elements_];
+				keys_ = new uint64_t[num_elements_];
 				values_ = new T*[num_elements_];
 
 				memset(values_, 0, sizeof(T*)* num_elements_);
@@ -445,7 +446,7 @@ namespace DataStructures {
 
 			}
 
-			Bucket *getBucket(size_t key, size_t &index) {
+			Bucket *getBucket(uint64_t key, uint64_t &index) {
 				Bucket *curr = this;
 
 				while (curr != NULL) {
@@ -464,7 +465,7 @@ namespace DataStructures {
 
 			// Special function only called when just created
 			// Bucket and need to fill it right away
-			void append(size_t key, T *value) {
+			void append(uint64_t key, T *value) {
 				Bucket *curr = this;
 				while (curr->full()) {
 					if (curr->chain_ == NULL) {
@@ -477,8 +478,8 @@ namespace DataStructures {
 			}
 
 			// Returns true if collision
-			bool put(size_t key, T *value) {
-				size_t index = INF;
+			bool put(uint64_t key, T *value) {
+				uint64_t index = INF;
 				Bucket *bucket = this->getBucket(key, index);
 
 				// If we found a previous key/value pair
@@ -502,8 +503,8 @@ namespace DataStructures {
 			}
 
 			// Search for a value given a key in this bucket
-			T *get(size_t key) {
-				size_t index = INF;
+			T *get(uint64_t key) {
+				uint64_t index = INF;
 				Bucket *ret = getBucket(key, index);
 				if (index == INF) {
 					return NULL;
@@ -511,9 +512,9 @@ namespace DataStructures {
 				return ret->values_[index];
 			}
 
-			T *remove(size_t key) {
+			T *remove(uint64_t key) {
 				// Find my bucket
-				size_t index = INF;
+				uint64_t index = INF;
 				Bucket * b = getBucket( key , index );
 				
 				// We don't actually have it
@@ -561,7 +562,7 @@ namespace DataStructures {
 						delete t;
 					} else {	// Copy what we can over
 						--t->count_;
-						size_t key = t->keys_[t->count_];
+						uint64_t key = t->keys_[t->count_];
 						T *value = t->values_[t->count_];
 
 						curr->append(key, value);
@@ -570,8 +571,8 @@ namespace DataStructures {
 			}
 
 			// Just inserted at the end, sort
-			void sort(size_t k, T* v) {
-				int i = count_;
+			void sort(uint64_t k, T* v) {
+				uint64_t i = count_;
 				if (DoSort) {
 					// While our key is strictly smaller than the previous key
 					while (i > 0 && keys_[i - 1] > k) {
@@ -589,11 +590,11 @@ namespace DataStructures {
 		};
 
 		MyIterator end_;
-		size_t num_buckets_ = NUM_BUCKETS;
-		size_t num_elements_ = NUM_ELEMENTS;
-		size_t count_ = 0;
-		size_t num_splits_ = 0;
-		size_t num_items_ = 0;
+		uint64_t num_buckets_ = NUM_BUCKETS;
+		uint64_t num_elements_ = NUM_ELEMENTS;
+		uint64_t count_ = 0;
+		uint64_t num_splits_ = 0;
+		uint64_t num_items_ = 0;
 		Bucket **buckets_ = NULL;
 
 	};
@@ -606,36 +607,36 @@ void dumpToFile( std::string filename , DataStructures::LinearHash<std::string> 
 	std::ofstream outfile( filename , std::ofstream::binary );
 	// header
 	
-	size_t s_buff;
+	uint64_t s_buff;
 	const char* buffer = (const char*)&s_buff;
 	
 	s_buff = hash.bucket_count();
-	outfile.write( buffer	, sizeof(size_t) );	// How many buckets
+	outfile.write( buffer	, sizeof(uint64_t) );	// How many buckets
 	
 	s_buff = hash.split_count();
-	outfile.write( buffer	, sizeof(size_t) );	// How many splits
+	outfile.write( buffer	, sizeof(uint64_t) );	// How many splits
 	
 	s_buff = hash.bucket_size();
-	outfile.write( buffer	, sizeof(size_t) );	// How many elements
+	outfile.write( buffer	, sizeof(uint64_t) );	// How many elements
 	
 	s_buff = hash.count();
-	outfile.write( buffer	, sizeof(size_t) );	// How many keys inserted
+	outfile.write( buffer	, sizeof(uint64_t) );	// How many keys inserted
 	
 	// Data
 	for( auto iter = hash.begin() ; iter != hash.end() ; ++iter ) {
 		auto pair = *iter;
 		std::string *value	= pair.getValue();
-		
-		size_t s_buff;
+		Assert( "Somehow the value is null" , value != NULL );
+		uint64_t s_buff;
 		const char* buffer = (const char*)&s_buff;
 		
 		// Print key
 		s_buff = pair.getKey();
-		outfile.write( buffer , sizeof(size_t) );
+		outfile.write( buffer , sizeof(uint64_t) );
 		
 		// Print length
 		s_buff = value->length();
-		outfile.write( buffer , sizeof(size_t) );
+		outfile.write( buffer , sizeof(uint64_t) );
 		
 		// Print string
 		outfile.write( value->c_str() , value->length() );
@@ -647,32 +648,32 @@ void dumpToFile( std::string filename , DataStructures::LinearHash<std::string> 
 void readFromFile( std::string filename , DataStructures::LinearHash<std::string> &hash ) {
 	std::ifstream infile( filename , std::ofstream::binary );
 	
-	size_t s_buff;
+	uint64_t s_buff;
 	const char* buffer = (const char*)&s_buff;
 	
-	size_t num_buckets,splits,num_elements,count;
+	uint64_t num_buckets,splits,num_elements,count;
 	
 	s_buff = hash.bucket_count();
-	infile.read( (char*)&num_buckets	, sizeof(size_t) );	// How many buckets
+	infile.read( (char*)&num_buckets	, sizeof(uint64_t) );	// How many buckets
 	
 	s_buff = hash.split_count();
-	infile.read( (char*)&splits		, sizeof(size_t) );	// How many splits
+	infile.read( (char*)&splits		, sizeof(uint64_t) );	// How many splits
 	
 	s_buff = hash.bucket_size();
-	infile.read( (char*)&num_elements	, sizeof(size_t) );	// How many elements
+	infile.read( (char*)&num_elements	, sizeof(uint64_t) );	// How many elements
 	
 	s_buff = hash.count();
-	infile.read( (char*)&count		, sizeof(size_t) );	// How many keys inserted
+	infile.read( (char*)&count		, sizeof(uint64_t) );	// How many keys inserted
 	
 	// I would hope this is large enough...
 	char *str_buffer = new char[1024*1024];
 	
 	// Data
-	for( int i = 0 ; i < count ; ++i ) {
-		size_t key,length;
+	for( uint64_t i = 0 ; i < count ; ++i ) {
+		uint64_t key,length;
 		
-		infile.read( (char*)&key , sizeof(size_t) );
-		infile.read( (char*)&length , sizeof(size_t) );
+		infile.read( (char*)&key , sizeof(uint64_t) );
+		infile.read( (char*)&length , sizeof(uint64_t) );
 		infile.read( str_buffer , length );
 		
 		hash.put( key , new std::string(str_buffer, length) );
@@ -683,7 +684,7 @@ void readFromFile( std::string filename , DataStructures::LinearHash<std::string
 }
 
 
-uint64_t MurmurHash64B( const void * key, int len, unsigned int seed )
+uint64_t MurmurHash64( const void * key, uint64_t len, uint64_t seed )
 {
 	const unsigned int m = 0x5bd1e995;
 	const int r = 24;
@@ -734,17 +735,20 @@ uint64_t MurmurHash64B( const void * key, int len, unsigned int seed )
 	return h;
 } 
 
-size_t herp( std::string &str ) {
-	size_t hash = 0;
-	for( int i = 0 ; i < str.size() ; ++i ) {
+uint64_t herp( std::string &str ) {
+	uint64_t hash = 0;
+	for( uint64_t i = 0 ; i < str.length() ; ++i ) {
 		hash = 101 * hash + str[i];
 	}
 	return hash;
 }
 
-size_t str_hash( std::string &str ) {
-	return MurmurHash64B( str.c_str() , str.size() , 123654789 );
-	//return herp( str );
+std::hash<std::string> string_hash;
+
+uint64_t str_hash( std::string &str ) {
+	//return MurmurHash64( str.c_str() , str.size() , 123654789 );
+	return herp( str );
+	//return string_hash(str);
 }
 
 int main(void) {
@@ -756,7 +760,7 @@ int main(void) {
 	std::string insert("ABCDEFGHI");
 	std::string fetch("ABCDEFGHI");
 	std::string file("ABCDEFGHI");
-	//std::hash<std::string> str_hash;
+	
 
 	std::string s1("DACIHEFBG");
 	std::string s2("CGBHADIEF");
@@ -767,10 +771,10 @@ int main(void) {
 	clock_t start,end;
 	start = std::clock();
 	do {	// 362880 permutations
-		size_t key = str_hash(insert);
+		uint64_t key = str_hash(insert);
 		if( myHash.contains( key ) ) {
 			std::string *s = myHash.get( key );
-			size_t k = str_hash( *s );
+			uint64_t k = str_hash( *s );
 			std::cout << "Herp: Collision: " << key << ", " << insert << ", " << k << ", " << *s << std::endl;
 			return -1;
 		}
@@ -804,7 +808,7 @@ int main(void) {
 	
 	do {
 		++count;
-		size_t key = str_hash(file);
+		uint64_t key = str_hash(file);
 		if (!fromFile.contains( key )) {
 			std::cout << "ERROR: " << file << " at " << count << std::endl;
 			return -1;
