@@ -20,12 +20,15 @@ typedef unsigned __int64 uint64_t;
 #include <stdint.h>
 #endif
 
+// Globals
 const uint64_t INF = std::numeric_limits<uint64_t>::max();
+const bool print = true;
 
 
-#define DoSort false
+// Defines
+#define DoSort true
+#define max(A,B) (A) > (B) ? (A) : (B)
 
-bool print = true;
 
 // Helper Functions
 
@@ -52,23 +55,37 @@ void move(K *d, uint64_t dest, uint64_t src) {
 	d[dest] = d[src];
 }
 
+// Try to convert a value to a string
+template <typename T>
+std::string to_string(T v) {
+	std::ostringstream ss;
+	ss << v;
+	return ss.str();
+}
+
+
+// Searching
+
 // Linearly search through the array s from start to end for
 // the value v.  If found return its index, otherwise return
 // INF
 template <typename K>
 uint64_t linearSearch(const K* s, K v, uint64_t start, uint64_t end) {
-	while (start + 7 < end) {
+	const uint64_t jump = 4;
+	while (start + jump - 1 < end) {
 
 		if (s[start + 0] == v) return start + 0;
 		if (s[start + 1] == v) return start + 1;
 		if (s[start + 2] == v) return start + 2;
 		if (s[start + 3] == v) return start + 3;
+		/*
 		if (s[start + 4] == v) return start + 4;
 		if (s[start + 5] == v) return start + 5;
 		if (s[start + 6] == v) return start + 6;
 		if (s[start + 7] == v) return start + 7;
+		// */
 
-		start += 8;
+		start += jump;
 	}
 	while (start < end) {
 		if (s[start] == v) {
@@ -99,14 +116,6 @@ uint64_t binarySearch(const K* s, K v, uint64_t left, uint64_t right) {
 	return INF;
 }
 
-// Try to convert a value to a string
-template <typename T>
-std::string to_string(T v) {
-	std::ostringstream ss;
-	ss << v;
-	return ss.str();
-}
-
 template <typename K>
 uint64_t search(K* s, K v, uint64_t start, uint64_t end) {
 	if (DoSort) {
@@ -115,6 +124,9 @@ uint64_t search(K* s, K v, uint64_t start, uint64_t end) {
 		return linearSearch(s, v, start, end);
 	}
 }
+
+
+// Actual hash table
 
 namespace DataStructures {
 
@@ -144,6 +156,25 @@ namespace DataStructures {
 			num_elements_ = num_elements;
 
 			init();
+		}
+		
+		LinearHash( LinearHash &other ) {
+			num_buckets_ = other.num_buckets_;
+			num_elements_ = other.num_elements_;
+			
+			init();
+			
+			count_ = other.count_;
+			num_splits_ = other.num_splits_;
+			num_items_ = other.num_items_;
+			
+			uint64_t total = num_buckets_ + num_splits_;
+			
+			for( uint64_t i = 0 ; i < total ; ++i ) {
+				if( other.buckets_[i] != NULL ) {
+					buckets_[i] = new Bucket( other.buckets[i] );
+				}
+			}
 		}
 
 		~LinearHash() {
@@ -278,6 +309,7 @@ namespace DataStructures {
 						++unmoved;	// Didn't move so count
 					}
 				}
+				
 				prev->count_ = unmoved;
 				prev = prev->chain_;
 			}
@@ -355,11 +387,20 @@ namespace DataStructures {
 				pos = b_pos = 0;
 
 				total = num_buckets + splits;
-				while (pos < total && (bucket == NULL || bucket->count_ == 0) ) {
-					bucket = bs[++pos];
+				while (pos < total ) {
+					if( bucket == NULL ) {
+						bucket = bs[++pos];
+					}else {
+						if( bucket->full() || bucket->count_ == 0 ) {
+							bucket = bucket->chain_;
+						}else {
+							break;
+						}
+					}
 				}
 
 				if (pos == total) {
+					std::cout << "uh..." << std::endl;
 					buckets = NULL;
 					bucket = NULL;
 					b_pos = pos = total = 0;
@@ -429,7 +470,6 @@ namespace DataStructures {
 			Bucket(uint64_t num_elements) {
 
 				total_elements_ = num_elements_ = num_elements;
-
 				total_count_ = count_ = 0;
 
 				// Data
@@ -439,6 +479,26 @@ namespace DataStructures {
 				memset(values_, 0, sizeof(T*)* num_elements_);
 
 				chain_ = NULL;
+
+			}
+			
+			Bucket( Bucket &other ) {
+				total_elements_ = num_elements_ = other.num_elements_;
+				total_count_ = count_ = other.count_;
+
+				// Data
+				keys_ = new uint64_t[num_elements_];
+				values_ = new T*[num_elements_];
+				
+				for( uint64_t i = 0; i < count_ ; ++i ) {
+					keys_[i] = other.keys_[i];
+					values_[i] = other.values_[i];
+				}
+
+				chain_ = NULL;
+				if( other.chain_ != NULL ) {
+					chain_ = new Bucket( other.chain_ );
+				}
 
 			}
 
@@ -466,6 +526,7 @@ namespace DataStructures {
 				Bucket *curr = this;
 
 				while (curr != NULL) {
+					
 					index = search(curr->keys_, key, 0, curr->count_);
 
 					// Check to see if we stop here
@@ -500,7 +561,6 @@ namespace DataStructures {
 
 				// If we found a previous key/value pair
 				if (index != INF) {
-					Assert("How...", false);
 					if (bucket->values_[index] != NULL) {
 						delete bucket->values_[index];	// Remove old
 					}
@@ -617,90 +677,112 @@ namespace DataStructures {
 
 }
 
-#define max(A,B) (A) > (B) ? (A) : (B)
 
+
+
+//
+// Format
+//
+//	Number of Buckets | Number of Elements per bucket | Number of total elements | Elements
+//
+//	Each element is composed of three parts:
+//
+//		Key : 64-bits
+//		Length:	64-bits long
+//		Data: Length bytes
+//
+//
+
+// File I/O
 void dumpToFile(std::string filename, DataStructures::LinearHash<std::string> &hash) {
 	std::ofstream outfile(filename, std::ofstream::binary);
 	// header
+	uint64_t num_buckets = hash.bucket_count();
+	if( hash.split_count() > 0 ) num_buckets += num_buckets;
+	outfile.write( reinterpret_cast<char*>(&num_buckets) , sizeof(uint64_t));	// How many buckets
 
-	uint64_t s_buff;
-	const char* buffer = (const char*)&s_buff;
+	uint64_t size_bucket = hash.bucket_size();
+	outfile.write( reinterpret_cast<char*>(&size_bucket) , sizeof(uint64_t));	// How many buckets
 
-	s_buff = hash.bucket_count();
-	outfile.write(buffer, sizeof(uint64_t));	// How many buckets
+	uint64_t num_elements = hash.count();
+	outfile.write( reinterpret_cast<char*>(&num_elements) , sizeof(uint64_t));	// How many buckets
 
-	s_buff = hash.split_count();
-	outfile.write(buffer, sizeof(uint64_t));	// How many splits
-
-	s_buff = hash.bucket_size();
-	outfile.write(buffer, sizeof(uint64_t));	// How many elements
-
-	s_buff = hash.count();
-	outfile.write(buffer, sizeof(uint64_t));	// How many keys inserted
-
+	std::cout << "Writing out "
+		<< num_buckets << " buckets, with "
+		<< size_bucket << " elements per bucket, for a total of "
+		<< num_elements << std::endl;
+	
+	
+	
+	int count = 0;
 	// Data
 	for (auto iter = hash.begin(); iter != hash.end(); ++iter) {
+		++count;
 		auto pair = *iter;
-		std::string *value = pair.getValue();
-		//Assert("Somehow the value is null", value != NULL);
-		uint64_t s_buff;
-		const char* buffer = (const char*)&s_buff;
+		
+		uint64_t key = pair.getKey();
+		uint64_t  length = pair.getValue()->length();
+		const char* data = pair.getValue()->c_str();
+		
+		// Key
+		outfile.write( reinterpret_cast<char*>(&key), sizeof(key));
 
-		// Print key
-		s_buff = pair.getKey();
-		outfile.write(buffer, sizeof(uint64_t));
+		// Length
+		outfile.write( reinterpret_cast<char*>(&length), sizeof(length));
 
-		// Print length
-		s_buff = value->length();
-		outfile.write(buffer, sizeof(uint64_t));
-
-		// Print string
-		outfile.write(value->c_str(), value->length());
+		// Data
+		outfile.write( data , length );
 
 	}
+	
+	Assert( "Missing some items" , count == num_elements );
 	outfile.close();
 }
 
-void readFromFile(std::string filename, DataStructures::LinearHash<std::string> &hash) {
+
+DataStructures::LinearHash<std::string> *readFromFile(std::string filename ) {
 	std::ifstream infile(filename, std::ofstream::binary);
+	DataStructures::LinearHash<std::string> *result;
+	
+	uint64_t num_buckets, size_bucket, num_elements, count;
 
-	uint64_t s_buff;
-	const char* buffer = (const char*)&s_buff;
+	infile.read( reinterpret_cast<char*>(&num_buckets), sizeof(uint64_t));	// How many buckets
+	
+	infile.read( reinterpret_cast<char*>(&size_bucket), sizeof(uint64_t));	// How many elements per bucket
 
-	uint64_t num_buckets, splits, num_elements, count;
+	infile.read( reinterpret_cast<char*>(&num_elements), sizeof(uint64_t));		// How many elements
 
-	s_buff = hash.bucket_count();
-	infile.read((char*)&num_buckets, sizeof(uint64_t));	// How many buckets
-
-	s_buff = hash.split_count();
-	infile.read((char*)&splits, sizeof(uint64_t));	// How many splits
-
-	s_buff = hash.bucket_size();
-	infile.read((char*)&num_elements, sizeof(uint64_t));	// How many elements
-
-	s_buff = hash.count();
-	infile.read((char*)&count, sizeof(uint64_t));	// How many keys inserted
-
+	std::cout << "Reading in "
+		<< num_buckets << " buckets, with "
+		<< size_bucket << " elements per bucket, for a total of "
+		<< num_elements << std::endl;
+	
 	// I would hope this is large enough...
 	char *str_buffer = new char[1024 * 1024];
 
+	result = new DataStructures::LinearHash<std::string>( num_buckets , size_bucket );
+	
 	// Data
-	for (uint64_t i = 0; i < count; ++i) {
-		uint64_t key, length;
+	for (uint64_t i = 0; i < num_elements; ++i) {
+		uint64_t key,length;
 
-		infile.read((char*)&key, sizeof(uint64_t));
-		infile.read((char*)&length, sizeof(uint64_t));
-		infile.read(str_buffer, length);
+		infile.read( reinterpret_cast<char*>(&key) , sizeof(uint64_t) );
+		infile.read( reinterpret_cast<char*>(&length) , sizeof(uint64_t) );
+		infile.read( str_buffer , length );
 
-		hash.put(key, new std::string(str_buffer, (size_t)length));
+		result->put( key , new std::string( str_buffer , length ) );
 	}
-
-	delete[] str_buffer;
+	
 	infile.close();
+	delete[] str_buffer;
+	
+	return result;
 }
 
 
-uint64_t MurmurHash64(const void * key, int len, unsigned int seed) {
+
+// Hash function
+uint64_t hash3(const void * key, int len, unsigned int seed = 0) {
 	const unsigned int m = 0x5bd1e995;
 	const int r = 24;
 
@@ -747,100 +829,112 @@ uint64_t MurmurHash64(const void * key, int len, unsigned int seed) {
 	return h;
 }
 
-uint64_t herp(std::string &str) {
+uint64_t hash2(const char* data , size_t len ) {
 	uint64_t hash = 0;
 	const uint64_t mul = 101;
-	for (uint64_t i = 0; i < str.length(); ++i) {
-		uint64_t c = str[i];
+	for (uint64_t i = 0; i < len; ++i) {
+		uint64_t c = data[i];
 		hash = mul * hash + c;
 	}
 	return hash;
 }
 
-template <typename T>
-uint64_t hash(const T* __ptr, size_t __clength)  {
-	uint64_t __result
-	= static_cast<uint64_t>(14695981039346656037ULL);
-	const char* __cptr = reinterpret_cast<const char*>(__ptr);
-	for (; __clength; --__clength)
-	{
-	__result ^= static_cast<size_t>(*__cptr++);
-	__result *= static_cast<size_t>(1099511628211ULL);
+uint64_t hash1(const char* data, size_t length)  {
+	uint64_t result = static_cast<uint64_t>(14695981039346656037ULL);
+	for (; length; --length) {
+		result ^= static_cast<uint64_t>(*data++);
+		result *= static_cast<uint64_t>(1099511628211ULL);
 	}
-	return __result;
-}
-//std::hash<std::string> string_hash;
-
-uint64_t str_hash(std::string &str) {
-	//return MurmurHash64( str.c_str() , str.size() , 123654789 );
-	//return herp(str);
-	return hash( str.c_str() , str.size());
+	return result;
 }
 
-int main(void) {
-	DataStructures::LinearHash<std::string> fromFile(1024, 16);
-	DataStructures::LinearHash<std::string> myHash(1024, 16);
+template<typename T>
+inline uint64_t hash( T &str , size_t len) {
+	//return hash1( str.c_str() , len );
+	//return hash2( str.c_str() , len );
+	return hash3( str.c_str() , len );		// Murmer
+}
 
+
+
+// Tests
+template <typename T>
+void test_insert( DataStructures::LinearHash<T> &table , std::string data ) {
 	int count = 0;
-
-	std::string insert("ABCDEFGHI");
-	std::string fetch("ABCDEFGHI");
-	std::string file("ABCDEFGHI");
-
-
-	std::string s1("DACIHEFBG");
-	std::string s2("CGBHADIEF");
-
-	std::cout << "The hash of DACIHEFBG is " << str_hash(s1) << std::endl;
-	std::cout << "The hash of CGBHADIEF is " << str_hash(s2) << std::endl;
-
-	clock_t start, end;
-	start = std::clock();
-	do {	// 362880 permutations
-		uint64_t key = str_hash(insert);
-		if (myHash.contains(key)) {
-			std::string *s = myHash.get(key);
-			uint64_t k = str_hash(*s);
-			std::cout << "Herp: Collision: " << key << ", " << insert << ", " << k << ", " << *s << std::endl;
-			return -1;
+	do {
+		++count;
+		uint64_t key = hash(data, data.size() );
+		
+		if (table.contains(key)) {
+			std::string *table_value	= table.get(key);
+			uint64_t table_key			= hash(*table_value,table_value->size());
+			
+			std::cout << "Collision at " << count << ": <" << key << "," << data << ">, <" << table_key << ", " << *table_value << ">" << std::endl;
+			exit( -1 );
 		}
-		myHash.put(key, new std::string(insert));
-	} while (std::next_permutation(insert.begin(), insert.end()));
+		
+		table.put(key, new std::string(data));
+	} while (std::next_permutation(data.begin(), data.end()));
+}
+
+template <typename T>
+void test_remove ( DataStructures::LinearHash<T> &table , std::string data )  {
+}
+
+template <typename T>
+void test_contains( DataStructures::LinearHash<T> &table , std::string data ) {
+	int count = 0;
+	do {
+		++count;
+		if (!table.contains(hash(data,data.size()))) {
+			std::cout << "ERROR: " << data << " at " << count << std::endl;
+			exit( -1 );
+		}
+	} while (std::next_permutation(data.begin(), data.end()));
+}
+
+
+
+// Main
+int main(void) {
+	
+	clock_t start, end;
+	
+	
+	DataStructures::LinearHash<std::string> table(512, 32);
+	
+	std::string data("ABCDEFGHI");
+	
+	// Test inserts
+	start = std::clock();
+	test_insert( table , data );
 	end = std::clock();
 	std::cout << "Took " << 1000 * (float)(end - start) / CLOCKS_PER_SEC << "ms to insert." << std::endl;
 
+	// Test contains/gets
 	start = std::clock();
-	do {
-		++count;
-		if (!myHash.contains(str_hash(fetch))) {
-			std::cout << "ERROR: " << fetch << " at " << count << std::endl;
-			return -1;
-		}
-	} while (std::next_permutation(fetch.begin(), fetch.end()));
+	test_contains( table , data );
 	end = std::clock();
 	std::cout << "Took " << 1000 * (float)(end - start) / CLOCKS_PER_SEC << "ms to fetch." << std::endl;
-	std::cout << "Hashmap contains " << myHash.count() << " items" << std::endl;
-	std::cout << "Total buckets: " << myHash.bucket_count() << std::endl;
+	
+	// Info
+	std::cout << std::endl;
+	std::cout << "Hashmap contains " << table.count() << " items" << std::endl;
+	std::cout << "Total buckets: " << table.bucket_count() << std::endl;
 
+	// Test write/read from file
 	start = std::clock();
-	dumpToFile("output.dat", myHash);
+	dumpToFile("output.dat", table);
 	end = std::clock();
 	std::cout << "Took " << 1000 * (float)(end - start) / CLOCKS_PER_SEC << "ms to write to disk." << std::endl;
 
 	start = std::clock();
-	readFromFile("output.dat", fromFile);
+	DataStructures::LinearHash<std::string> *file_table = readFromFile("output.dat" );
 	end = std::clock();
 	std::cout << "Took " << 1000 * (float)(end - start) / CLOCKS_PER_SEC << "ms to read from disk." << std::endl;
 
-	do {
-		++count;
-		uint64_t key = str_hash(file);
-		if (!fromFile.contains(key)) {
-			std::cout << "ERROR: " << file << " at " << count << std::endl;
-			return -1;
-		}
-		delete fromFile.remove(key);
-	} while (std::next_permutation(file.begin(), file.end()));
+	test_contains( *file_table , data );
 
+	delete file_table;
 	return 0;
 }
