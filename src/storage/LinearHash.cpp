@@ -7,6 +7,10 @@
 #include <iterator>
 #include <ctime>
 #include <fstream>
+#include <limits>
+
+const size_t INF = std::numeric_limits<size_t>::max();
+
 
 #define DoSort false
 
@@ -24,7 +28,7 @@ void Assert(std::string msg, bool test) {
 
 // Given an array d, we swap elements i and j
 template <typename K>
-void swap(K *d, int i, int j) {
+void swap(K *d, size_t i, size_t j) {
 	K t = d[i];
 	d[i] = d[j];
 	d[j] = t;
@@ -39,47 +43,37 @@ void move(K *d, int dest, int src) {
 
 // Linearly search through the array s from start to end for
 // the value v.  If found return its index, otherwise return
-// -1
+// INF
 template <typename K>
 int linearSearch(const K* s, K v, int start, int end) {
-	while (start + 8 < end) {
-		if (s[start + 0] == v) return start;
-		if (s[start + 1] == v) return start;
-		if (s[start + 2] == v) return start;
-		if (s[start + 3] == v) return start;
-		if (s[start + 4] == v) return start;
-		if (s[start + 5] == v) return start;
-		if (s[start + 6] == v) return start;
-		if (s[start + 7] == v) return start;
+	while (start + 7 < end) {
+		
+		if(s[start + 0] == v) return start + 0;
+		if(s[start + 1] == v) return start + 1;
+		if(s[start + 2] == v) return start + 2;
+		if(s[start + 3] == v) return start + 3;
+		if(s[start + 4] == v) return start + 4;
+		if(s[start + 5] == v) return start + 5;
+		if(s[start + 6] == v) return start + 6;
+		if(s[start + 7] == v) return start + 7;
+		
 		start += 8;
 	}
 	while (start < end) {
-		if (s[start] == v) return start;
+		if (s[start] == v) {
+			return start;
+		}
 		++start;
 	}
-	return -1;
-}
-
-template <typename K>
-int bSearch(const K* s, K v, int left, int right) {
-	while (left < right) {
-		int middle = (left + right) >> 1;
-		asm("cmpl %3, %2\n\tcmovg %4, %0\n\tcmovle %5, %1"
-			: "+r" (left),
-			"+r" (right)
-			: "r" (v), "g" (s[middle]),
-			"g" (middle + 1), "g" (middle));
-	}
-	if (s[left] == v) return left;
-	return -1;
+	return INF;
 }
 
 // Given a sorted array we use binary search to search for
 // the value v and return its position.  If not found we
-// return -1
+// return INF
 template <typename K>
 int binarySearch(const K* s, K v, int left, int right) {
-
+	
 	while (left < right) {
 		int mid = (left + right) / 2;
 		if (s[mid] == v) {
@@ -91,7 +85,7 @@ int binarySearch(const K* s, K v, int left, int right) {
 		}
 	}
 
-	return -1;
+	return INF;
 }
 
 // Try to convert a value to a string
@@ -187,6 +181,15 @@ namespace DataStructures {
 			return b->get(key);
 		}
 
+		T *remove( size_t key ) {
+			size_t index = computeIndex(key);
+			Bucket *b = getBucket(index);
+			if (b == NULL) {
+				return NULL;
+			}
+			return b->remove(key);
+		}
+		
 		bool contains(size_t key) {
 			return get(key) != NULL;
 		}
@@ -202,6 +205,7 @@ namespace DataStructures {
 		size_t bucket_size() {
 			return num_elements_;
 		}
+
 		size_t count() {
 			return num_items_;
 		}
@@ -448,7 +452,7 @@ namespace DataStructures {
 					index = search(curr->keys_, key, 0, curr->count_);
 
 					// Check to see if we stop here
-					if (index != -1 || curr->chain_ == NULL) {
+					if (index != INF || curr->chain_ == NULL) {
 						return curr;
 					}
 
@@ -463,22 +467,23 @@ namespace DataStructures {
 			void append(size_t key, T *value) {
 				Bucket *curr = this;
 				while (curr->full()) {
-					if (chain_ == NULL) {
-						chain_ = new Bucket(num_elements_);
+					if (curr->chain_ == NULL) {
+						curr->chain_ = new Bucket(num_elements_);
 					}
 					curr = curr->chain_;
 				}
-				sort(key, value);
-				++count_;
+				curr->sort(key, value);
+				++curr->count_;
 			}
 
 			// Returns true if collision
 			bool put(size_t key, T *value) {
-				size_t index = -1;
+				size_t index = INF;
 				Bucket *bucket = this->getBucket(key, index);
 
 				// If we found a previous key/value pair
-				if (index != -1) {
+				if (index != INF ) {
+					Assert( "How..." , false );
 					if (bucket->values_[index] != NULL) {
 						delete bucket->values_[index];	// Remove old
 					}
@@ -488,7 +493,6 @@ namespace DataStructures {
 
 				// Last bucket
 				if (bucket->full()) {
-					Assert("Chain is not null", bucket->chain_ == NULL);
 					bucket->chain_ = new Bucket(num_elements_);
 					bucket = bucket->chain_;
 				}
@@ -499,40 +503,41 @@ namespace DataStructures {
 
 			// Search for a value given a key in this bucket
 			T *get(size_t key) {
-				size_t index = -1;
+				size_t index = INF;
 				Bucket *ret = getBucket(key, index);
-				if (index == -1) {
+				if (index == INF) {
 					return NULL;
 				}
 				return ret->values_[index];
 			}
 
 			T *remove(size_t key) {
-				Assert("Remove was called", false);
-				Bucket *curr = this;
-				while (curr != NULL) {
-					int pos = search(curr->_keys, key, 0, curr->count_);
-					if (pos != -1) {
-						T *ret = curr->values_[pos];
-						--(curr->count_);
-						while (pos < curr->count) {
-							move(curr->keys_, pos, pos + 1);
-							move(curr->values_, pos, pos + 1);
-							++pos;
-						}
-						return ret;
-					}
-					curr = curr->chain_;
+				// Find my bucket
+				size_t index = INF;
+				Bucket * b = getBucket( key , index );
+				
+				// We don't actually have it
+				if( index == INF ) {
+					return NULL;
 				}
-				return NULL;
+				
+				// Remove from bucket, keep sorted maybe
+				--b->count_;
+				T* v = b->values_[index];
+				if( DoSort ) {
+					while( index < b->count_ ) {
+						swap( b->keys_ , index , index + 1 );
+						swap( b->values_ , index , index + 1 );
+					}
+				} else {
+					swap( b->keys_ , index , b->count_ );
+					swap( b->values_ , index , b->count_ );
+				}
+				return v;
 			}
 
 			bool full() {
 				return count_ == num_elements_;
-			}
-
-			bool contains(size_t key) {
-				return get(key);
 			}
 
 			// Not implemented yet
@@ -691,7 +696,14 @@ int main(void) {
 	clock_t start,end;
 	start = std::clock();
 	do {	// 362880 permutations
-		myHash.put(str_hash(insert), new std::string(insert));
+		size_t key = str_hash(insert);
+		if( myHash.contains( key ) ) {
+			std::string *s = myHash.get( key );
+			size_t k = str_hash( *s );
+			std::cout << "Herp: Collision: " << key << ", " << insert << ", " << k << ", " << *s << std::endl;
+			return -1;
+		}
+		myHash.put( key , new std::string(insert));
 	} while (std::next_permutation(insert.begin(), insert.end()));
 	end = std::clock();
 	std::cout << "Took " << 1000 * (float)(end - start) / CLOCKS_PER_SEC << "ms to insert." << std::endl;
@@ -705,20 +717,28 @@ int main(void) {
 		}
 	} while (std::next_permutation(fetch.begin(), fetch.end()));
 	end = std::clock();
-
 	std::cout << "Took " << 1000 * (float)(end - start) / CLOCKS_PER_SEC << "ms to fetch." << std::endl;
 	std::cout << "Hashmap contains " << myHash.count() << " items" << std::endl;
 	std::cout << "Total buckets: " << myHash.bucket_count() << std::endl;
 
+	start = std::clock();
 	dumpToFile( "output.dat" , myHash );
+	end = std::clock();
+	std::cout << "Took " << 1000 * (float)(end - start) / CLOCKS_PER_SEC << "ms to write to disk." << std::endl;
+	
+	start = std::clock();
 	readFromFile( "output.dat" , fromFile );
+	end = std::clock();
+	std::cout << "Took " << 1000 * (float)(end - start) / CLOCKS_PER_SEC << "ms to read from disk." << std::endl;
 	
 	do {
 		++count;
-		if (!fromFile.contains(str_hash(file))) {
+		size_t key = str_hash(file);
+		if (!fromFile.contains( key )) {
 			std::cout << "ERROR: " << file << " at " << count << std::endl;
 			return -1;
 		}
+		delete fromFile.remove( key );
 	} while (std::next_permutation(file.begin(), file.end()));
 	
 	return 0;
