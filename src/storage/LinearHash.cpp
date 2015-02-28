@@ -45,7 +45,7 @@ void move(K *d, int dest, int src) {
 // the value v.  If found return its index, otherwise return
 // INF
 template <typename K>
-int linearSearch(const K* s, K v, int start, int end) {
+size_t linearSearch(const K* s, K v, int start, int end) {
 	while (start + 7 < end) {
 		
 		if(s[start + 0] == v) return start + 0;
@@ -72,7 +72,7 @@ int linearSearch(const K* s, K v, int start, int end) {
 // the value v and return its position.  If not found we
 // return INF
 template <typename K>
-int binarySearch(const K* s, K v, int left, int right) {
+size_t binarySearch(const K* s, K v, int left, int right) {
 	
 	while (left < right) {
 		int mid = (left + right) / 2;
@@ -97,7 +97,7 @@ std::string to_string(T v) {
 }
 
 template <typename K>
-int search(K* s, K v, int start, int end) {
+size_t search(K* s, K v, int start, int end) {
 	if (DoSort) {
 		return binarySearch(s, v, start, end);
 	} else {
