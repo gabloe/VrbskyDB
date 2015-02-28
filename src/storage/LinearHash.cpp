@@ -758,6 +758,12 @@ int main(void) {
 	std::string file("ABCDEFGHI");
 	//std::hash<std::string> str_hash;
 
+	std::string s1("DACIHEFBG");
+	std::string s2("CGBHADIEF");
+	
+	std::cout << "The hash of DACIHEFBG is " << str_hash( s1 ) << std::endl;
+	std::cout << "The hash of CGBHADIEF is " << str_hash( s2 ) << std::endl;
+	
 	clock_t start,end;
 	start = std::clock();
 	do {	// 362880 permutations
