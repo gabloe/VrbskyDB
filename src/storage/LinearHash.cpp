@@ -757,12 +757,24 @@ uint64_t herp(std::string &str) {
 	return hash;
 }
 
-std::hash<std::string> string_hash;
+template <typename T>
+uint64_t hash(const T* __ptr, size_t __clength)  {
+	uint64_t __result
+	= static_cast<uint64_t>(14695981039346656037ULL);
+	const char* __cptr = reinterpret_cast<const char*>(__ptr);
+	for (; __clength; --__clength)
+	{
+	__result ^= static_cast<size_t>(*__cptr++);
+	__result *= static_cast<size_t>(1099511628211ULL);
+	}
+	return __result;
+}
+//std::hash<std::string> string_hash;
 
 uint64_t str_hash(std::string &str) {
 	//return MurmurHash64( str.c_str() , str.size() , 123654789 );
 	//return herp(str);
-	return string_hash(str);
+	return hash( str.c_str() , str.size());
 }
 
 int main(void) {
