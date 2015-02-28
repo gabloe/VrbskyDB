@@ -683,7 +683,7 @@ void readFromFile( std::string filename , DataStructures::LinearHash<std::string
 }
 
 
-uint64_t MurmurHash64B ( const void * key, int len, unsigned int seed )
+uint64_t MurmurHash64B( const void * key, int len, unsigned int seed )
 {
 	const unsigned int m = 0x5bd1e995;
 	const int r = 24;
@@ -734,9 +734,17 @@ uint64_t MurmurHash64B ( const void * key, int len, unsigned int seed )
 	return h;
 } 
 
+size_t herp( std::string &str ) {
+	size_t hash = 0;
+	for( int i = 0 ; i < str.size() ; ++i ) {
+		hash = 101 * hash + str[i];
+	}
+	return hash;
+}
 
 size_t str_hash( std::string &str ) {
 	return MurmurHash64B( str.c_str() , str.size() , 123654789 );
+	//return herp( str );
 }
 
 int main(void) {
