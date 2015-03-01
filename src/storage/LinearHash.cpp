@@ -547,6 +547,7 @@ namespace DataStructures {
 					return true;
 				}
 				append( key , value );
+                                return false;
 			}
 
 			// Search for a value given a key in this bucket
