@@ -27,7 +27,7 @@ const bool print = true;
 
 // Defines
 #define tests true
-#define DoSort false
+#define DoSort true
 #define max(A,B) (A) > (B) ? (A) : (B)
 
 
@@ -575,6 +575,7 @@ namespace DataStructures {
 					while (index < count_) {
 						swap(keys_, index, index + 1);
 						swap(values_, index, index + 1);
+						++index;
 					}
 				} else {
 					swap(keys_, index, count_);
