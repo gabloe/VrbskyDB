@@ -26,6 +26,7 @@ const bool print = true;
 
 
 // Defines
+#define tests true
 #define DoSort false
 #define max(A,B) (A) > (B) ? (A) : (B)
 
@@ -299,43 +300,28 @@ namespace DataStructures {
 			Bucket *next = getBucket(second);
 			++num_splits_;
 
-			while (prev != NULL) {
+			uint64_t unmoved = 0;
+			uint64_t end = prev->count_;
 
-				uint64_t unmoved = 0;
-				uint64_t end = prev->count_;
+			for (uint64_t i = 0; i < end; ++i) {
 
-				for (uint64_t i = 0; i < end; ++i) {
+				uint64_t idx = computeIndex(prev->keys_[i]);
 
-					uint64_t idx = computeIndex(prev->keys_[i]);
+				if (idx == second) {		// Move to other
 
-					if (idx == second) {		// Move to other
-
-						next->append(prev->keys_[i], prev->values_[i]);
-						if (next->full()) {
-							next->chain_ = new Bucket(num_elements_);
-							next = next->chain_;
-						}
-						prev->values_[i] = NULL;
-					} else {
-						if (unmoved != i) {	// If not in their place already, then move
-							prev->keys_[unmoved] = prev->keys_[i];
-							prev->values_[unmoved] = prev->values_[i];
-						}
-						++unmoved;	// Didn't move so count
+					next->append(prev->keys_[i], prev->values_[i]);
+					prev->values_[i] = NULL;
+				} else {
+					if (unmoved != i) {	// If not in their place already, then move
+						prev->keys_[unmoved] = prev->keys_[i];
+						prev->values_[unmoved] = prev->values_[i];
 					}
+					++unmoved;	// Didn't move so count
 				}
-
-				prev->count_ = unmoved;
-				prev = prev->chain_;
 			}
 
-			prev = getBucket(num_splits_);
-			next = getBucket(second);
-
-			prev->compact();
-			next->compact();
-
-
+			prev->count_ = unmoved;
+			
 		}
 
 		void init() {
@@ -406,11 +392,7 @@ namespace DataStructures {
 					if (bucket == NULL) {
 						bucket = bs[++pos];
 					} else {
-						if (bucket->count_ == 0) {
-							bucket = bucket->chain_;
-						} else {
-							break;
-						}
+						break;
 					}
 				}
 
@@ -433,14 +415,10 @@ namespace DataStructures {
 			MyIterator &operator++() {
 				while (pos < total) {
 					// Search current bucket for item
-					while (bucket != NULL) {
-						if (bucket->count_ == b_pos) {		// Next bucket
-							b_pos = 0;
-							bucket = bucket->chain_;
-						} else {							// Found a spot!
-							return *this;
-						}
+					if (bucket->count_ != b_pos) {		// Next bucket
+						return *this;
 					}
+					b_pos = 0;
 					++pos;
 					bucket = buckets[pos];
 				}
@@ -479,8 +457,6 @@ namespace DataStructures {
 			uint64_t *keys_;
 			T **values_;
 
-			// Chain
-			Bucket *chain_;
 
 			Bucket(uint64_t num_elements) {
 
@@ -492,8 +468,6 @@ namespace DataStructures {
 				values_ = new T*[num_elements_];
 
 				memset(values_, 0, sizeof(T*)* num_elements_);
-
-				chain_ = NULL;
 
 			}
 
@@ -510,11 +484,6 @@ namespace DataStructures {
 					values_[i] = other.values_[i];
 				}
 
-				chain_ = NULL;
-				if (other.chain_ != NULL) {
-					chain_ = new Bucket(other.chain_);
-				}
-
 			}
 
 			~Bucket() {
@@ -527,31 +496,31 @@ namespace DataStructures {
 					delete[] values_;
 				}
 
-				if (chain_ != NULL) {
-					delete chain_;
-				}
-
-				chain_ = NULL;
 				keys_ = NULL;
 				values_ = NULL;
 
 			}
-
-			Bucket *getBucket(uint64_t key, uint64_t &index) {
-				Bucket *curr = this;
-
-				while (curr != NULL) {
-
-					index = search(curr->keys_, key, 0, curr->count_);
-
-					// Check to see if we stop here
-					if (index != INF || curr->chain_ == NULL) {
-						return curr;
-					}
-
-					curr = curr->chain_;
+			
+			void resize() {
+				uint64_t new_size = 2* num_elements_;
+				
+				uint64_t *new_keys = new uint64_t[new_size];
+				T **new_values	= new T*[new_size];
+				
+				Assert( "Bucket could not grow" , new_keys != NULL );
+				Assert( "Bucket could not grow" , new_values != NULL );
+				
+				for( int i = 0 ; i < num_elements_ ; ++i ) {
+					new_keys[i] = keys_[i];
+					new_values[i] = values_[i];
 				}
-				return NULL;
+				
+				delete[] keys_;
+				delete[] values_;
+				
+				num_elements_ = new_size;
+				keys_ = new_keys;
+				values_ = new_values;
 			}
 
 
@@ -560,10 +529,7 @@ namespace DataStructures {
 			void append(uint64_t key, T *value) {
 				Bucket *curr = this;
 				while (curr->full()) {
-					if (curr->chain_ == NULL) {
-						curr->chain_ = new Bucket(num_elements_);
-					}
-					curr = curr->chain_;
+					resize();					
 				}
 				curr->sort(key, value);
 				++curr->count_;
@@ -571,94 +537,55 @@ namespace DataStructures {
 
 			// Returns true if collision
 			bool put(uint64_t key, T *value) {
-				uint64_t index = INF;
-				Bucket *bucket = this->getBucket(key, index);
-
-				// If we found a previous key/value pair
-				if (index != INF) {
-					if (bucket->values_[index] != NULL) {
-						delete bucket->values_[index];	// Remove old
+				
+				uint64_t index = search( keys_ , key , 0 , count_ );
+				if( index != INF ) {
+					if (values_[index] != NULL) {
+						delete values_[index];	// Remove old
 					}
-					bucket->values_[index] = value;	// Add new
+					values_[index] = value;	// Add new
 					return true;
 				}
-
-				// Last bucket
-				if (bucket->full()) {
-					bucket->chain_ = new Bucket(num_elements_);
-					bucket = bucket->chain_;
-				}
-
-				bucket->append(key, value);
-				return true;
+				append( key , value );
 			}
 
 			// Search for a value given a key in this bucket
 			T *get(uint64_t key) {
-				uint64_t index = INF;
-				Bucket *ret = getBucket(key, index);
+				uint64_t index = search( keys_ , key , 0 , count_ );
 				if (index == INF) {
 					return NULL;
 				}
-				return ret->values_[index];
+				return values_[index];
 			}
 
 			T *remove(uint64_t key) {
 				// Find my bucket
-				uint64_t index = INF;
-				Bucket * b = getBucket(key, index);
-
+				uint64_t index = search( keys_ , key , 0 , count_ );
+				
 				// We don't actually have it
 				if (index == INF) {
 					return NULL;
 				}
 
 				// Remove from bucket, keep sorted maybe
-				--b->count_;
-				T* v = b->values_[index];
+				T* v = values_[index];
+				--count_;
+				
 				if (DoSort) {
-					while (index < b->count_) {
-						swap(b->keys_, index, index + 1);
-						swap(b->values_, index, index + 1);
+					while (index < count_) {
+						swap(keys_, index, index + 1);
+						swap(values_, index, index + 1);
 					}
 				} else {
-					swap(b->keys_, index, b->count_);
-					swap(b->values_, index, b->count_);
+					swap(keys_, index, count_);
+					swap(values_, index, count_);
 				}
+				
 				return v;
 			}
 
 			bool full() {
 				return count_ == num_elements_;
-			}
-
-			// Not implemented yet
-			void compact() {
-				Bucket *curr = this;
-				while (curr->chain_ != NULL) {
-					if (full()) {
-						curr = curr->chain_;
-						continue;
-					}
-
-					Bucket *t = curr->chain_;
-
-					// If nothing in the next remove him
-					if (curr->chain_->count_ == 0) {
-						// Reconnect
-						curr->chain_ = t->chain_;
-
-						// Remove
-						t->chain_ = NULL;
-						delete t;
-					} else {	// Copy what we can over
-						--t->count_;
-						uint64_t key = t->keys_[t->count_];
-						T *value = t->values_[t->count_];
-
-						curr->append(key, value);
-					}
-				}
 			}
 
 			// Binary search
@@ -907,7 +834,18 @@ void test_insert(DataStructures::LinearHash<T> &table, std::string data) {
 }
 
 template <typename T>
-void test_remove(DataStructures::LinearHash<T> &table, std::string data) {}
+void test_remove(DataStructures::LinearHash<T> &table, std::string data) {
+	int count = 0;
+	do {
+		++count;
+		std::string *s = table.remove( hash( data , data.size() ) );
+		if ( s == NULL ) {
+			std::cout << "ERROR: " << data << " at " << count << std::endl;
+			exit(-1);
+		}
+		delete s;
+	} while (std::next_permutation(data.begin(), data.end()));
+}
 
 template <typename T>
 void test_contains(DataStructures::LinearHash<T> &table, std::string data) {
@@ -924,7 +862,7 @@ void test_contains(DataStructures::LinearHash<T> &table, std::string data) {
 
 void test(uint64_t buckets, uint64_t elements) {
 
-	std::cout << "Configuration: " << buckets << "," << elements << std::endl;
+	std::cout << "Configuration: " << buckets << ":" << elements << std::endl;
 	clock_t start, end;
 	std::string data("ABCDEFGHI");
 
@@ -940,24 +878,30 @@ void test(uint64_t buckets, uint64_t elements) {
 	start = std::clock();
 	test_contains(table, data);
 	end = std::clock();
-	std::cout << "Took " << 1000 * (float)(end - start) / CLOCKS_PER_SEC << "ms to fetch." << std::endl << std::endl;
+	std::cout << "Took " << 1000 * (float)(end - start) / CLOCKS_PER_SEC << "ms to fetch." << std::endl;
 
+	start = std::clock();
+	test_remove(table, data);
+	end = std::clock();
+	std::cout << "Took " << 1000 * (float)(end - start) / CLOCKS_PER_SEC << "ms to remove." << std::endl << std::endl;
 }
 
 // Main
 int main(void) {
 
-	/*
-	for (uint64_t buckets = 2; buckets < 4096; buckets *= 2) {
-		for (uint64_t bucket_size = 1; bucket_size < 4096; bucket_size *= 2) {
-			test(buckets, bucket_size);
+	if( tests ) {
+		for (uint64_t buckets = 2; buckets < 4096; buckets *= 2) {
+			for (uint64_t bucket_size = 1; bucket_size < 4096; bucket_size *= 2) {
+				test(buckets, bucket_size);
+			}
+			std::cout << std::endl;
 		}
 	}
-	*/
+	
 
 	clock_t start, end;
 
-	DataStructures::LinearHash<std::string> table(2048, 256);
+	DataStructures::LinearHash<std::string> table(1024, 2048);
 
 	std::string data("ABCDEFGHI");
 
