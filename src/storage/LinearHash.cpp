@@ -70,10 +70,12 @@ std::string to_string(T v) {
 // the value v.  If found return its index, otherwise return
 // INF
 template <typename K>
-uint64_t linearSearch(const K* s, K v, uint64_t start, uint64_t end) {
+uint64_t linearSearch(const K* s, K v, register uint64_t start, const uint64_t end) {
 	const uint64_t jump = 16;
-	while (start + jump - 1 < end) {
+	register uint64_t test = start + jump - 1;
+	while (test < end ) {
 
+		//*
 		if (s[start + 0] == v) return start + 0;
 		if (s[start + 1] == v) return start + 1;
 		if (s[start + 2] == v) return start + 2;
@@ -84,17 +86,21 @@ uint64_t linearSearch(const K* s, K v, uint64_t start, uint64_t end) {
 		if (s[start + 6] == v) return start + 6;
 		if (s[start + 7] == v) return start + 7;
 		// */
+		
+		///*
 		if (s[start + 8] == v) return start + 8;
 		if (s[start + 9] == v) return start + 9;
 		if (s[start + 10] == v) return start + 10;
 		if (s[start + 11] == v) return start + 11;
-		// /*
+
 		if (s[start + 12] == v) return start + 12;
 		if (s[start + 13] == v) return start + 13;
 		if (s[start + 14] == v) return start + 14;
 		if (s[start + 15] == v) return start + 15;
-
+		// */
+			
 		start += jump;
+		test += jump;
 	}
 	while (start < end) {
 		if (s[start] == v) {
