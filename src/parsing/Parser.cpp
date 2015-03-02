@@ -187,7 +187,6 @@ namespace Parsing {
 			if (id.size() == 0) {
 				throw std::runtime_error("PARSING ERROR: Expected identifier.");
 			}
-			std::cout << id << std::endl;
  			char next = sc.nextChar();
 			if (next == ',') {
 				result = idList();
