@@ -15,6 +15,7 @@ namespace Parsing {
 		char nextChar();
 		std::string nextToken();
 		std::string nextString();
+		std::string nextJSON();
 		void push_back(std::string);
 		void push_back(int);
 

@@ -39,32 +39,96 @@ namespace Parsing {
 			return result;
 		}
 
-		// TODO: These functions...
 		bool insert() {
-			return false;
+			std::string token = sc.nextToken();
+			if (toLower(token).compare("into")) {
+				std::cout << "PARSING ERROR: Expected 'into', found " << token << std::endl;
+				return false;
+			}
+			std::string project = sc.nextToken();
+			if (sc.nextChar() != '.') {
+				std::cout << "PARSING ERROR: Expected a dot" << std::endl;
+				return false;
+			}
+			std::string document = sc.nextToken();
+			std::string json = sc.nextJSON();
+			return true;
 		}
 
 		bool append() {
-			return false;
+			std::string token = sc.nextToken();
+			if (toLower(token).compare("to")) {
+				std::cout << "PARSING ERROR: Expected 'to', found " << token << std::endl;
+				return false;
+			}
+			std::string project = sc.nextToken();
+			if (sc.nextChar() != '.') {
+				std::cout << "PARSING ERROR: Expected a dot" << std::endl;
+				return false;
+			}
+			std::string document = sc.nextToken();
+			std::string json = sc.nextJSON();
+			return true;
 		}
 
 		bool remove() {
-			return false;
+			std::string token = sc.nextToken();
+			if (toLower(token).compare("from")) {
+				std::cout << "PARSING ERROR: Expected 'from', found " << token << std::endl;
+				return false;
+			}
+			std::string project = sc.nextToken();
+			if (sc.nextChar() != '.') {
+				std::cout << "PARSING ERROR: Expected a dot" << std::endl;
+				return false;
+			}
+			std::string document = sc.nextToken();
+			token = sc.nextToken();
+			if (toLower(token).compare("key")) {
+				std::cout << "PARSING ERROR: Expected 'key', found " << token << std::endl;
+				return false;
+			}
+			if (sc.nextChar() != '=') {
+				std::cout << "PARSING ERROR: Expected an equals" << std::endl;
+				return false;
+			}
+			std::string key = sc.nextString();
+			return true;
 		}
 
 		bool select() {
-			return false;
+			std::string token = sc.nextToken();
+			if (toLower(token).compare("from")) {
+				std::cout << "PARSING ERROR: Expected 'from', found " << token << std::endl;
+				return false;
+			}
+			std::string project = sc.nextToken();
+			if (sc.nextChar() != '.') {
+				std::cout << "PARSING ERROR: Expected a dot" << std::endl;
+				return false;
+			}
+			std::string document = sc.nextToken();
+			if (wherePending()) {
+				return where();
+			}
+			return true;
 		}
 
 		bool ddelete() {
+			std::string token = sc.nextToken();
+			if (!toLower(token).compare("document")) {
+				std::string document = sc.nextToken();
+				return true;
+			}
+
+			if (!toLower(token).compare("project")) {
+				std::string project = sc.nextToken();
+				return true;
+			}
 			return false;
 		}
 
 		bool create() {
-			return creations();
-		}
-
-		bool creations() {
 			std::string token = toLower(sc.nextToken());
 			if (!token.compare("project")) {
 				std::string projectName = sc.nextToken();
@@ -83,7 +147,32 @@ namespace Parsing {
 				} else {
 					throw std::runtime_error("PARSING ERROR: Expected 'in'.");
 				}
+				if (withValuePending()) {
+					std::string json = sc.nextJSON();
+				}
 			}
+			return true;
+
+		}
+
+		bool where() {
+			std::string token = sc.nextToken();
+			if (toLower(token).compare("key")) {
+				std::cout << "PARSING ERROR: Expected 'key', found " << token << std::endl;
+				return false;
+			}	
+			std::string value;
+			if (sc.nextChar() == '=') {
+				value = sc.nextString();
+			} else {
+				sc.push_back(1);
+			}
+			token = sc.nextToken();
+			if (toLower(token).compare("in")) {
+				std::cout << "PARSING ERROR: Expected 'in', found " << token << std::endl;
+				return false;
+			}
+			value = sc.nextString();
 			return true;
 		}
 
@@ -118,6 +207,30 @@ namespace Parsing {
 			return found;
 		}
 
+		bool withValuePending() {
+			std::string with = sc.nextToken();
+			std::string value = sc.nextToken();
+			bool found = false;
+			if (!toLower(with).compare("with") && !toLower(value).compare("value")) {
+				found = true;
+			} else {
+				sc.push_back(value);
+				sc.push_back(with);
+			}
+			return found;
+		}
+
+		bool wherePending() {
+			bool result = false;
+			std::string token = sc.nextToken();
+			if (!toLower(token).compare("where")) {
+				result = true;
+			} else {
+				sc.push_back(token);
+			}
+			return result;
+		}
+
 	private:
 		Scanner sc;
 		std::string toLower(std::string s) {
@@ -129,7 +242,7 @@ namespace Parsing {
 }
 
 int main(int argc, char **argv) {
-	Parsing::Parser p("create document derp in test;");
+	Parsing::Parser p("create document Herp in Test with value { \"A\": 1, \"B\": 2 };");
 	if (!p.parse()) {
 		std::cout << "Parsing failure." << std::endl;
 	} else {
