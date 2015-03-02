@@ -84,6 +84,11 @@ namespace Parsing {
 			}
 			std::string document = sc.nextToken();
 			token = sc.nextToken();
+			if (toLower(token).compare("where")) {
+				std::cout << "PARSING ERROR: Expected 'where', found " << token << std::endl;
+				return false;
+			}
+			token = sc.nextToken();
 			if (toLower(token).compare("key")) {
 				std::cout << "PARSING ERROR: Expected 'key', found " << token << std::endl;
 				return false;
@@ -242,7 +247,7 @@ namespace Parsing {
 }
 
 int main(int argc, char **argv) {
-	Parsing::Parser p("create document Herp in Test with value { \"A\": 1, \"B\": 2 };");
+	Parsing::Parser p("select from Test.Derp;");
 	if (!p.parse()) {
 		std::cout << "Parsing failure." << std::endl;
 	} else {
