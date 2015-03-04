@@ -1,3 +1,7 @@
+/*
+Query parser for the NoSQL database management system.
+*/
+
 #include <iostream>
 #include <string>
 #include "Scanner.h"
@@ -250,7 +254,7 @@ namespace Parsing {
 				throw std::runtime_error("PARSING ERROR: Expected identifier.");
 			}
 			doc->value = id;
- 			char next = sc.nextChar();
+			char next = sc.nextChar();
 			if (next == ',') {
 				doc->next = idList();
 			} else if (next == ')') {
@@ -258,8 +262,7 @@ namespace Parsing {
 			} else {
 				throw std::runtime_error("PARSING ERROR: Expected closed paren.");
 			}
-			delete doc;
-			return NULL;
+			return doc;
 		}
 
 		bool withDocumentsPending() {
@@ -325,7 +328,7 @@ namespace Parsing {
 }
 
 int main(int argc, char **argv) {
-	Parsing::Parser p("create project test;");
+	Parsing::Parser p("create project test with documents (DERP, HERP, BURP);");
 	Parsing::Query *q = p.parse();
 	if (!q) {
 		std::cout << "Parsing failure." << std::endl;
