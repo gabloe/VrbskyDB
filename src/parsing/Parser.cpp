@@ -69,18 +69,21 @@ namespace Parsing {
 			}
 
 			if (!result) {
-				exit(1);
+				delete q;
+				return NULL;
 			}
 
 			try {
 				char t = sc.nextChar();
 				if (t != ';') {
 					std::cout << "PARSING ERROR: Expected semicolon but found '" << t << "'" << std::endl;
-					exit(1);
+					delete q;
+					return NULL;
 				}	
 			} catch (std::runtime_error &e) {
 				std::cout << "PARSING ERROR: End of query reached.  Expected a semicolon." << std::endl;
-				exit(1);
+				delete q;
+				return NULL;
 			}
 
 			return q;
@@ -185,12 +188,14 @@ namespace Parsing {
 				}
 				q.documents = new List(sc.nextToken());
 				return true;
-			}
-
-			if (!toLower(token).compare("project")) {
+			} else if (!toLower(token).compare("project")) {
 				q.project = sc.nextToken();
 				return true;
+			} else {
+				std::cout << "PARSING ERROR: Expected 'document' or 'project'." << std::endl;
+				return false;
 			}
+
 			return false;
 		}
 
@@ -201,10 +206,15 @@ namespace Parsing {
 				q.project = sc.nextToken();
 				if (withDocumentsPending()) {
 					if (sc.nextChar() == '(') {
-						q.documents = idList();
+						try {
+							q.documents = idList();
+						} catch (std::runtime_error &e) {
+							std::cout << e.what() << std::endl;
+							return false;
+						}
 					} else {
-						sc.push_back(1);
-						throw std::runtime_error("PARSING ERROR: Expected open paren.");
+					        std::cout << "PARSING ERROR: Expected open paren." << std::endl;
+						return false;
 					}
 				}
 			} else if (!token.compare("document")) {
@@ -217,6 +227,9 @@ namespace Parsing {
 				if (withValuePending()) {
 					q.value = sc.nextJSON();
 				}
+			} else {
+				std::cout << "PARSING ERROR: Expected 'document' or 'project'." << std::endl;
+				return false;
 			}
 			return true;
 
@@ -246,7 +259,8 @@ namespace Parsing {
 		List *idList() {
 			std::string id = sc.nextToken();
 			if (id.size() == 0) {
-				throw std::runtime_error("PARSING ERROR: Expected identifier.");
+				std::cout << "PARSING ERROR: Expected identifier." << std::endl;
+				return NULL;
 			}
 			List *doc = new List(id);
 			char next = sc.nextChar();
@@ -323,7 +337,7 @@ namespace Parsing {
 }
 
 int main(int argc, char **argv) {
-	Parsing::Parser p("create project test with documents (DERP, HERP, BURP);");
+	Parsing::Parser p("create project test with documents (DERP, HERP, BURP)   ;");
 	Parsing::Query *q = p.parse();
 	if (!q) {
 		std::cout << "Parsing failure." << std::endl;

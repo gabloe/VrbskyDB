@@ -1,6 +1,6 @@
 OUT=../../bin/
 CC=g++
-CFLAGS=--std=c++11 -O3 -Wall
+CFLAGS=--std=c++11 -O3 -g -Wall
 
 all: Scanner.o Parser.o
 
