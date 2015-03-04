@@ -24,6 +24,7 @@ namespace Parsing {
 	struct List {
 		std::string value;
 		List *next;
+		List(std::string value_): value(value_) {}
 	};
 	struct Query {
 		Command command;
@@ -97,8 +98,7 @@ namespace Parsing {
 				std::cout << "PARSING ERROR: Expected a dot" << std::endl;
 				return false;
 			}
-			q.documents = new List();
-			q.documents->value = sc.nextToken();
+			q.documents = new List(sc.nextToken());
 			q.value = sc.nextJSON();
 			return true;
 		}
@@ -115,8 +115,7 @@ namespace Parsing {
 				std::cout << "PARSING ERROR: Expected a dot" << std::endl;
 				return false;
 			}
-			q.documents = new List();
-			q.documents->value = sc.nextToken();
+			q.documents = new List(sc.nextToken());
 			q.value = sc.nextJSON();
 			return true;
 		}
@@ -133,7 +132,7 @@ namespace Parsing {
 				std::cout << "PARSING ERROR: Expected a dot" << std::endl;
 				return false;
 			}
-			q.documents = new List();
+			q.documents = new List(sc.nextToken());
 			q.documents->value = sc.nextToken();
 			token = sc.nextToken();
 			if (toLower(token).compare("where")) {
@@ -168,8 +167,7 @@ namespace Parsing {
 				std::cout << "PARSING ERROR: Expected a dot" << std::endl;
 				return false;
 			}
-			q.documents = new List();
-			q.documents->value = sc.nextToken();
+			q.documents = new List(sc.nextToken());
 			if (wherePending()) {
 				return where();
 			}
@@ -185,8 +183,7 @@ namespace Parsing {
 					std::cout << "PARSING ERROR: Expected a dot" << std::endl;
 					return false;
 				}
-				q.documents = new List();
-				q.documents->value = sc.nextToken();
+				q.documents = new List(sc.nextToken());
 				return true;
 			}
 
@@ -216,8 +213,7 @@ namespace Parsing {
 					std::cout << "PARSING ERROR: Expected a dot." << std::endl;
 					return false;
 				}
-				q.documents = new List();
-				q.documents->value = sc.nextToken();
+				q.documents = new List(sc.nextToken());
 				if (withValuePending()) {
 					q.value = sc.nextJSON();
 				}
@@ -248,12 +244,11 @@ namespace Parsing {
 		}
 
 		List *idList() {
-			List *doc = new List();
 			std::string id = sc.nextToken();
 			if (id.size() == 0) {
 				throw std::runtime_error("PARSING ERROR: Expected identifier.");
 			}
-			doc->value = id;
+			List *doc = new List(id);
 			char next = sc.nextChar();
 			if (next == ',') {
 				doc->next = idList();
