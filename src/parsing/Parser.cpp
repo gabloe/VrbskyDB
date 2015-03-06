@@ -7,6 +7,7 @@ Query parser for the NoSQL database management system.
 #include "Scanner.h"
 
 namespace Parsing {
+	const std::string Aggregates[] = {"AVG", "SUM", "STDEV" /*, TODO: Others. */};
 	enum Command {
 		CREATE,
 		INSERT,
@@ -16,15 +17,15 @@ namespace Parsing {
 		DELETE
 	};
 	enum Aggregate {
-		NONE,
-		AVG,
-		SUM,
-		STDEV
+		NONE = -1,
+		AVG = 0,
+		SUM = 1,
+		STDEV = 2
 	};
 	struct List {
 		std::string value;
 		List *next;
-		List(std::string value_): value(value_) {}
+		List(std::string value_): value(value_), next(NULL) {}
 	};
 	struct Query {
 		Command command;
@@ -53,6 +54,7 @@ namespace Parsing {
 		Query* parse() {
 			std::string token = toLower(sc.nextToken());
 			Query *q = new Query();
+			q->aggregate = NONE;
 			bool result = false;
 			if (!token.compare("create")) {
 				result = create(*q);
@@ -160,6 +162,9 @@ namespace Parsing {
 
 		bool select(Query &q) {
 			q.command = SELECT;
+			if (aggregatePending()) {
+				aggregate(q);
+			}
 			std::string token = sc.nextToken();
 			if (toLower(token).compare("from")) {
 				std::cout << "PARSING ERROR: Expected 'from', found " << token << std::endl;
@@ -172,7 +177,7 @@ namespace Parsing {
 			}
 			q.documents = new List(sc.nextToken());
 			if (wherePending()) {
-				return where();
+				return where(q);
 			}
 			return true;
 		}
@@ -235,15 +240,15 @@ namespace Parsing {
 
 		}
 
-		bool where() {
+		bool where(Query &q) {
 			std::string token = sc.nextToken();
 			if (toLower(token).compare("key")) {
 				std::cout << "PARSING ERROR: Expected 'key', found " << token << std::endl;
 				return false;
 			}	
-			std::string value;
 			if (sc.nextChar() == '=') {
-				value = sc.nextString();
+				q.key = sc.nextString();
+				return true;
 			} else {
 				sc.push_back(1);
 			}
@@ -252,8 +257,18 @@ namespace Parsing {
 				std::cout << "PARSING ERROR: Expected 'in', found " << token << std::endl;
 				return false;
 			}
-			value = sc.nextString();
+			q.key = sc.nextString();
 			return true;
+		}
+
+		void aggregate(Query &q) {
+			std::string token = sc.nextToken();
+			int numAggregates = sizeof(Aggregates) / sizeof(std::string);
+			for (int i=0; i<numAggregates; ++i) {
+				if (!toLower(token).compare(toLower(Aggregates[i]))) {
+					q.aggregate = (Aggregate)i;
+				}
+			}
 		}
 
 		List *idList() {
@@ -325,6 +340,19 @@ namespace Parsing {
 			return result;
 		}
 
+		bool aggregatePending() {
+			std::string token = sc.nextToken();
+			bool result = false;
+			int numAggregates = sizeof(Aggregates) / sizeof(std::string);
+			for (int i=0; i<numAggregates; ++i) {
+				if (!toLower(token).compare(toLower(Aggregates[i]))) {
+					result = true;
+				}
+			}
+			sc.push_back(token);
+			return result;
+		}
+
 
 	private:
 		Scanner sc;
@@ -337,7 +365,7 @@ namespace Parsing {
 }
 
 int main(int argc, char **argv) {
-	Parsing::Parser p("create project test with documents (DERP, HERP, BURP)   ;");
+	Parsing::Parser p("select avg from *.* where key=\"ABC\";");
 	Parsing::Query *q = p.parse();
 	if (!q) {
 		std::cout << "Parsing failure." << std::endl;
