@@ -8,6 +8,7 @@
 #include <ctime>
 #include <fstream>
 #include <limits>
+#include <random>
 
 #ifdef _MSC_VER
 
@@ -22,11 +23,10 @@ typedef unsigned __int64 uint64_t;
 
 // Globals
 const uint64_t INF = std::numeric_limits<uint64_t>::max();
-const bool print = true;
 
 
 // Defines
-#define tests true
+#define tests false
 #define DoSort true
 #define max(A,B) (A) > (B) ? (A) : (B)
 
@@ -860,6 +860,25 @@ void test_contains(DataStructures::LinearHash<T> &table, std::string data) {
 	} while (std::next_permutation(data.begin(), data.end()));
 }
 
+template <typename T>
+void random_delete(DataStructures::LinearHash<T> &table, std::string data) {
+	std::default_random_engine generator;
+	std::uniform_int_distribution<int> dist( 1 , 1000 );
+	int count = 0;
+	do {
+		if( dist(generator) == 1 ) {
+			delete table.remove( hash( data , data.size() ) );
+		}
+	} while (std::next_permutation(data.begin(), data.end()));
+}
+
+template <typename T>
+void random_get(DataStructures::LinearHash<T> &table, std::string data) {
+	int count = 0;
+	do {
+		table.get( hash( data , data.size() ) );
+	} while (std::next_permutation(data.begin(), data.end()));
+}
 
 void test(uint64_t buckets, uint64_t elements) {
 
@@ -902,7 +921,7 @@ int main(void) {
 
 	clock_t start, end;
 
-	DataStructures::LinearHash<std::string> table(1024, 2048);
+	DataStructures::LinearHash<std::string> table(1024, 32);
 
 	std::string data("ABCDEFGHI");
 
@@ -936,6 +955,16 @@ int main(void) {
 
 	test_contains(*file_table, data);
 
+	
+	random_delete( table , data );
+	
+	std::cout << std::endl;
+	start = std::clock();
+	random_get( table , data );
+	end = std::clock();
+	std::cout << "Took " << 1000 * (float)(end - start) / CLOCKS_PER_SEC << "ms to do random gets." << std::endl;
+	
+	
 	delete file_table;
 	return 0;
 }
