@@ -31,6 +31,8 @@ Parsing::Query* Parsing::Parser::parse() {
 		result = select(*q);
 	} else if (!token.compare("delete")) {
 		result = ddelete(*q);
+	} else {
+		std::cout << "PARSING ERROR: Expected a valid command, but found '" << token << "'" << std::endl;
 	}
 
 	if (!result) {
