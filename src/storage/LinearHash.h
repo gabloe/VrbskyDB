@@ -513,7 +513,7 @@ namespace Storage {
 				Assert( "Bucket could not grow" , new_keys != NULL );
 				Assert( "Bucket could not grow" , new_values != NULL );
 				
-				for( int i = 0 ; i < num_elements_ ; ++i ) {
+				for( uint64_t i = 0 ; i < num_elements_ ; ++i ) {
 					new_keys[i] = keys_[i];
 					new_values[i] = values_[i];
 				}
