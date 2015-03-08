@@ -1,4 +1,5 @@
 #include <string>
+#include <iostream>
 #include "Scanner.h"
 
 namespace Parsing {
