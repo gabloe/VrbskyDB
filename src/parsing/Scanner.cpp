@@ -5,7 +5,7 @@
 namespace Parsing {
 	char Scanner::nextChar() {
 		SKIPWHITESPACE();
-		int pos = spot++;
+		size_t pos = spot++;
 		return query.at(pos);
 	}
 
@@ -13,7 +13,7 @@ namespace Parsing {
 		SKIPWHITESPACE();
 		std::string token = "";
 		while (spot < query.size()) {
-			int pos = spot++;
+			size_t pos = spot++;
 			char t = query.at(pos);
 			if (t == ' ' || t == ';' || t == ',' || t == '=' || t == '.' || t == ':' || t == '(' || t == ')') {
 				--spot;
@@ -28,13 +28,13 @@ namespace Parsing {
 		spot -= val.size();
 	}
 
-	void Scanner::push_back(int spots) {
+	void Scanner::push_back(size_t spots) {
 		spot -= spots;
 	}
 
 	std::string Scanner::nextJSON() {
 		SKIPWHITESPACE();
-		int pos = spot;
+		size_t pos = spot;
 		std::string result = "";
 		spot++;
 		char t = query.at(pos);

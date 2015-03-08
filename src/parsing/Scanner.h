@@ -19,11 +19,11 @@ namespace Parsing {
 		std::string nextString();
 		std::string nextJSON();
 		void push_back(std::string);
-		void push_back(int);
+		void push_back(size_t);
 
 	private:
 		std::string query;
-		int spot;
+		size_t spot;
 		void skipWhiteSpace();
 	};
 }
