@@ -1,3 +1,6 @@
+#ifndef _LINEARHASH_H_
+#define _LINEARHASH_H_
+
 #include <algorithm>
 #include <iostream>
 #include <sstream>
@@ -73,7 +76,7 @@ std::string to_string(T v) {
 template <typename K>
 uint64_t linearSearch(const K* s, K v, register uint64_t start, const uint64_t end) {
 	const uint64_t jump = 16;
-	register uint64_t test = start + jump - 1;
+	uint64_t test = start + jump - 1;
 	while (test < end ) {
 
 		//*
@@ -144,7 +147,7 @@ uint64_t search(K* s, K v, uint64_t start, uint64_t end) {
 
 // Actual hash table
 
-namespace DataStructures {
+namespace Storage {
 
 	template <typename T>
 	class LinearHash {
@@ -547,6 +550,7 @@ namespace DataStructures {
 					return true;
 				}
 				append( key , value );
+                                return false;
 			}
 
 			// Search for a value given a key in this bucket
@@ -651,7 +655,7 @@ namespace DataStructures {
 //
 
 // File I/O
-void dumpToFile(std::string filename, DataStructures::LinearHash<std::string> &hash) {
+void dumpToFile(std::string filename, Storage::LinearHash<std::string> &hash) {
 	std::ofstream outfile(filename, std::ofstream::binary);
 	// header
 	uint64_t num_buckets = hash.bucket_count();
@@ -697,11 +701,11 @@ void dumpToFile(std::string filename, DataStructures::LinearHash<std::string> &h
 }
 
 
-DataStructures::LinearHash<std::string> *readFromFile(std::string filename) {
+Storage::LinearHash<std::string> *readFromFile(std::string filename) {
 	std::ifstream infile(filename, std::ofstream::binary);
-	DataStructures::LinearHash<std::string> *result;
+	Storage::LinearHash<std::string> *result;
 
-	uint64_t num_buckets, size_bucket, num_elements, count;
+	uint64_t num_buckets, size_bucket, num_elements;
 
 	infile.read(reinterpret_cast<char*>(&num_buckets), sizeof(uint64_t));	// How many buckets
 
@@ -717,7 +721,7 @@ DataStructures::LinearHash<std::string> *readFromFile(std::string filename) {
 	// I would hope this is large enough...
 	char *str_buffer = new char[1024 * 1024];
 
-	result = new DataStructures::LinearHash<std::string>(num_buckets, size_bucket);
+	result = new Storage::LinearHash<std::string>(num_buckets, size_bucket);
 
 	// Data
 	for (uint64_t i = 0; i < num_elements; ++i) {
@@ -813,6 +817,7 @@ inline uint64_t hash(T &str, size_t len) {
 }
 
 
+#ifdef TEST
 
 // Tests
 template <typename T>
@@ -968,3 +973,9 @@ int main(void) {
 	delete file_table;
 	return 0;
 }
+
+// TEST
+#endif
+
+#endif
+
