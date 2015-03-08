@@ -147,7 +147,7 @@ uint64_t search(K* s, K v, uint64_t start, uint64_t end) {
 
 // Actual hash table
 
-namespace DataStructures {
+namespace Storage {
 
 	template <typename T>
 	class LinearHash {
@@ -655,7 +655,7 @@ namespace DataStructures {
 //
 
 // File I/O
-void dumpToFile(std::string filename, DataStructures::LinearHash<std::string> &hash) {
+void dumpToFile(std::string filename, Storage::LinearHash<std::string> &hash) {
 	std::ofstream outfile(filename, std::ofstream::binary);
 	// header
 	uint64_t num_buckets = hash.bucket_count();
@@ -701,9 +701,9 @@ void dumpToFile(std::string filename, DataStructures::LinearHash<std::string> &h
 }
 
 
-DataStructures::LinearHash<std::string> *readFromFile(std::string filename) {
+Storage::LinearHash<std::string> *readFromFile(std::string filename) {
 	std::ifstream infile(filename, std::ofstream::binary);
-	DataStructures::LinearHash<std::string> *result;
+	Storage::LinearHash<std::string> *result;
 
 	uint64_t num_buckets, size_bucket, num_elements;
 
@@ -721,7 +721,7 @@ DataStructures::LinearHash<std::string> *readFromFile(std::string filename) {
 	// I would hope this is large enough...
 	char *str_buffer = new char[1024 * 1024];
 
-	result = new DataStructures::LinearHash<std::string>(num_buckets, size_bucket);
+	result = new Storage::LinearHash<std::string>(num_buckets, size_bucket);
 
 	// Data
 	for (uint64_t i = 0; i < num_elements; ++i) {

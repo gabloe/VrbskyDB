@@ -2,9 +2,9 @@
 #include "../parsing/Parser.h"
 #include "../parsing/Scanner.h"
 
-void execute(Parsing::Query &, DataStructures::LinearHash<std::string> &);
+void execute(Parsing::Query &, Storage::LinearHash<std::string> &);
 
-void execute(Parsing::Query &q, DataStructures::LinearHash<std::string> &table) {
+void execute(Parsing::Query &q, Storage::LinearHash<std::string> &table) {
 	q.print();
 	switch (q.command) {
 	case Parsing::CREATE:
@@ -23,13 +23,13 @@ void execute(Parsing::Query &q, DataStructures::LinearHash<std::string> &table) 
 		// Append to a field
 		break;
 	default:
-		exit(1);
+		std::cout << "Command not recognized." << std::endl;
 	}
 }
 
 int main(int argc, char **argv) {
 	std::string q = "";
-	DataStructures::LinearHash<std::string> table(1024, 2048);
+	Storage::LinearHash<std::string> table(1024, 2048);
 	while (1) {
 		std::cout << "Enter a query (q to quit):" << std::endl;
 		getline(std::cin, q);
