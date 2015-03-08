@@ -4,9 +4,9 @@ Query parser for the NoSQL database management system.
 
 #include <iostream>
 #include <string>
+#include <algorithm>
 #include "Scanner.h"
 #include "Parser.h"
-#include <algorithm>
 
 std::string toLower(std::string s) {
 	std::string ss = std::string(s);
