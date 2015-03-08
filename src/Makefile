@@ -1,7 +1,7 @@
 OUT=../bin/
 OBJECTS=./objects/
 CC=g++
-CFLAGS=--std=c++11 -O3 -Wall
+CFLAGS=--std=c++11 -O3 -Wall - Wextra
 
 binary: $(OUT) obj
 	$(CC) $(CFLAGS) -o $(OUT)dbms $(OBJECTS)*.o 
