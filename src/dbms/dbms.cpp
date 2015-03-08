@@ -27,7 +27,7 @@ void execute(Parsing::Query &q, Storage::LinearHash<std::string> &table) {
 	}
 }
 
-int main(int argc, char **argv) {
+int main(void) {
 	std::string q = "";
 	Storage::LinearHash<std::string> table(1024, 2048);
 	while (1) {
