@@ -1,4 +1,6 @@
-#pragma once
+#ifndef _SCANNER_H_
+#define _SCANNER_H_
+
 #include <string>
 
 #define SKIPWHITESPACE()							\
@@ -25,3 +27,5 @@ namespace Parsing {
 		void skipWhiteSpace();
 	};
 }
+
+#endif

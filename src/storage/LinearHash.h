@@ -76,7 +76,7 @@ std::string to_string(T v) {
 template <typename K>
 uint64_t linearSearch(const K* s, K v, register uint64_t start, const uint64_t end) {
 	const uint64_t jump = 16;
-	register uint64_t test = start + jump - 1;
+	uint64_t test = start + jump - 1;
 	while (test < end ) {
 
 		//*
@@ -705,7 +705,7 @@ DataStructures::LinearHash<std::string> *readFromFile(std::string filename) {
 	std::ifstream infile(filename, std::ofstream::binary);
 	DataStructures::LinearHash<std::string> *result;
 
-	uint64_t num_buckets, size_bucket, num_elements, count;
+	uint64_t num_buckets, size_bucket, num_elements;
 
 	infile.read(reinterpret_cast<char*>(&num_buckets), sizeof(uint64_t));	// How many buckets
 
