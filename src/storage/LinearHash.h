@@ -675,7 +675,7 @@ void dumpToFile(std::string filename, Storage::LinearHash<std::string> &hash) {
 
 
 
-	int count = 0;
+	uint64_t count = 0;
 	// Data
 	for (auto iter = hash.begin(); iter != hash.end(); ++iter) {
 		++count;
