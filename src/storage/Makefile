@@ -6,7 +6,7 @@ $(OUT):
 	mkdir -p $(OUT)
 
 LinearHash.o: $(OUT) LinearHash.cpp
-	$(CC) $(CFLAGS) -o $(OUT)LinearHash.o -c storage/LinearHash.cpp
+	$(CC) $(CFLAGS) -o $(OUT)LinearHash.o -c LinearHash.cpp
 
 LinearHash: $(OUT) LinearHash.cpp
 	$(CC) $(CFLAGS) LinearHash.cpp -o $(OUT)LinearHash

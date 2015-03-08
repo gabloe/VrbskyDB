@@ -2,6 +2,7 @@
 #include <string>
 #include "../parsing/Parser.h"
 #include "../parsing/Scanner.h"
+#include "../storage/LinearHash.h"
 
 int main(int argc, char **argv) {
 	std::string q = "";

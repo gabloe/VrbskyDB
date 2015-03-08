@@ -888,7 +888,6 @@ void test(uint64_t buckets, uint64_t elements) {
 	std::cout << "Took " << 1000 * (float)(end - start) / CLOCKS_PER_SEC << "ms to remove." << std::endl << std::endl;
 }
 
-/*
 int main(void) {
 
 	if( tests ) {
@@ -940,4 +939,3 @@ int main(void) {
 	delete file_table;
 	return 0;
 }
-*/
