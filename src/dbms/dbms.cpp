@@ -2,6 +2,31 @@
 #include "../parsing/Parser.h"
 #include "../parsing/Scanner.h"
 
+void execute(Parsing::Query &, DataStructures::LinearHash<std::string> &);
+
+void execute(Parsing::Query &q, DataStructures::LinearHash<std::string> &table) {
+	q.print();
+	switch (q.command) {
+	case Parsing::CREATE:
+		// Create the project and/or document with or without any values.
+		break;
+	case Parsing::SELECT:
+		// Build a JSON object with the results
+		break;
+	case Parsing::DELETE:
+		// Delete a project or document
+		break;
+	case Parsing::REMOVE:
+		// Remove a key
+		break;
+	case Parsing::APPEND:
+		// Append to a field
+		break;
+	default:
+		exit(1);
+	}
+}
+
 int main(int argc, char **argv) {
 	std::string q = "";
 	DataStructures::LinearHash<std::string> table(1024, 2048);
@@ -14,7 +39,7 @@ int main(int argc, char **argv) {
 		Parsing::Parser p(q);
 		Parsing::Query *query = p.parse();
 		if (query) {
-			query->print();
+			execute(*query, table);
 		}
 		std::cout << std::endl;
 	}
