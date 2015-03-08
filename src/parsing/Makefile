@@ -1,6 +1,6 @@
 OUT=../objects/
 CC=g++
-CFLAGS=--std=c++11 -O3 -g -Wall
+CFLAGS=--std=c++11 -O3 -g -Wall -Wextra
 
 Scanner.o: $(OUT) Scanner.cpp
 	$(CC) $(CFLAGS) -o $(OUT)Scanner.o -c Scanner.cpp
