@@ -85,7 +85,7 @@ void execute(Parsing::Query &q, Storage::LinearHash<std::string> &projects, Stor
 					std::string project_json = toString(&project);
 					projects.put(project_key, new std::string(project_json));
 				}
-				std::cout << "Inserted Project:" << std::endl;
+				std::cout << "\nInserted Project:" << std::endl;
 				std::cout << *projects.get(project_key) << std::endl;
 			}
 			rapidjson::Document d;
