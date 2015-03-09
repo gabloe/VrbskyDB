@@ -1,6 +1,9 @@
 #include "../storage/LinearHash.h"
 #include "../parsing/Parser.h"
 #include "../parsing/Scanner.h"
+#include "../include/rapidjson/document.h"
+#include "../include/rapidjson/writer.h"
+#include "../include/rapidjson/stringbuffer.h"
 
 void execute(Parsing::Query &, Storage::LinearHash<std::string> &);
 
@@ -9,6 +12,18 @@ void execute(Parsing::Query &q, Storage::LinearHash<std::string> &table) {
 	switch (q.command) {
 	case Parsing::CREATE:
 		// Create the project and/or document with or without any values.
+		{
+			rapidjson::Document d;
+			if(!d.Parse(q.value.c_str()).HasParseError()) {
+				rapidjson::StringBuffer buffer;
+    				rapidjson::Writer<rapidjson::StringBuffer> writer(buffer);
+    				d.Accept(writer);
+				std::cout << "\nResult from RapidJSON:" << std::endl;
+				std::cout << buffer.GetString() << std::endl;
+			} else {
+				std::cout << "Could not parse JSON." << std::endl;
+			}
+		}
 		break;
 	case Parsing::SELECT:
 		// Build a JSON object with the results
