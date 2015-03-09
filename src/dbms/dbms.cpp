@@ -106,6 +106,8 @@ void execute(Parsing::Query &q, Storage::LinearHash<std::string> &projects, Stor
 				std::cout << "Inserted Document:" << std::endl;
 				std::cout << *documents.get(document_key) << std::endl;
 			}
+			dumpToFile("projects.db", projects);
+			dumpToFile("documents.db", documents);
 		}
 		break;
 	case Parsing::SELECT:

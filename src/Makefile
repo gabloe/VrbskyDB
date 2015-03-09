@@ -1,7 +1,7 @@
 OUT=../bin/
 OBJECTS=./objects/
 CC=g++
-CFLAGS=--std=c++11 -O3 -Wall -Wextra
+CFLAGS=--std=c++11 -O3 -g -Wall -Wextra
 INCLUDES += -I ./includes/rapidjson
 
 binary: $(OUT) obj
