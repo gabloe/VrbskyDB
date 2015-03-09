@@ -8,6 +8,7 @@
 
 void execute(Parsing::Query &, Storage::LinearHash<std::string> &);
 
+// Convert a JSON object to a std::string
 std::string toString(rapidjson::Document *doc) {
 	rapidjson::StringBuffer buffer;
 	rapidjson::Writer<rapidjson::StringBuffer> writer(buffer);
@@ -16,6 +17,7 @@ std::string toString(rapidjson::Document *doc) {
 	return str;
 }
 
+// Create a JSON object containing a project name and list of documents (one document initially)
 rapidjson::Document createProject(std::string &name, Parsing::List *doc) {
 	rapidjson::Document project;
 	project.SetObject();
@@ -33,6 +35,7 @@ rapidjson::Document createProject(std::string &name, Parsing::List *doc) {
 	return project;
 }
 
+// Given a JSON string, parse the JSON object and append a document name to the array.
 rapidjson::Document appendDocument(std::string *value, Parsing::List *doc) {
 	rapidjson::Document project;
 	project.Parse(value->c_str());
