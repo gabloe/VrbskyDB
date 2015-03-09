@@ -1,4 +1,5 @@
 #include <stdexcept>
+
 #include "../storage/LinearHash.h"
 #include "../parsing/Parser.h"
 #include "../parsing/Scanner.h"
@@ -59,7 +60,7 @@ rapidjson::Document appendDocument(std::string *value, Parsing::List *doc) {
 	return project;
 }
 
-void execute(Parsing::Query &q, Storage::LinearHash<std::string> &projects, Storage::LinearHash<std::string> &documents) {
+void execute(Parsing::Query &q, Storage::LinearHash<std::string> &table) {
 	switch (q.command) {
 	case Parsing::CREATE:
 		// Create the project and/or document with or without any values.
@@ -67,15 +68,13 @@ void execute(Parsing::Query &q, Storage::LinearHash<std::string> &projects, Stor
 			// Insert the project and document if it doesn't already exist
 			if (q.project) {
 				uint64_t project_key = hash(*q.project, (*q.project).size());
-				if (projects.contains(project_key)) {
-					std::cout << *projects.get(project_key) << std::endl;
+				if (table.contains(project_key)) {
 					// Project exists.  Append the document to the list
-					std::string *docList = projects.get(project_key);
+					std::string *docList = table.get(project_key);
 					try {
 						rapidjson::Document proj = appendDocument(docList, q.documents);
-						projects.remove(project_key);
 						std::string project_json = toString(&proj);
-						projects.put(project_key, new std::string(project_json));
+						*docList = project_json;
 					} catch (std::runtime_error &e) {
 						std::cout << e.what() << std::endl;
 						return;
@@ -84,10 +83,10 @@ void execute(Parsing::Query &q, Storage::LinearHash<std::string> &projects, Stor
 					// Project doesn't exist.  Create project and add document if one is being created.
 					rapidjson::Document project = createProject(*q.project, q.documents);
 					std::string project_json = toString(&project);
-					projects.put(project_key, new std::string(project_json));
+					table.put(project_key, new std::string(project_json));
 				}
 				std::cout << "\nInserted Project:" << std::endl;
-				std::cout << *projects.get(project_key) << std::endl;
+				std::cout << *table.get(project_key) << std::endl;
 			}
 			rapidjson::Document d;
 			if(q.documents) {
@@ -108,9 +107,9 @@ void execute(Parsing::Query &q, Storage::LinearHash<std::string> &projects, Stor
 					d.AddMember("__NAME__", docname, d.GetAllocator());
 				}
 				std::string value = toString(&d);
-				documents.put(document_key, new std::string(value));
+				table.put(document_key, new std::string(value));
 				std::cout << "Inserted Document:" << std::endl;
-				std::cout << *documents.get(document_key) << std::endl;
+				std::cout << *table.get(document_key) << std::endl;
 			}
 		}
 		break;
@@ -131,10 +130,27 @@ void execute(Parsing::Query &q, Storage::LinearHash<std::string> &projects, Stor
 	}
 }
 
-int main(void) {
+inline bool file_exists (const std::string& name) {
+    if (FILE *file = fopen(name.c_str(), "r")) {
+        fclose(file);
+        return true;
+    } else {
+        return false;
+    }
+}
+
+int main(int argc, char **argv) {
+	std::string fname = "dump.db";
+	if (argc > 1) {
+		fname = argv[1];
+	}
 	std::string q = "";
-	Storage::LinearHash<std::string> projects(1024, 2048);
-	Storage::LinearHash<std::string> documents(1024, 2048);
+	Storage::LinearHash<std::string> *table;
+	if (file_exists(fname)) {
+		table = readFromFile(fname);
+	} else {
+		table = new Storage::LinearHash<std::string>(1025,2048);
+	}
 	while (1) {
 		std::cout << "Enter a query (q to quit):" << std::endl;
 		getline(std::cin, q);
@@ -144,11 +160,10 @@ int main(void) {
 		Parsing::Parser p(q);
 		Parsing::Query *query = p.parse();
 		if (query) {
-			execute(*query, projects, documents);
+			execute(*query, *table);
 		}
 		std::cout << std::endl;
 	}
-	dumpToFile("documents.db", documents);
-	dumpToFile("projects.db", projects);
+	dumpToFile(fname, *table);
 	return 0;
 }

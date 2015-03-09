@@ -711,10 +711,12 @@ Storage::LinearHash<std::string> *readFromFile(std::string filename) {
 
 	infile.read(reinterpret_cast<char*>(&num_elements), sizeof(uint64_t));		// How many elements
 
-	std::cout << "Reading in "
-		<< num_buckets << " buckets, with "
-		<< size_bucket << " elements per bucket, for a total of "
-		<< num_elements << std::endl;
+	if (DEBUG) {
+		std::cout << "Reading in "
+			<< num_buckets << " buckets, with "
+			<< size_bucket << " elements per bucket, for a total of "
+			<< num_elements << std::endl;
+	}
 
 	// I would hope this is large enough...
 	char *str_buffer = new char[1024 * 1024];
