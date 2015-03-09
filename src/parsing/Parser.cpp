@@ -17,7 +17,6 @@ std::string toLower(std::string s) {
 Parsing::Query* Parsing::Parser::parse() {
 	std::string token = toLower(Parsing::Parser::sc.nextToken());
 	Parsing::Query *q = new Parsing::Query();
-	q->aggregate = NONE;
 	bool result = false;
 	if (!token.compare("create")) {
 		result = create(*q);
@@ -63,13 +62,13 @@ bool Parsing::Parser::insert(Parsing::Query &q) {
 		std::cout << "PARSING ERROR: Expected 'into', found " << token << std::endl;
 		return false;
 	}
-	q.project = Parsing::Parser::sc.nextToken();
+	q.project = new std::string(Parsing::Parser::sc.nextToken());
 	if (Parsing::Parser::sc.nextChar() != '.') {
 		std::cout << "PARSING ERROR: Expected a dot" << std::endl;
 		return false;
 	}
 	q.documents = new List(Parsing::Parser::sc.nextToken());
-	q.value = Parsing::Parser::sc.nextJSON();
+	q.value = new std::string(Parsing::Parser::sc.nextJSON());
 	return true;
 }
 
@@ -80,13 +79,13 @@ bool Parsing::Parser::append(Parsing::Query &q) {
 		std::cout << "PARSING ERROR: Expected 'to', found " << token << std::endl;
 		return false;
 	}
-	q.project = Parsing::Parser::sc.nextToken();
+	q.project = new std::string(Parsing::Parser::sc.nextToken());
 	if (Parsing::Parser::sc.nextChar() != '.') {
 		std::cout << "PARSING ERROR: Expected a dot" << std::endl;
 		return false;
 	}
 	q.documents = new List(Parsing::Parser::sc.nextToken());
-	q.value = Parsing::Parser::sc.nextJSON();
+	q.value = new std::string(Parsing::Parser::sc.nextJSON());
 	return true;
 }
 
@@ -97,7 +96,7 @@ bool Parsing::Parser::remove(Parsing::Query &q) {
 		std::cout << "PARSING ERROR: Expected 'from', found " << token << std::endl;
 		return false;
 	}
-	q.project = Parsing::Parser::sc.nextToken();
+	q.project = new std::string(Parsing::Parser::sc.nextToken());
 	if (Parsing::Parser::sc.nextChar() != '.') {
 		std::cout << "PARSING ERROR: Expected a dot" << std::endl;
 		return false;
@@ -117,9 +116,9 @@ bool Parsing::Parser::remove(Parsing::Query &q) {
 		std::cout << "PARSING ERROR: Expected an equals" << std::endl;
 		return false;
 	}
-	q.key = Parsing::Parser::sc.nextString();
+	q.key = new std::string(Parsing::Parser::sc.nextString());
 	if (andValuePending()) {
-		q.value = Parsing::Parser::sc.nextJSON();
+		q.value = new std::string(Parsing::Parser::sc.nextJSON());
 	}
 	return true;
 }
@@ -134,7 +133,7 @@ bool Parsing::Parser::select(Parsing::Query &q) {
 		std::cout << "PARSING ERROR: Expected 'from', found " << token << std::endl;
 		return false;
 	}
-	q.project = Parsing::Parser::sc.nextToken();
+	q.project = new std::string(Parsing::Parser::sc.nextToken());
 	if (Parsing::Parser::sc.nextChar() != '.') {
 		std::cout << "PARSING ERROR: Expected a dot" << std::endl;
 		return false;
@@ -150,7 +149,7 @@ bool Parsing::Parser::ddelete(Parsing::Query &q) {
 	q.command = DELETE;
 	std::string token = Parsing::Parser::sc.nextToken();
 	if (!toLower(token).compare("document")) {
-		q.project = Parsing::Parser::sc.nextToken();
+		q.project = new std::string(Parsing::Parser::sc.nextToken());
 		if (Parsing::Parser::sc.nextChar() != '.') {
 			std::cout << "PARSING ERROR: Expected a dot" << std::endl;
 			return false;
@@ -158,7 +157,7 @@ bool Parsing::Parser::ddelete(Parsing::Query &q) {
 		q.documents = new List(Parsing::Parser::sc.nextToken());
 		return true;
 	} else if (!toLower(token).compare("project")) {
-		q.project = Parsing::Parser::sc.nextToken();
+		q.project = new std::string(Parsing::Parser::sc.nextToken());
 		return true;
 	} else {
 		std::cout << "PARSING ERROR: Expected 'document' or 'project'." << std::endl;
@@ -172,7 +171,7 @@ bool Parsing::Parser::create(Parsing::Query &q) {
 	q.command = CREATE;
 	std::string token = toLower(Parsing::Parser::sc.nextToken());
 	if (!token.compare("project")) {
-		q.project = Parsing::Parser::sc.nextToken();
+		q.project = new std::string(Parsing::Parser::sc.nextToken());
 		if (withDocumentsPending()) {
 			if (Parsing::Parser::sc.nextChar() == '(') {
 				try {
@@ -187,14 +186,14 @@ bool Parsing::Parser::create(Parsing::Query &q) {
 			}
 		}
 	} else if (!token.compare("document")) {
-		q.project = Parsing::Parser::sc.nextToken();
+		q.project = new std::string(Parsing::Parser::sc.nextToken());
 		if (Parsing::Parser::sc.nextChar() != '.') {
 			std::cout << "PARSING ERROR: Expected a dot." << std::endl;
 			return false;
 		}
 		q.documents = new List(Parsing::Parser::sc.nextToken());
 		if (withValuePending()) {
-			q.value = Parsing::Parser::sc.nextJSON();
+			q.value = new std::string(Parsing::Parser::sc.nextJSON());
 		}
 	} else {
 		std::cout << "PARSING ERROR: Expected 'document' or 'project'." << std::endl;
@@ -211,7 +210,7 @@ bool Parsing::Parser::where(Parsing::Query &q) {
 		return false;
 	}	
 	if (Parsing::Parser::sc.nextChar() == '=') {
-		q.key = Parsing::Parser::sc.nextString();
+		q.key = new std::string(Parsing::Parser::sc.nextString());
 		return true;
 	} else {
 		Parsing::Parser::sc.push_back(1);
@@ -221,7 +220,7 @@ bool Parsing::Parser::where(Parsing::Query &q) {
 		std::cout << "PARSING ERROR: Expected 'in', found " << token << std::endl;
 		return false;
 	}
-	q.key = Parsing::Parser::sc.nextString();
+	q.key = new std::string(Parsing::Parser::sc.nextString());
 	return true;
 }
 
@@ -230,7 +229,7 @@ void Parsing::Parser::aggregate(Parsing::Query &q) {
 	int numAggregates = sizeof(Aggregates) / sizeof(std::string);
 	for (int i=0; i<numAggregates; ++i) {
 		if (!toLower(token).compare(toLower(Aggregates[i]))) {
-			q.aggregate = (Aggregate)i;
+			q.aggregate = new Aggregate((Aggregate)i);
 		}
 	}
 }
@@ -315,12 +314,3 @@ bool Parsing::Parser::aggregatePending() {
 	Parsing::Parser::sc.push_back(token);
 	return result;
 }
-
-/*
-int main(int argc, char **argv) {
-	Parsing::Parser p("select from *.*;");
-	Parsing::Query *q = p.parse();
-	q->print();
-	return 0;
-}
-*/

@@ -7,6 +7,7 @@
 
 namespace Parsing {
 	const std::string Aggregates[] = {"AVG", "SUM", "STDEV" /*, TODO: Others. */};
+	const std::string Commands[] = {"CREATE", "INSERT", "APPEND", "REMOVE", "SELECT", "DELETE" /*, TODO: Others. */};
 	enum Command {
 		CREATE,
 		INSERT,
@@ -16,10 +17,9 @@ namespace Parsing {
 		DELETE
 	};
 	enum Aggregate {
-		NONE = -1,
-		AVG = 0,
-		SUM = 1,
-		STDEV = 2
+		AVG,
+		SUM,
+		STDEV
 	};
 	struct List {
 		std::string value;
@@ -28,22 +28,27 @@ namespace Parsing {
 	};
 	struct Query {
 		Command command;
-		Aggregate aggregate;
-		std::string project;
+		Aggregate *aggregate;
+		std::string *project;
 		List *documents;
-		std::string key;
-		std::string value;
+		std::string *key;
+		std::string *value;
+		Query(): aggregate(NULL), project(NULL), documents(NULL), key(NULL), value(NULL) {}
 		void print() {
-			std::cout << "Command: " << command << std::endl;
-			std::cout << "Aggregate: " << aggregate << std::endl;
-			std::cout << "Project: " << project << std::endl;
+			std::cout << "Command: " << Commands[command] << std::endl;
+			if (aggregate)
+				std::cout << "Aggregate: " << Aggregates[*aggregate] << std::endl;
+			if (project)
+				std::cout << "Project: " << *project << std::endl;
 			List *spot = documents;
 			while (spot != NULL) {
 				std::cout << "Document: " << spot->value << std::endl;
 				spot = spot->next;
 			}
-			std::cout << "Key: " << key << std::endl;
-			std::cout << "Value: " << value << std::endl;
+			if (key)
+				std::cout << "Key: " << *key << std::endl;
+			if (value)
+				std::cout << "Value: " << *value << std::endl;
 		}
 	};
 	class Parser {
