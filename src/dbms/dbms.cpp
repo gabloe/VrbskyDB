@@ -68,6 +68,7 @@ void execute(Parsing::Query &q, Storage::LinearHash<std::string> &projects, Stor
 			if (q.project) {
 				uint64_t project_key = hash(*q.project, (*q.project).size());
 				if (projects.contains(project_key)) {
+					std::cout << *projects.get(project_key) << std::endl;
 					// Project exists.  Append the document to the list
 					std::string *docList = projects.get(project_key);
 					try {
@@ -89,25 +90,28 @@ void execute(Parsing::Query &q, Storage::LinearHash<std::string> &projects, Stor
 				std::cout << *projects.get(project_key) << std::endl;
 			}
 			rapidjson::Document d;
-			if(q.value && q.documents) {
+			if(q.documents) {
 				std::string project_doc(*q.project + "." + q.documents->value);
 				uint64_t document_key = hash(project_doc, project_doc.size());
-				if (!d.Parse(q.value->c_str()).HasParseError()) {
+				std::cout << "Document: " << project_doc << " - " << document_key << std::endl;
+				if (q.value && !d.Parse(q.value->c_str()).HasParseError()) {
 					if (!d.HasMember("__NAME__")) {
 						rapidjson::Value docname;
 						docname.SetString(q.documents->value.c_str(), d.GetAllocator());
 						d.AddMember("__NAME__", docname, d.GetAllocator());
 					}
-					std::string value = toString(&d);
-					documents.put(document_key, new std::string(value));
 				} else {
-					std::cout << "Could not parse JSON." << std::endl;
+					// No value.  Create empty document;
+					d.SetObject();
+					rapidjson::Value docname;
+					docname.SetString(q.documents->value.c_str(), d.GetAllocator());
+					d.AddMember("__NAME__", docname, d.GetAllocator());
 				}
+				std::string value = toString(&d);
+				documents.put(document_key, new std::string(value));
 				std::cout << "Inserted Document:" << std::endl;
 				std::cout << *documents.get(document_key) << std::endl;
 			}
-			dumpToFile("projects.db", projects);
-			dumpToFile("documents.db", documents);
 		}
 		break;
 	case Parsing::SELECT:
@@ -144,5 +148,7 @@ int main(void) {
 		}
 		std::cout << std::endl;
 	}
+	dumpToFile("documents.db", documents);
+	dumpToFile("projects.db", projects);
 	return 0;
 }

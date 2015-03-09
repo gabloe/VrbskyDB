@@ -30,7 +30,7 @@ const uint64_t INF = std::numeric_limits<uint64_t>::max();
 
 // Defines
 #define tests false
-#define DoSort true
+#define DoSort false
 #define DEBUG false
 
 #define max(A,B) (A) > (B) ? (A) : (B)
@@ -402,13 +402,10 @@ namespace Storage {
 				}
 
 				if (pos == total) {
-					std::cout << "uh..." << std::endl;
 					buckets = NULL;
 					bucket = NULL;
 					b_pos = pos = total = 0;
 				}
-
-
 			}
 
 			MyTuple operator*() {
@@ -418,10 +415,9 @@ namespace Storage {
 			}
 
 			MyIterator &operator++() {
-				while (pos < total && bucket) {
+				while (pos < total) {
 					// Search current bucket for item
-					std::cout << "Count: " << bucket->count_ << " b_pos: " << b_pos << std::endl;
-					if (bucket->count_ != b_pos) {		// Next bucket
+					if (bucket && bucket->count_ != b_pos) {		// Next bucket
 						return *this;
 					}
 					b_pos = 0;
