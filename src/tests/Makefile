@@ -9,7 +9,7 @@ LinearHashTest: $(OUT) ./LinearHashTest.cpp
 	$(CC) $(CFLAGS) ./LinearHashTest.cpp -o $(OUT)LinearHashTest
 
 ParserTest: $(OUT) ./ParserTest.cpp
-	cd ../parsing && $(MAKE) Parser.o && $(MAKE) Scanner.o
+	cd ../parsing/ && $(MAKE) Parser.o && $(MAKE) Scanner.o
 	$(CC) $(CFLAGS) ./ParserTest.cpp -o $(OUT)ParserTest $(OBJECTS)Parser.o $(OBJECTS)Scanner.o
 	cp queries $(OUT)queries
 
