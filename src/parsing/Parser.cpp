@@ -116,7 +116,7 @@ bool Parsing::Parser::remove(Parsing::Query &q) {
 		std::cout << "PARSING ERROR: Expected an equals" << std::endl;
 		return false;
 	}
-	q.key = new std::string(Parsing::Parser::sc.nextString());
+	q.keys = new Parsing::List(Parsing::Parser::sc.nextString());
 	if (andValuePending()) {
 		q.value = new std::string(Parsing::Parser::sc.nextJSON());
 	}
@@ -125,9 +125,7 @@ bool Parsing::Parser::remove(Parsing::Query &q) {
 
 bool Parsing::Parser::select(Parsing::Query &q) {
 	q.command = SELECT;
-	if (aggregatePending()) {
-		aggregate(q);
-	}
+	q.keys = keyList();	
 	std::string token = Parsing::Parser::sc.nextToken();
 	if (toLower(token).compare("from")) {
 		std::cout << "PARSING ERROR: Expected 'from', found " << token << std::endl;
@@ -139,9 +137,6 @@ bool Parsing::Parser::select(Parsing::Query &q) {
 		return false;
 	}
 	q.documents = new List(Parsing::Parser::sc.nextToken());
-	if (wherePending()) {
-		return where(q);
-	}
 	return true;
 }
 
@@ -203,35 +198,48 @@ bool Parsing::Parser::create(Parsing::Query &q) {
 
 }
 
-bool Parsing::Parser::where(Parsing::Query &q) {
-	std::string token = Parsing::Parser::sc.nextToken();
-	if (toLower(token).compare("key")) {
-		std::cout << "PARSING ERROR: Expected 'key', found " << token << std::endl;
-		return false;
-	}	
-	if (Parsing::Parser::sc.nextChar() == '=') {
-		q.key = new std::string(Parsing::Parser::sc.nextString());
-		return true;
+Parsing::List *Parsing::Parser::keyList() {
+	Parsing::List *item = new Parsing::List();
+	if (aggregatePending()) {
+		if (!aggregate(item)) {
+			throw std::runtime_error("PARSING ERROR: Malformed aggregate.");
+		}
+	} else {
+		std::string id = Parsing::Parser::sc.nextToken();
+		if (id.size() == 0) {
+			std::cout << "PARSING ERROR: Expected identifier." << std::endl;
+			return NULL;
+		}
+		item->value = id;
+	}
+	char next = Parsing::Parser::sc.nextChar();
+	if (next == ',') {
+		item->next = Parsing::Parser::keyList();
 	} else {
 		Parsing::Parser::sc.push_back(1);
 	}
-	token = Parsing::Parser::sc.nextToken();
-	if (toLower(token).compare("in")) {
-		std::cout << "PARSING ERROR: Expected 'in', found " << token << std::endl;
-		return false;
-	}
-	q.key = new std::string(Parsing::Parser::sc.nextString());
-	return true;
+	return item;
+
 }
 
-void Parsing::Parser::aggregate(Parsing::Query &q) {
+bool Parsing::Parser::aggregate(Parsing::List *list) {
 	std::string token = Parsing::Parser::sc.nextToken();
+	if (Parsing::Parser::sc.nextChar() != '(') {
+		std::cout << "PARSING ERROR: Expected open parenthesis." << std::endl;
+		return false;
+	}
+	list->value = Parsing::Parser::sc.nextToken();
+	if (Parsing::Parser::sc.nextChar() != ')') {
+		std::cout << "PARSING ERROR: Expected closed parenthesis." << std::endl;
+		return false;
+	}
 	int numAggregates = sizeof(Aggregates) / sizeof(std::string);
 	for (int i=0; i<numAggregates; ++i) {
 		if (!toLower(token).compare(toLower(Aggregates[i]))) {
-			q.aggregate = new Aggregate((Aggregate)i);
+			list->aggregate = new Aggregate((Aggregate)i);
 		}
 	}
+	return true;
 }
 
 Parsing::List * Parsing::Parser::idList() {
@@ -276,17 +284,6 @@ bool Parsing::Parser::withValuePending() {
 		Parsing::Parser::sc.push_back(with);
 	}
 	return found;
-}
-
-bool Parsing::Parser::wherePending() {
-	bool result = false;
-	std::string token = Parsing::Parser::sc.nextToken();
-	if (!toLower(token).compare("where")) {
-		result = true;
-	} else {
-		Parsing::Parser::sc.push_back(token);
-	}
-	return result;
 }
 
 bool Parsing::Parser::andValuePending() {

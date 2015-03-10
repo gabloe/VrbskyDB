@@ -22,31 +22,42 @@ namespace Parsing {
 		STDEV
 	};
 	struct List {
+		Aggregate *aggregate;
 		std::string value;
 		List *next;
-		List(std::string value_): value(value_), next(NULL) {}
+		List(std::string value_): aggregate(NULL), value(value_), next(NULL) {}
+		List(): aggregate(NULL), value(""), next(NULL) {}
 	};
 	struct Query {
 		Command command;
-		Aggregate *aggregate;
 		std::string *project;
 		List *documents;
-		std::string *key;
+		List *keys;
 		std::string *value;
-		Query(): aggregate(NULL), project(NULL), documents(NULL), key(NULL), value(NULL) {}
+		Query(): project(NULL), documents(NULL), keys(NULL), value(NULL) {}
 		void print() {
 			std::cout << "Command: " << Commands[command] << std::endl;
-			if (aggregate)
-				std::cout << "Aggregate: " << Aggregates[*aggregate] << std::endl;
 			if (project)
 				std::cout << "Project: " << *project << std::endl;
-			List *spot = documents;
-			while (spot != NULL) {
-				std::cout << "Document: " << spot->value << std::endl;
-				spot = spot->next;
+			List *docspot = documents;
+			while (docspot) {
+				std::cout << "Document: " << docspot->value << std::endl;
+				docspot = docspot->next;
 			}
-			if (key)
-				std::cout << "Key: " << *key << std::endl;
+			List *keyspot = keys;
+			while (keyspot) {
+				std::cout << "Key: ";
+				if (keyspot->aggregate) {
+					std::cout << Aggregates[*(keyspot->aggregate)] << "(";
+				}
+				std::cout << keyspot->value;
+				if (keyspot->aggregate) {
+					std::cout << ")" << std::endl;
+				} else {
+					std::cout << std::endl;
+				}
+				keyspot = keyspot->next;
+			}
 			if (value)
 				std::cout << "Value: " << *value << std::endl;
 		}
@@ -63,12 +74,11 @@ namespace Parsing {
 		bool select(Query &);
 		bool ddelete(Query &);
 		bool create(Query &);
-		bool where(Query &);
-		void aggregate(Query &);
+		List *keyList();
+		bool aggregate(List *);
 		List *idList();
 		bool withDocumentsPending();
 		bool withValuePending();
-		bool wherePending();
 		bool andValuePending();
 		bool aggregatePending();
 	};

@@ -26,10 +26,11 @@ rapidjson::Document createProject(std::string &name, Parsing::List *doc) {
 	rapidjson::Value documentArray(rapidjson::kArrayType);
 	rapidjson::Value projectName;
 	projectName.SetString(name.c_str(), allocator);
-	if (doc) {
+	while (doc) {
 		rapidjson::Value document;
 		document.SetString(doc->value.c_str(), allocator);
 		documentArray.PushBack(document, allocator);
+		doc = doc->next;
 	}
 	project.AddMember("__NAME__", projectName, allocator);
 	project.AddMember("documents", documentArray, allocator);
@@ -60,6 +61,27 @@ rapidjson::Document appendDocument(std::string *value, Parsing::List *doc) {
 	return project;
 }
 
+void addProject(std::string *pname, Storage::LinearHash<std::string> &table) {
+	std::string proj_list_key("__PROJECTS__");
+	uint64_t project_list = hash(proj_list_key, proj_list_key.size());
+	rapidjson::Document d;
+	rapidjson::Value proj;
+	proj.SetString(pname->c_str(), d.GetAllocator());
+	if (table.contains(project_list)) {
+		std::string *project = table.get(project_list);
+		d.Parse(project->c_str());
+		rapidjson::Value &projectArray = d["projects"];
+		projectArray.PushBack(proj, d.GetAllocator());
+		*project = toString(&d);
+	} else {
+		d.SetObject();
+		rapidjson::Value projectArray(rapidjson::kArrayType);
+		projectArray.PushBack(proj, d.GetAllocator());
+		d.AddMember("projects", projectArray, d.GetAllocator());
+		table.put(project_list, new std::string(toString(&d)));
+	}
+}
+
 void execute(Parsing::Query &q, Storage::LinearHash<std::string> &table) {
 	switch (q.command) {
 	case Parsing::CREATE:
@@ -82,39 +104,39 @@ void execute(Parsing::Query &q, Storage::LinearHash<std::string> &table) {
 				} else {
 					// Project doesn't exist.  Create project and add document if one is being created.
 					rapidjson::Document project = createProject(*q.project, q.documents);
+					addProject(q.project, table);
 					std::string project_json = toString(&project);
 					table.put(project_key, new std::string(project_json));
 				}
-				std::cout << "\nInserted Project:" << std::endl;
-				std::cout << *table.get(project_key) << std::endl;
 			}
-			rapidjson::Document d;
 			if(q.documents) {
-				std::string project_doc(*q.project + "." + q.documents->value);
-				uint64_t document_key = hash(project_doc, project_doc.size());
-				std::cout << "Document: " << project_doc << " - " << document_key << std::endl;
-				if (q.value && !d.Parse(q.value->c_str()).HasParseError()) {
-					if (!d.HasMember("__NAME__")) {
+				Parsing::List *spot = q.documents;
+				while (spot) {
+					rapidjson::Document d;
+					std::string project_doc(*q.project + "." + spot->value);
+					uint64_t document_key = hash(project_doc, project_doc.size());
+					if (q.value && !d.Parse(q.value->c_str()).HasParseError()) {
+						if (!d.HasMember("__NAME__")) {
+							rapidjson::Value docname;
+							docname.SetString(spot->value.c_str(), d.GetAllocator());
+							d.AddMember("__NAME__", docname, d.GetAllocator());
+						}
+					} else {
+						// No value.  Create empty documents;
+						d.SetObject();
 						rapidjson::Value docname;
-						docname.SetString(q.documents->value.c_str(), d.GetAllocator());
+						docname.SetString(spot->value.c_str(), d.GetAllocator());
 						d.AddMember("__NAME__", docname, d.GetAllocator());
 					}
-				} else {
-					// No value.  Create empty document;
-					d.SetObject();
-					rapidjson::Value docname;
-					docname.SetString(q.documents->value.c_str(), d.GetAllocator());
-					d.AddMember("__NAME__", docname, d.GetAllocator());
+					table.put(document_key, new std::string(toString(&d)));
+					spot = spot->next;
 				}
-				std::string value = toString(&d);
-				table.put(document_key, new std::string(value));
-				std::cout << "Inserted Document:" << std::endl;
-				std::cout << *table.get(document_key) << std::endl;
 			}
+			break;
 		}
-		break;
 	case Parsing::SELECT:
 		// Build a JSON object with the results
+		q.print();
 		break;
 	case Parsing::DELETE:
 		// Delete a project or document
