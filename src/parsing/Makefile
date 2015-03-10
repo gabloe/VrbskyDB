@@ -14,3 +14,5 @@ $(OUT):
 clean:
 	rm -f $(OUT)Parser.o
 	rm -f $(OUT)Scanner.o
+
+.PHONY: clean

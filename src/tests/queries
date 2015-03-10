@@ -1,0 +1,9 @@
+create project A;
+create project A with documents (A,B,C);
+create document A.B;
+delete project A;
+delete document A.B;
+select A,B,C from A.B;
+select avg(A),min(B),max(C) from A.*;
+select * from A.B;
+remove from A.B where key="A";

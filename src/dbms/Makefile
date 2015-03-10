@@ -10,3 +10,5 @@ $(OUT):
 
 clean:
 	rm -f $(OUT)dbms.o
+
+.PHONY: clean

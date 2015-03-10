@@ -1,7 +1,7 @@
 #include "../storage/LinearHash.h"
 
 template <typename T>
-void test_insert(DataStructures::LinearHash<T> &table, std::string data) {
+void test_insert(Storage::LinearHash<T> &table, std::string data) {
 	int count = 0;
 	do {
 		++count;
@@ -20,7 +20,7 @@ void test_insert(DataStructures::LinearHash<T> &table, std::string data) {
 }
 
 template <typename T>
-void test_remove(DataStructures::LinearHash<T> &table, std::string data) {
+void test_remove(Storage::LinearHash<T> &table, std::string data) {
 	int count = 0;
 	do {
 		++count;
@@ -34,7 +34,7 @@ void test_remove(DataStructures::LinearHash<T> &table, std::string data) {
 }
 
 template <typename T>
-void test_contains(DataStructures::LinearHash<T> &table, std::string data) {
+void test_contains(Storage::LinearHash<T> &table, std::string data) {
 	int count = 0;
 	do {
 		++count;
@@ -52,7 +52,7 @@ void test(uint64_t buckets, uint64_t elements) {
 	clock_t start, end;
 	std::string data("ABCDEFGHI");
 
-	DataStructures::LinearHash<std::string> table(buckets, elements);
+	Storage::LinearHash<std::string> table(buckets, elements);
 
 	// Test inserts
 	start = std::clock();
@@ -86,7 +86,7 @@ int main(void) {
 
 	clock_t start, end;
 
-	DataStructures::LinearHash<std::string> table(1024, 2048);
+	Storage::LinearHash<std::string> table(1024, 2048);
 
 	std::string data("ABCDEFGHI");
 
@@ -114,7 +114,7 @@ int main(void) {
 	std::cout << "Took " << 1000 * (float)(end - start) / CLOCKS_PER_SEC << "ms to write to disk." << std::endl;
 
 	start = std::clock();
-	DataStructures::LinearHash<std::string> *file_table = readFromFile("output.dat");
+	Storage::LinearHash<std::string> *file_table = readFromFile("output.dat");
 	end = std::clock();
 	std::cout << "Took " << 1000 * (float)(end - start) / CLOCKS_PER_SEC << "ms to read from disk." << std::endl;
 

@@ -6,7 +6,7 @@
 #include "Scanner.h"
 
 namespace Parsing {
-	const std::string Aggregates[] = {"AVG", "SUM", "STDEV" /*, TODO: Others. */};
+	const std::string Aggregates[] = {"AVG", "MIN", "MAX", "SUM", "STDEV" /*, TODO: Others. */};
 	const std::string Commands[] = {"CREATE", "INSERT", "APPEND", "REMOVE", "SELECT", "DELETE", "SHOW" /*, TODO: Others. */};
 	enum Command {
 		CREATE = 0,
