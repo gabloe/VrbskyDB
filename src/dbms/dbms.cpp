@@ -82,6 +82,30 @@ void addProject(std::string *pname, Storage::LinearHash<std::string> &table) {
 	}
 }
 
+void removeProject(std::string *pname, Storage::LinearHash<std::string> &table) {
+	std::string proj_list_key("__PROJECTS__");
+	uint64_t project_list = hash(proj_list_key, proj_list_key.size());
+	rapidjson::Document d;
+	rapidjson::Value proj;
+	proj.SetString(pname->c_str(), d.GetAllocator());
+	if (table.contains(project_list)) {
+		std::string *project = table.get(project_list);
+		d.Parse(project->c_str());
+		rapidjson::Value &projectArray = d["projects"];
+
+		for (rapidjson::Value::ConstValueIterator itr = projectArray.Begin(); itr != projectArray.End(); ++itr) {
+			std::string d = itr->GetString();
+			if (!d.compare(*pname)) {
+				projectArray.Erase(itr);
+				break;
+			}
+		}
+
+		projectArray.PushBack(proj, d.GetAllocator());
+		*project = toString(&d);
+	}
+}
+
 void execute(Parsing::Query &q, Storage::LinearHash<std::string> &table) {
 	switch (q.command) {
 	case Parsing::CREATE:
@@ -109,28 +133,26 @@ void execute(Parsing::Query &q, Storage::LinearHash<std::string> &table) {
 					table.put(project_key, new std::string(project_json));
 				}
 			}
-			if(q.documents) {
-				Parsing::List *spot = q.documents;
-				while (spot) {
-					rapidjson::Document d;
-					std::string project_doc(*q.project + "." + spot->value);
-					uint64_t document_key = hash(project_doc, project_doc.size());
-					if (q.value && !d.Parse(q.value->c_str()).HasParseError()) {
-						if (!d.HasMember("__NAME__")) {
-							rapidjson::Value docname;
-							docname.SetString(spot->value.c_str(), d.GetAllocator());
-							d.AddMember("__NAME__", docname, d.GetAllocator());
-						}
-					} else {
-						// No value.  Create empty documents;
-						d.SetObject();
+			Parsing::List *spot = q.documents;
+			while (spot) {
+				rapidjson::Document d;
+				std::string project_doc(*q.project + "." + spot->value);
+				uint64_t document_key = hash(project_doc, project_doc.size());
+				if (q.value && !d.Parse(q.value->c_str()).HasParseError()) {
+					if (!d.HasMember("__NAME__")) {
 						rapidjson::Value docname;
 						docname.SetString(spot->value.c_str(), d.GetAllocator());
 						d.AddMember("__NAME__", docname, d.GetAllocator());
 					}
-					table.put(document_key, new std::string(toString(&d)));
-					spot = spot->next;
+				} else {
+					// No value.  Create empty documents;
+					d.SetObject();
+					rapidjson::Value docname;
+					docname.SetString(spot->value.c_str(), d.GetAllocator());
+					d.AddMember("__NAME__", docname, d.GetAllocator());
 				}
+				table.put(document_key, new std::string(toString(&d)));
+				spot = spot->next;
 			}
 			break;
 		}
@@ -140,12 +162,30 @@ void execute(Parsing::Query &q, Storage::LinearHash<std::string> &table) {
 		break;
 	case Parsing::DELETE:
 		// Delete a project or document
-		break;
+		{
+			Parsing::List *spot = q.documents;
+			if (spot) {
+				while (spot) {
+					std::string key(*q.project + "." + spot->value);
+					uint64_t doc_hash = hash(key, key.size());
+					table.remove(doc_hash);
+					spot = spot->next;
+				}
+			} else {
+				std::string key(*q.project);
+				uint64_t proj_hash = hash(key, key.size());
+				table.remove(proj_hash);
+				removeProject(q.project, table);
+			}
+			break;
+		}
 	case Parsing::REMOVE:
 		// Remove a key
+		q.print();
 		break;
 	case Parsing::APPEND:
 		// Append to a field
+		q.print();
 		break;
 	default:
 		std::cout << "Command not recognized." << std::endl;
