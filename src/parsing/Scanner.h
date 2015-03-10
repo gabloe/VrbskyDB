@@ -20,6 +20,7 @@ namespace Parsing {
 		std::string nextJSON();
 		void push_back(std::string);
 		void push_back(size_t);
+		void unSkipWhiteSpace();
 
 	private:
 		std::string query;

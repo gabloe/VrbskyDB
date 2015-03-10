@@ -15,8 +15,10 @@ namespace Parsing {
 		while (spot < query.size()) {
 			size_t pos = spot++;
 			char t = query.at(pos);
-			if (t == ' ' || t == ';' || t == ',' || t == '=' || t == '.' || t == ':' || t == '(' || t == ')') {
+			if (t == ';' || t == ',' || t == '=' || t == '.' || t == ':' || t == '(' || t == ')') {
 				--spot;
+				break;
+			} else if (t == ' ') {
 				break;
 			}
 			token = token + t;
@@ -25,10 +27,12 @@ namespace Parsing {
 	}
 
 	void Scanner::push_back(std::string val) {
+		unSkipWhiteSpace();
 		spot -= val.size();
 	}
 
 	void Scanner::push_back(size_t spots) {
+		unSkipWhiteSpace();
 		spot -= spots;
 	}
 
@@ -100,4 +104,20 @@ namespace Parsing {
 		}
 		spot--;
 	}
+
+	void Scanner::unSkipWhiteSpace() {
+		char t;
+		while (spot > 1) {
+			spot--;
+			int pos = spot;
+			t = query.at(pos);
+			if (t == ' ') {
+				continue;
+			} else {
+				break;
+			}
+		}
+		spot++;
+	}
+
 }

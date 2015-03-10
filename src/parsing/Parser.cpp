@@ -195,10 +195,12 @@ bool Parsing::Parser::create(Parsing::Query &q) {
 				try {
 					q.documents = idList();
 				} catch (std::runtime_error &e) {
+					Parsing::Parser::sc.push_back(1);
 					std::cout << e.what() << std::endl;
 					return false;
 				}
 			} else {
+				Parsing::Parser::sc.push_back(1);
 				std::cout << "PARSING ERROR: Expected open paren." << std::endl;
 				return false;
 			}
@@ -206,6 +208,7 @@ bool Parsing::Parser::create(Parsing::Query &q) {
 	} else if (!token.compare("document")) {
 		q.project = new std::string(Parsing::Parser::sc.nextToken());
 		if (Parsing::Parser::sc.nextChar() != '.') {
+			Parsing::Parser::sc.push_back(1);
 			std::cout << "PARSING ERROR: Expected a dot." << std::endl;
 			return false;
 		}
@@ -214,6 +217,7 @@ bool Parsing::Parser::create(Parsing::Query &q) {
 			q.value = new std::string(Parsing::Parser::sc.nextJSON());
 		}
 	} else {
+		Parsing::Parser::sc.push_back(token);
 		std::cout << "PARSING ERROR: Expected 'document' or 'project'." << std::endl;
 		return false;
 	}
@@ -278,6 +282,7 @@ Parsing::List * Parsing::Parser::idList() {
 	} else if (next == ')') {
 		return doc;
 	} else {
+		Parsing::Parser::sc.push_back(1);
 		throw std::runtime_error("PARSING ERROR: Expected closed paren.");
 	}
 	return doc;
@@ -303,8 +308,8 @@ bool Parsing::Parser::withValuePending() {
 	if (!toLower(with).compare("with") && !toLower(value).compare("value")) {
 		found = true;
 	} else {
-		Parsing::Parser::sc.push_back(value);
-		Parsing::Parser::sc.push_back(with);
+		Parsing::Parser::sc.push_back(value);	
+		Parsing::Parser::sc.push_back(with);	
 	}
 	return found;
 }
@@ -316,8 +321,9 @@ bool Parsing::Parser::andValuePending() {
 	if (!toLower(aand).compare("and") && !toLower(value).compare("value") && Parsing::Parser::sc.nextChar() == '=') {
 		result = true;
 	} else {
-		Parsing::Parser::sc.push_back(aand);
+		Parsing::Parser::sc.push_back(1);
 		Parsing::Parser::sc.push_back(value);
+		Parsing::Parser::sc.push_back(aand);
 	}
 	return result;
 }
