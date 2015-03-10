@@ -4,18 +4,16 @@ CC=g++
 CFLAGS=--std=c++11 -O3 -g -Wall -Wextra
 INCLUDES += -I ./includes/rapidjson
 
-binary: $(OUT) obj
+binary: $(OUT) $(OBJECTS)dbms.o $(OBJECTS)Parser.o $(OBJECTS)Scanner.o
 	$(CC) $(CFLAGS) $(INCLUDES) -o $(OUT)dbms $(OBJECTS)*.o 
 
-obj:  dbms.o Parser.o Scanner.o
-
-Scanner.o: ./parsing/Scanner.cpp
+$(OBJECTS)Scanner.o: ./parsing/Scanner.cpp
 	cd ./parsing && $(MAKE) Scanner.o
 
-Parser.o: ./parsing/Parser.cpp 
+$(OBJECTS)Parser.o: ./parsing/Parser.cpp 
 	cd ./parsing && $(MAKE) Parser.o
 
-dbms.o: ./dbms/dbms.cpp
+$(OBJECTS)dbms.o: ./dbms/dbms.cpp
 	cd ./dbms && $(MAKE) dbms.o
 
 test:

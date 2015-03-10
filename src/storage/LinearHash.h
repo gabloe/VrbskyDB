@@ -250,6 +250,7 @@ namespace Storage {
 			if (b == NULL) {
 				return NULL;
 			}
+			--num_items_;
 			return b->remove(key);
 		}
 
@@ -695,6 +696,9 @@ void dumpToFile(std::string filename, Storage::LinearHash<std::string> &hash) {
 
 	}
 
+	if( count != num_elements ) {
+		std::cout << "Count: " << count << ", NumElements: " << num_elements << std::endl;
+	}
 	Assert("Missing some items", count == num_elements);
 	outfile.close();
 }
