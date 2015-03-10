@@ -1,5 +1,3 @@
-#include <stdexcept>
-
 #include "../storage/LinearHash.h"
 #include "../parsing/Parser.h"
 #include "../parsing/Scanner.h"
@@ -33,7 +31,7 @@ rapidjson::Document createProject(std::string &name, Parsing::List *doc) {
 		doc = doc->next;
 	}
 	project.AddMember("__NAME__", projectName, allocator);
-	project.AddMember("documents", documentArray, allocator);
+	project.AddMember("__DOCUMENTS__", documentArray, allocator);
 	return project;
 }
 
@@ -42,8 +40,8 @@ rapidjson::Document appendDocument(std::string *value, Parsing::List *doc) {
 	rapidjson::Document project;
 	project.Parse(value->c_str());
 	rapidjson::Document::AllocatorType& allocator = project.GetAllocator();
-	if (project.HasMember("documents")) {
-		rapidjson::Value &documentArray = project["documents"];
+	if (project.HasMember("__DOCUMENTS__")) {
+		rapidjson::Value &documentArray = project["__DOCUMENTS__"];
 		if (doc) {
 			std::string doc_name = doc->value;
 			for (rapidjson::Value::ConstValueIterator itr = documentArray.Begin(); itr != documentArray.End(); ++itr) {
@@ -61,6 +59,30 @@ rapidjson::Document appendDocument(std::string *value, Parsing::List *doc) {
 	return project;
 }
 
+void removeDocument(std::string *pname, Parsing::List *doc, Storage::LinearHash<std::string> &table) {
+	std::string proj_list_key(*pname);
+	uint64_t doc_list = hash(proj_list_key, proj_list_key.size());
+	rapidjson::Document d;
+	if (table.contains(doc_list)) {
+		std::string *doclist = table.get(doc_list);
+		d.Parse(doclist->c_str());
+		rapidjson::Value &projectArray = d["__DOCUMENTS__"];
+		Parsing::List *spot = doc;
+		while (spot) {
+			for (rapidjson::Value::ConstValueIterator itr = projectArray.Begin(); itr != projectArray.End(); ++itr) {
+				std::string dd = itr->GetString();
+				std::string docname = spot->value;
+				if (!dd.compare(docname)) {
+					projectArray.Erase(itr);
+					break;
+				}
+			}
+			spot = spot->next;
+		}
+		*doclist = toString(&d);
+	}
+}
+
 void addProject(std::string *pname, Storage::LinearHash<std::string> &table) {
 	std::string proj_list_key("__PROJECTS__");
 	uint64_t project_list = hash(proj_list_key, proj_list_key.size());
@@ -70,14 +92,14 @@ void addProject(std::string *pname, Storage::LinearHash<std::string> &table) {
 	if (table.contains(project_list)) {
 		std::string *project = table.get(project_list);
 		d.Parse(project->c_str());
-		rapidjson::Value &projectArray = d["projects"];
+		rapidjson::Value &projectArray = d["__PROJECTS__"];
 		projectArray.PushBack(proj, d.GetAllocator());
 		*project = toString(&d);
 	} else {
 		d.SetObject();
 		rapidjson::Value projectArray(rapidjson::kArrayType);
 		projectArray.PushBack(proj, d.GetAllocator());
-		d.AddMember("projects", projectArray, d.GetAllocator());
+		d.AddMember("__PROJECTS__", projectArray, d.GetAllocator());
 		table.put(project_list, new std::string(toString(&d)));
 	}
 }
@@ -87,23 +109,38 @@ void removeProject(std::string *pname, Storage::LinearHash<std::string> &table) 
 	std::string proj_list_key("__PROJECTS__");
 	uint64_t project_list = hash(proj_list_key, proj_list_key.size());
 	rapidjson::Document d;
-	rapidjson::Value proj;
-	proj.SetString(pname->c_str(), d.GetAllocator());
 	if (table.contains(project_list)) {
-		std::string *project = table.get(project_list);
-		d.Parse(project->c_str());
-		rapidjson::Value &projectArray = d["projects"];
+		std::string *projects = table.get(project_list);
+		d.Parse(projects->c_str());
+		rapidjson::Value &projectArray = d["__PROJECTS__"];
 
 		for (rapidjson::Value::ConstValueIterator itr = projectArray.Begin(); itr != projectArray.End(); ++itr) {
-			std::string d = itr->GetString();
-			if (!d.compare(*pname)) {
+			std::string dd = itr->GetString();
+			if (!dd.compare(*pname)) {
 				projectArray.Erase(itr);
 				break;
 			}
 		}
 
-		projectArray.PushBack(proj, d.GetAllocator());
-		*project = toString(&d);
+		*projects = toString(&d);
+	}
+
+	// Remove all documents associated with this project.
+	uint64_t proj_hash = hash(*pname, pname->size());
+	if (table.contains(proj_hash)) {
+		std::string *doc_list = table.get(proj_hash);
+		rapidjson::Document d2;
+		d2.Parse(doc_list->c_str());
+		rapidjson::Value &docArray = d2["__DOCUMENTS__"];
+		for (rapidjson::Value::ConstValueIterator itr = docArray.Begin(); itr != docArray.End(); ++itr) {
+			std::string dd = itr->GetString();
+			std::string proj_doc_key(*pname + "." + dd);
+			uint64_t proj_doc_hash = hash(proj_doc_key, proj_doc_key.size());
+			if (table.contains(proj_doc_hash)) {
+				table.remove(proj_doc_hash);
+			}
+		}
+		table.remove(proj_hash);
 	}
 }
 
@@ -169,13 +206,13 @@ void execute(Parsing::Query &q, Storage::LinearHash<std::string> &table) {
 				while (spot) {
 					std::string key(*q.project + "." + spot->value);
 					uint64_t doc_hash = hash(key, key.size());
-					table.remove(doc_hash);
+					if (table.contains(doc_hash)) {
+						table.remove(doc_hash);
+					}
+					removeDocument(q.project, spot, table);
 					spot = spot->next;
 				}
 			} else {
-				std::string key(*q.project);
-				uint64_t proj_hash = hash(key, key.size());
-				table.remove(proj_hash);
 				removeProject(q.project, table);
 			}
 			break;
