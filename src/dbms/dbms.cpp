@@ -208,7 +208,7 @@ void execute(Parsing::Query &q, Storage::LinearHash<std::string> &table) {
 		q.print();
 		break;
 	case Parsing::APPEND:
-		// Append to a field
+		// Add a new field of append to an existing field
 		q.print();
 		break;
 	default:
