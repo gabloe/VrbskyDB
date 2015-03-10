@@ -7,19 +7,20 @@
 
 namespace Parsing {
 	const std::string Aggregates[] = {"AVG", "SUM", "STDEV" /*, TODO: Others. */};
-	const std::string Commands[] = {"CREATE", "INSERT", "APPEND", "REMOVE", "SELECT", "DELETE" /*, TODO: Others. */};
+	const std::string Commands[] = {"CREATE", "INSERT", "APPEND", "REMOVE", "SELECT", "DELETE", "SHOW" /*, TODO: Others. */};
 	enum Command {
-		CREATE,
-		INSERT,
-		APPEND,
-		REMOVE,
-		SELECT,
-		DELETE
+		CREATE = 0,
+		INSERT = 1,
+		APPEND = 2,
+		REMOVE = 3,
+		SELECT = 4,
+		DELETE = 5,
+		SHOW   = 6
 	};
 	enum Aggregate {
-		AVG,
-		SUM,
-		STDEV
+		AVG   = 0,
+		SUM   = 1,
+		STDEV = 2
 	};
 	struct List {
 		Aggregate *aggregate;
@@ -74,6 +75,7 @@ namespace Parsing {
 		bool select(Query &);
 		bool ddelete(Query &);
 		bool create(Query &);
+		bool show(Query &q);
 		List *keyList();
 		bool aggregate(List *);
 		List *idList();

@@ -82,6 +82,7 @@ void addProject(std::string *pname, Storage::LinearHash<std::string> &table) {
 	}
 }
 
+// Remove the project name from the project metadata list.
 void removeProject(std::string *pname, Storage::LinearHash<std::string> &table) {
 	std::string proj_list_key("__PROJECTS__");
 	uint64_t project_list = hash(proj_list_key, proj_list_key.size());
@@ -176,6 +177,29 @@ void execute(Parsing::Query &q, Storage::LinearHash<std::string> &table) {
 				uint64_t proj_hash = hash(key, key.size());
 				table.remove(proj_hash);
 				removeProject(q.project, table);
+			}
+			break;
+		}
+	case Parsing::SHOW:
+		{
+			// List the projects
+			if (!q.project->compare("__PROJECTS__")) {
+				std::string p("__PROJECTS__");
+				uint64_t phash = hash(p, p.size());
+				if (table.contains(phash)) {
+					std::string *data = table.get(phash);
+					std::cout << *data << std::endl;
+				} else {
+					std::cout << "No projects found." << std::endl;
+				}
+			} else { // List the documents in a specific project
+				uint64_t dhash = hash(*q.project, q.project->size());
+				if (table.contains(dhash)) {
+					std::string *data = table.get(dhash);
+					std::cout << *data << std::endl;
+				} else {
+					std::cout << "No documents found." << std::endl;
+				}
 			}
 			break;
 		}

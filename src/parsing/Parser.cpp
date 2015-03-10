@@ -30,6 +30,8 @@ Parsing::Query* Parsing::Parser::parse() {
 		result = select(*q);
 	} else if (!token.compare("delete")) {
 		result = ddelete(*q);
+	} else if (!token.compare("show")) {
+		result = show(*q);
 	} else {
 		std::cout << "PARSING ERROR: Expected a valid command, but found '" << token << "'" << std::endl;
 	}
@@ -53,6 +55,27 @@ Parsing::Query* Parsing::Parser::parse() {
 	}
 
 	return q;
+}
+
+bool Parsing::Parser::show(Parsing::Query &q) {
+	q.command = SHOW;
+	std::string token = Parsing::Parser::sc.nextToken();
+	if (!toLower(token).compare("projects")) {
+		q.project = new std::string("__PROJECTS__");
+	} else if (!toLower(token).compare("documents")) {
+		std::string in = Parsing::Parser::sc.nextToken();
+		if (toLower(in).compare("in")) {
+			std::cout << "PARSING ERROR: Expected 'in'." << std::endl;
+			Parsing::Parser::sc.push_back(in);
+			Parsing::Parser::sc.push_back(token);
+			return false;
+		}
+		q.project = new std::string(Parsing::Parser::sc.nextToken());
+	} else {
+		std::cout << "PARSING ERROR: Expected 'projects' or 'documents'" << std::endl;
+		return false;
+	}
+	return true;
 }
 
 bool Parsing::Parser::insert(Parsing::Query &q) {
