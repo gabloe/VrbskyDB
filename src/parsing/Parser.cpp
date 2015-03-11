@@ -99,11 +99,13 @@ bool Parsing::Parser::append(Parsing::Query &q) {
 	q.command = APPEND;
 	std::string token = Parsing::Parser::sc.nextToken();
 	if (toLower(token).compare("to")) {
+		Parsing::Parser::sc.push_back(token);
 		std::cout << "PARSING ERROR: Expected 'to', found " << token << std::endl;
 		return false;
 	}
 	q.project = new std::string(Parsing::Parser::sc.nextToken());
 	if (Parsing::Parser::sc.nextChar() != '.') {
+		Parsing::Parser::sc.push_back(1);
 		std::cout << "PARSING ERROR: Expected a dot" << std::endl;
 		return false;
 	}
@@ -116,33 +118,35 @@ bool Parsing::Parser::remove(Parsing::Query &q) {
 	q.command = REMOVE;
 	std::string token = Parsing::Parser::sc.nextToken();
 	if (toLower(token).compare("from")) {
+		Parsing::Parser::sc.push_back(token);
 		std::cout << "PARSING ERROR: Expected 'from', found " << token << std::endl;
 		return false;
 	}
 	q.project = new std::string(Parsing::Parser::sc.nextToken());
 	if (Parsing::Parser::sc.nextChar() != '.') {
+		Parsing::Parser::sc.push_back(1);
 		std::cout << "PARSING ERROR: Expected a dot" << std::endl;
 		return false;
 	}
 	q.documents = new List(Parsing::Parser::sc.nextToken());
 	token = Parsing::Parser::sc.nextToken();
 	if (toLower(token).compare("where")) {
+		Parsing::Parser::sc.push_back(token);
 		std::cout << "PARSING ERROR: Expected 'where', found " << token << std::endl;
 		return false;
 	}
 	token = Parsing::Parser::sc.nextToken();
 	if (toLower(token).compare("key")) {
+		Parsing::Parser::sc.push_back(token);
 		std::cout << "PARSING ERROR: Expected 'key', found " << token << std::endl;
 		return false;
 	}
 	if (Parsing::Parser::sc.nextChar() != '=') {
+		Parsing::Parser::sc.push_back(1);
 		std::cout << "PARSING ERROR: Expected an equals" << std::endl;
 		return false;
 	}
 	q.keys = new Parsing::List(Parsing::Parser::sc.nextString());
-	if (andValuePending()) {
-		q.value = new std::string(Parsing::Parser::sc.nextJSON());
-	}
 	return true;
 }
 
@@ -151,11 +155,13 @@ bool Parsing::Parser::select(Parsing::Query &q) {
 	q.keys = keyList();	
 	std::string token = Parsing::Parser::sc.nextToken();
 	if (toLower(token).compare("from")) {
+		Parsing::Parser::sc.push_back(token);
 		std::cout << "PARSING ERROR: Expected 'from', found " << token << std::endl;
 		return false;
 	}
 	q.project = new std::string(Parsing::Parser::sc.nextToken());
 	if (Parsing::Parser::sc.nextChar() != '.') {
+		Parsing::Parser::sc.push_back(1);
 		std::cout << "PARSING ERROR: Expected a dot" << std::endl;
 		return false;
 	}
@@ -312,20 +318,6 @@ bool Parsing::Parser::withValuePending() {
 		Parsing::Parser::sc.push_back(with);	
 	}
 	return found;
-}
-
-bool Parsing::Parser::andValuePending() {
-	bool result = false;
-	std::string aand = Parsing::Parser::sc.nextToken();
-	std::string value = Parsing::Parser::sc.nextToken();
-	if (!toLower(aand).compare("and") && !toLower(value).compare("value") && Parsing::Parser::sc.nextChar() == '=') {
-		result = true;
-	} else {
-		Parsing::Parser::sc.push_back(1);
-		Parsing::Parser::sc.push_back(value);
-		Parsing::Parser::sc.push_back(aand);
-	}
-	return result;
 }
 
 bool Parsing::Parser::aggregatePending() {

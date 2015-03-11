@@ -3,12 +3,15 @@ OBJECTS=../objects/
 CC=g++
 CFLAGS=--std=c++11 -O3 -Wall -Wextra
 
-all: LinearHashTest ParserTest
+all: $(OUT)LinearHashTest $(OUT)ParserTest
 
-LinearHashTest: $(OUT) ./LinearHashTest.cpp
+run: $(OUT)LinearHashTest $(OUT)ParserTest
+	cd $(OUT) && ./ParserTest && ./LinearHashTest
+
+$(OUT)LinearHashTest: $(OUT) ./LinearHashTest.cpp
 	$(CC) $(CFLAGS) ./LinearHashTest.cpp -o $(OUT)LinearHashTest
 
-ParserTest: $(OUT) ./ParserTest.cpp
+$(OUT)ParserTest: $(OUT) ./ParserTest.cpp
 	cd ../parsing/ && $(MAKE) Parser.o && $(MAKE) Scanner.o
 	$(CC) $(CFLAGS) ./ParserTest.cpp -o $(OUT)ParserTest $(OBJECTS)Parser.o $(OBJECTS)Scanner.o
 	cp queries $(OUT)queries

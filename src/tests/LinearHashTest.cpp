@@ -50,7 +50,7 @@ void test(uint64_t buckets, uint64_t elements) {
 
 	std::cout << "Configuration: " << buckets << ":" << elements << std::endl;
 	clock_t start, end;
-	std::string data("ABCDEFGHI");
+	std::string data("ABCD");
 
 	Storage::LinearHash<std::string> table(buckets, elements);
 
@@ -88,7 +88,7 @@ int main(void) {
 
 	Storage::LinearHash<std::string> table(1024, 2048);
 
-	std::string data("ABCDEFGHI");
+	std::string data("ABCD");
 
 	// Test inserts
 	start = std::clock();

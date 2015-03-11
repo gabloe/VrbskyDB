@@ -81,7 +81,6 @@ namespace Parsing {
 		List *idList();
 		bool withDocumentsPending();
 		bool withValuePending();
-		bool andValuePending();
 		bool aggregatePending();
 	};
 }
