@@ -174,6 +174,29 @@ void removeKey(std::string pname, std::string dname, std::string key, Storage::L
 	}
 }
 
+void addFields(std::string pname, std::string dname, rapidjson::Document &d, Storage::LinearHash<std::string> &table) {
+	std::string key_string(pname + "." + dname);
+	uint64_t key = hash(key_string, key_string.size());
+	if (table.contains(key)) {
+		std::cout << "Table already contains this document!" << std::endl;
+	}
+	rapidjson::Document arrayContainer;
+	arrayContainer.SetObject();
+	rapidjson::Value uuidArray(rapidjson::kArrayType);
+	for (rapidjson::Value::ConstMemberIterator itr = d.MemberBegin(); itr != d.MemberEnd(); ++itr) {
+		// Generate UUID
+		// Add UUID to json array
+		rapidjson::Value field;
+		field.SetString(itr->name.GetString(), arrayContainer.GetAllocator());
+		uuidArray.PushBack(field, arrayContainer.GetAllocator());
+	}
+	rapidjson::Value name_string;
+	name_string.SetString(dname.c_str(), arrayContainer.GetAllocator());
+	arrayContainer.AddMember("__NAME__", name_string, arrayContainer.GetAllocator());
+	arrayContainer.AddMember("__FIELDS__", uuidArray, arrayContainer.GetAllocator());
+	table.put(key, new std::string(toString(&arrayContainer)));
+}
+
 void execute(Parsing::Query &q, Storage::LinearHash<std::string> &table) {
 	clock_t start, end;
 	start = std::clock();	
@@ -206,14 +229,8 @@ void execute(Parsing::Query &q, Storage::LinearHash<std::string> &table) {
 			Parsing::List *spot = q.documents;
 			while (spot) {
 				rapidjson::Document d;
-				std::string project_doc(*q.project + "." + spot->value);
-				uint64_t document_key = hash(project_doc, project_doc.size());
 				if (q.value && !d.Parse(q.value->c_str()).HasParseError()) {
-					if (!d.HasMember("__NAME__")) {
-						rapidjson::Value docname;
-						docname.SetString(spot->value.c_str(), d.GetAllocator());
-						d.AddMember("__NAME__", docname, d.GetAllocator());
-					}
+					addFields(*q.project, spot->value, d, table);
 				} else {
 					// No value.  Create empty documents;
 					d.SetObject();
@@ -221,7 +238,6 @@ void execute(Parsing::Query &q, Storage::LinearHash<std::string> &table) {
 					docname.SetString(spot->value.c_str(), d.GetAllocator());
 					d.AddMember("__NAME__", docname, d.GetAllocator());
 				}
-				table.put(document_key, new std::string(toString(&d)));
 				spot = spot->next;
 			}
 			break;
