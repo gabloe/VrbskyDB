@@ -116,6 +116,12 @@ bool Parsing::Parser::append(Parsing::Query &q) {
 
 bool Parsing::Parser::remove(Parsing::Query &q) {
 	q.command = REMOVE;
+	try {
+		q.keys = keyList();
+	} catch (std::exception &e) {
+		std::cout << e.what() << std::endl;
+		return false;
+	}
 	std::string token = Parsing::Parser::sc.nextToken();
 	if (toLower(token).compare("from")) {
 		Parsing::Parser::sc.push_back(token);
@@ -129,30 +135,17 @@ bool Parsing::Parser::remove(Parsing::Query &q) {
 		return false;
 	}
 	q.documents = new List(Parsing::Parser::sc.nextToken());
-	token = Parsing::Parser::sc.nextToken();
-	if (toLower(token).compare("where")) {
-		Parsing::Parser::sc.push_back(token);
-		std::cout << "PARSING ERROR: Expected 'where', found " << token << std::endl;
-		return false;
-	}
-	token = Parsing::Parser::sc.nextToken();
-	if (toLower(token).compare("key")) {
-		Parsing::Parser::sc.push_back(token);
-		std::cout << "PARSING ERROR: Expected 'key', found " << token << std::endl;
-		return false;
-	}
-	if (Parsing::Parser::sc.nextChar() != '=') {
-		Parsing::Parser::sc.push_back(1);
-		std::cout << "PARSING ERROR: Expected an equals" << std::endl;
-		return false;
-	}
-	q.keys = new Parsing::List(Parsing::Parser::sc.nextString());
 	return true;
 }
 
 bool Parsing::Parser::select(Parsing::Query &q) {
 	q.command = SELECT;
-	q.keys = keyList();	
+	try {
+		q.keys = keyList();
+	} catch (std::exception &e) {
+		std::cout << e.what() << std::endl;
+		return false;
+	}
 	std::string token = Parsing::Parser::sc.nextToken();
 	if (toLower(token).compare("from")) {
 		Parsing::Parser::sc.push_back(token);
@@ -240,14 +233,17 @@ Parsing::List *Parsing::Parser::keyList() {
 	} else {
 		std::string id = Parsing::Parser::sc.nextToken();
 		if (id.size() == 0) {
-			std::cout << "PARSING ERROR: Expected identifier." << std::endl;
-			return NULL;
+			Parsing::Parser::sc.push_back(id);
+			throw std::runtime_error("PARSING ERROR: Expected an identifier.");
+		} else if (id.at(0) == '_') {
+			Parsing::Parser::sc.push_back(id);
+			throw std::runtime_error("PARSING ERROR: Key cannot begin with an underscore.");
 		}
 		item->value = id;
 	}
 	char next = Parsing::Parser::sc.nextChar();
 	if (next == ',') {
-		item->next = Parsing::Parser::keyList();
+		item->next = keyList();
 	} else {
 		Parsing::Parser::sc.push_back(1);
 	}
@@ -278,8 +274,11 @@ bool Parsing::Parser::aggregate(Parsing::List *list) {
 Parsing::List * Parsing::Parser::idList() {
 	std::string id = Parsing::Parser::sc.nextToken();
 	if (id.size() == 0) {
-		std::cout << "PARSING ERROR: Expected identifier." << std::endl;
-		return NULL;
+		Parsing::Parser::sc.push_back(id);
+		throw std::runtime_error("PARSING ERROR: Expected an identifier.");
+	} else if (id.at(0) == '_') {
+		Parsing::Parser::sc.push_back(id);
+		throw std::runtime_error("PARSING ERROR: Key cannot begin with an underscore.");
 	}
 	List *doc = new List(id);
 	char next = Parsing::Parser::sc.nextChar();

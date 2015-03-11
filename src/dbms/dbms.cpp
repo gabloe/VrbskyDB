@@ -4,8 +4,11 @@
 #include "../include/rapidjson/document.h"
 #include "../include/rapidjson/writer.h"
 #include "../include/rapidjson/stringbuffer.h"
+#include "../include/rapidjson/prettywriter.h"
 
 void execute(Parsing::Query &, Storage::LinearHash<std::string> &);
+std::string toPrettyString(std::string *);
+std::string toPrettyString(rapidjson::Document *);
 
 // Convert a JSON object to a std::string
 std::string toString(rapidjson::Document *doc) {
@@ -14,6 +17,19 @@ std::string toString(rapidjson::Document *doc) {
 	doc->Accept(writer);
 	std::string str = buffer.GetString();
 	return str;
+}
+
+std::string toPrettyString(std::string *doc) {
+	rapidjson::Document d;
+	d.Parse(doc->c_str());
+	return toPrettyString(&d);
+}
+
+std::string toPrettyString(rapidjson::Document *doc) {
+	rapidjson::StringBuffer out;
+	rapidjson::PrettyWriter<rapidjson::StringBuffer> writer(out);
+	doc->Accept(writer);
+	return out.GetString();
 }
 
 // Create a JSON object containing a project name and list of documents (one document initially)
@@ -144,7 +160,23 @@ void removeProject(std::string *pname, Storage::LinearHash<std::string> &table) 
 	}
 }
 
+void removeKey(std::string pname, std::string dname, std::string key, Storage::LinearHash<std::string> &table) {
+	std::string doc(pname + "." + dname);
+	uint64_t doc_hash = hash(doc, doc.size());
+	if (table.contains(doc_hash)) {
+		rapidjson::Document d;
+		std::string *doc_text = table.get(doc_hash);
+		d.Parse(doc_text->c_str());
+		if (d.HasMember(key.c_str())) {
+			d.RemoveMember(key.c_str());
+			*doc_text = toString(&d);
+		}
+	}
+}
+
 void execute(Parsing::Query &q, Storage::LinearHash<std::string> &table) {
+	clock_t start, end;
+	start = std::clock();	
 	switch (q.command) {
 	case Parsing::CREATE:
 		// Create the project and/or document with or without any values.
@@ -225,7 +257,7 @@ void execute(Parsing::Query &q, Storage::LinearHash<std::string> &table) {
 				uint64_t phash = hash(p, p.size());
 				if (table.contains(phash)) {
 					std::string *data = table.get(phash);
-					std::cout << *data << std::endl;
+					std::cout << toPrettyString(data) << std::endl;
 				} else {
 					std::cout << "No projects found." << std::endl;
 				}
@@ -233,7 +265,7 @@ void execute(Parsing::Query &q, Storage::LinearHash<std::string> &table) {
 				uint64_t dhash = hash(*q.project, q.project->size());
 				if (table.contains(dhash)) {
 					std::string *data = table.get(dhash);
-					std::cout << *data << std::endl;
+					std::cout << toPrettyString(data) << std::endl;
 				} else {
 					std::cout << "No documents found." << std::endl;
 				}
@@ -241,9 +273,19 @@ void execute(Parsing::Query &q, Storage::LinearHash<std::string> &table) {
 			break;
 		}
 	case Parsing::REMOVE:
-		// Remove a key
-		q.print();
-		break;
+		{
+			q.print();
+			// Remove a key
+			if (q.documents) {
+				std::string doc = q.documents->value;
+				Parsing::List *spot = q.keys;
+				while (spot) {
+					removeKey(*q.project, doc, spot->value, table);
+					spot=spot->next;
+				}
+			}
+			break;
+		}
 	case Parsing::APPEND:
 		// Add a new field of append to an existing field
 		q.print();
@@ -251,6 +293,8 @@ void execute(Parsing::Query &q, Storage::LinearHash<std::string> &table) {
 	default:
 		std::cout << "Command not recognized." << std::endl;
 	}
+	end = std::clock();
+	std::cout << "Done!  Took " << 1000 * (float)(end - start) / CLOCKS_PER_SEC << " milliseconds." << std::endl;
 }
 
 inline bool file_exists (const std::string& name) {
