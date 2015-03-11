@@ -274,7 +274,6 @@ void execute(Parsing::Query &q, Storage::LinearHash<std::string> &table) {
 		}
 	case Parsing::REMOVE:
 		{
-			q.print();
 			// Remove a key
 			if (q.documents) {
 				std::string doc = q.documents->value;

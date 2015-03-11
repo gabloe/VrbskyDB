@@ -6,7 +6,7 @@ delete document   A.B;
 select A,B, C   from A.B;
 select avg(A),   min(B),max(C), d from A.*;
 select * from   A.B;
-remove  from A.B where key="A";
+remove A,B,C from A.B;
 append to A.B {"A": [1,2,3,4,5};
 show    projects ;
 show documents in A;
