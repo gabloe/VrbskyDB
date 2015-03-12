@@ -5,13 +5,13 @@
 #include <rapidjson/writer.h>
 #include <rapidjson/stringbuffer.h>
 #include <rapidjson/prettywriter.h>
-#include <stx/btree_multimap.h>
+#include <stx/btree_map.h>
 
 void execute(Parsing::Query &, Storage::LinearHash<std::string> &);
 std::string toPrettyString(std::string *);
 std::string toPrettyString(rapidjson::Document *);
 
-typedef stx::btree_multimap<std::string,std::string> btree_type;
+typedef stx::btree_map<std::string,std::string> btree_type;
 // Convert a JSON object to a std::string
 std::string toString(rapidjson::Document *doc) {
 	rapidjson::StringBuffer buffer;
