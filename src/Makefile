@@ -2,7 +2,7 @@ OUT=../bin/
 OBJECTS=./objects/
 CC=g++
 CFLAGS=--std=c++11 -O3 -g -Wall -Wextra
-INCLUDES += -I ./includes/rapidjson
+INCLUDES += -I ./include/
 
 binary: $(OUT) $(OBJECTS)dbms.o $(OBJECTS)Parser.o $(OBJECTS)Scanner.o
 	$(CC) $(CFLAGS) $(INCLUDES) -o $(OUT)dbms $(OBJECTS)*.o 

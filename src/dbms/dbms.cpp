@@ -1,15 +1,17 @@
 #include "../storage/LinearHash.h"
 #include "../parsing/Parser.h"
 #include "../parsing/Scanner.h"
-#include "../include/rapidjson/document.h"
-#include "../include/rapidjson/writer.h"
-#include "../include/rapidjson/stringbuffer.h"
-#include "../include/rapidjson/prettywriter.h"
+#include <rapidjson/document.h>
+#include <rapidjson/writer.h>
+#include <rapidjson/stringbuffer.h>
+#include <rapidjson/prettywriter.h>
+#include <stx/btree_multimap.h>
 
 void execute(Parsing::Query &, Storage::LinearHash<std::string> &);
 std::string toPrettyString(std::string *);
 std::string toPrettyString(rapidjson::Document *);
 
+typedef stx::btree_multimap<std::string,std::string> btree_type;
 // Convert a JSON object to a std::string
 std::string toString(rapidjson::Document *doc) {
 	rapidjson::StringBuffer buffer;
@@ -328,6 +330,13 @@ int main(int argc, char **argv) {
 	}
 	std::string q = "";
 	Storage::LinearHash<std::string> *table;
+	btree_type bt;
+	// Insert key/value into B+ tree
+	bt.insert(std::string("Hello"), std::string("123"));
+	// Find the key, get the value.
+	// Field "second" gets the value, "first" is the key.
+	// NULL if not found
+	std::cout << bt.find(std::string("Hello"))->second << std::endl;
 	if (file_exists(fname)) {
 		table = readFromFile(fname);
 	} else {
