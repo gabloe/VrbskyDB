@@ -1,17 +1,43 @@
 #include "../storage/LinearHash.h"
 #include "../parsing/Parser.h"
 #include "../parsing/Scanner.h"
+#include <fstream> 
+#include <sstream> 
 #include <rapidjson/document.h>
 #include <rapidjson/writer.h>
 #include <rapidjson/stringbuffer.h>
 #include <rapidjson/prettywriter.h>
-#include <stx/btree_map.h>
+#include <stx/btree_multimap.h>
+
+#ifdef _WIN32
+#include <Winsock2.h>
+WSADATA wsaData;
+void InitNetworking() {
+	// Init Winsock2 //
+	WSAStartup( MAKEWORD(2,2), &wsaData );
+	atexit( (void(*)())WSACleanup );
+}
+#else // _WIN32 //
+void InitNetworking() { }
+#endif // _WIN32 //
 
 void execute(Parsing::Query &, Storage::LinearHash<std::string> &);
 std::string toPrettyString(std::string *);
 std::string toPrettyString(rapidjson::Document *);
 
-typedef stx::btree_map<std::string,std::string> btree_type;
+template <typename KeyType>
+struct traits_nodebug : stx::btree_default_set_traits<KeyType>
+{
+	static const bool       selfverify = true;
+	static const bool       debug = false;
+
+	static const int        leafslots = 8;
+	static const int        innerslots = 8;
+};
+
+typedef stx::btree_multimap<unsigned long long, unsigned long long,
+            std::less<unsigned long long>, traits_nodebug<unsigned long long> > btree_type;
+
 // Convert a JSON object to a std::string
 std::string toString(rapidjson::Document *doc) {
 	rapidjson::StringBuffer buffer;
@@ -324,24 +350,31 @@ inline bool file_exists (const std::string& name) {
 }
 
 int main(int argc, char **argv) {
-	std::string fname = "dump.db";
+	std::string meta_fname("meta.db");
+	std::string btree_fname("indices.bpt");
 	if (argc > 1) {
-		fname = argv[1];
+		meta_fname = argv[1];
+	}
+	if (argc > 2) {
+		btree_fname = argv[2];
 	}
 	std::string q = "";
 	Storage::LinearHash<std::string> *table;
 	btree_type bt;
-	// Insert key/value into B+ tree
-	bt.insert(std::string("Hello"), std::string("123"));
-	// Find the key, get the value.
-	// Field "second" gets the value, "first" is the key.
-	// NULL if not found
-	std::cout << bt.find(std::string("Hello"))->second << std::endl;
-	if (file_exists(fname)) {
-		table = readFromFile(fname);
+	if (file_exists(meta_fname)) {
+		table = readFromFile(meta_fname);
 	} else {
 		table = new Storage::LinearHash<std::string>(1025,2048);
+	}	
+	if (file_exists(btree_fname)) {
+		std::ifstream in(btree_fname, std::ifstream::in);
+		std::stringstream iss;
+		iss << in.rdbuf();
+		in.close();
+		bt.restore(iss);
 	}
+	bt.insert2(123, 456);
+	std::cout << bt.find(123)->second << std::endl;
 	while (1) {
 		std::cout << "Enter a query (q to quit):" << std::endl;
 		getline(std::cin, q);
@@ -355,6 +388,6 @@ int main(int argc, char **argv) {
 		}
 		std::cout << std::endl;
 	}
-	dumpToFile(fname, *table);
+	dumpToFile(meta_fname, *table);
 	return 0;
 }

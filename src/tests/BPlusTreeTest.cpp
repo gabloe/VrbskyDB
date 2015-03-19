@@ -52,7 +52,9 @@ void test_dump_restore_3200()
 	    srand(34234235);
 	    for(unsigned int i = 0; i < 3200; i++)
 	    {
-		bt.insert(rand() % 100);
+		unsigned int x = rand() % 100;
+		unsigned int y = rand() % 100;
+		bt.insert(x);
 	    }
 
 	    ASSERT(bt.size() == 3200);
