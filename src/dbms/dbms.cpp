@@ -8,18 +8,7 @@
 #include <rapidjson/stringbuffer.h>
 #include <rapidjson/prettywriter.h>
 #include <stx/btree_multimap.h>
-
-#ifdef _WIN32
-#include <Winsock2.h>
-WSADATA wsaData;
-void InitNetworking() {
-	// Init Winsock2 //
-	WSAStartup( MAKEWORD(2,2), &wsaData );
-	atexit( (void(*)())WSACleanup );
-}
-#else // _WIN32 //
-void InitNetworking() { }
-#endif // _WIN32 //
+#include <UUID.h>
 
 void execute(Parsing::Query &, Storage::LinearHash<std::string> &);
 std::string toPrettyString(std::string *);
@@ -211,12 +200,27 @@ void addFields(std::string pname, std::string dname, rapidjson::Document &d, Sto
 	rapidjson::Document arrayContainer;
 	arrayContainer.SetObject();
 	rapidjson::Value uuidArray(rapidjson::kArrayType);
-	for (rapidjson::Value::ConstMemberIterator itr = d.MemberBegin(); itr != d.MemberEnd(); ++itr) {
+	for (rapidjson::Value::MemberIterator itr = d.MemberBegin(); itr != d.MemberEnd(); ++itr) {
 		// Generate UUID
+		std::string uuid = std::to_string(newUUID64());
 		// Add UUID to json array
 		rapidjson::Value field;
-		field.SetString(itr->name.GetString(), arrayContainer.GetAllocator());
+		field.SetString(uuid.c_str(), arrayContainer.GetAllocator());
 		uuidArray.PushBack(field, arrayContainer.GetAllocator());
+		uint64_t dataKey = hash(uuid, uuid.size());
+		rapidjson::Document kv;
+		kv.SetObject();
+		const std::string k_str = itr->name.GetString();
+		rapidjson::Value &v_tmp = d[k_str.c_str()];
+		rapidjson::Value v(v_tmp, kv.GetAllocator());
+		rapidjson::Value k;
+		k.SetString(k_str.c_str(), kv.GetAllocator());
+		rapidjson::Value uuid_v;
+		uuid_v.SetString(uuid.c_str(), kv.GetAllocator());
+		kv.AddMember("__UUID__", uuid_v, kv.GetAllocator());
+		kv.AddMember("__KEY__", k, kv.GetAllocator());
+		kv.AddMember("__VALUE__", v, kv.GetAllocator());	
+		table.put(dataKey, new std::string(toString(&kv)));
 	}
 	rapidjson::Value name_string;
 	name_string.SetString(dname.c_str(), arrayContainer.GetAllocator());
