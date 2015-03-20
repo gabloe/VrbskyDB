@@ -1,6 +1,6 @@
 OUT=../objects/
 CC=g++
-CFLAGS=--std=c++11 -O3 -g -Wall -Wextra
+CFLAGS=--std=c++11 -O3 -Wall -Wextra
 INCLUDE_DIR=../include/
 INCLUDES=-I$(INCLUDE_DIR)
 

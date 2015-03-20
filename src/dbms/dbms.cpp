@@ -7,25 +7,11 @@
 #include <rapidjson/writer.h>
 #include <rapidjson/stringbuffer.h>
 #include <rapidjson/prettywriter.h>
-#include <stx/btree_multimap.h>
 #include <UUID.h>
 
 void execute(Parsing::Query &, Storage::LinearHash<std::string> &);
 std::string toPrettyString(std::string *);
 std::string toPrettyString(rapidjson::Document *);
-
-template <typename KeyType>
-struct traits_nodebug : stx::btree_default_set_traits<KeyType>
-{
-	static const bool       selfverify = true;
-	static const bool       debug = false;
-
-	static const int        leafslots = 8;
-	static const int        innerslots = 8;
-};
-
-typedef stx::btree_multimap<unsigned long long, unsigned long long,
-            std::less<unsigned long long>, traits_nodebug<unsigned long long> > btree_type;
 
 // Convert a JSON object to a std::string
 std::string toString(rapidjson::Document *doc) {
@@ -40,6 +26,23 @@ std::string toPrettyString(std::string *doc) {
 	rapidjson::Document d;
 	d.Parse(doc->c_str());
 	return toPrettyString(&d);
+}
+
+std::string *readData(std::string dataFile, std::string uuid, Storage::LinearHash<std::string> &indices) {
+	uint64_t key = hash(uuid, uuid.size());
+	int ind = atoi(indices.get(key)->c_str());
+		
+	std::ifstream in(dataFile.c_str(), std::ios::in | std::ios::binary);
+	in.seekg(ind);
+
+	int len;
+	in >> len;
+	char *buffer = new char[len];
+	in.read(buffer, len);
+	in.close();
+	std::string *ret = new std::string(buffer);
+	delete[] buffer;
+	return ret;
 }
 
 std::string toPrettyString(rapidjson::Document *doc) {
@@ -92,12 +95,12 @@ rapidjson::Document appendDocument(std::string *value, Parsing::List *doc) {
 	return project;
 }
 
-void removeDocument(std::string *pname, Parsing::List *doc, Storage::LinearHash<std::string> &table) {
+void removeDocument(std::string *pname, Parsing::List *doc, Storage::LinearHash<std::string> &meta) {
 	std::string proj_list_key(*pname);
 	uint64_t doc_list = hash(proj_list_key, proj_list_key.size());
 	rapidjson::Document d;
-	if (table.contains(doc_list)) {
-		std::string *doclist = table.get(doc_list);
+	if (meta.contains(doc_list)) {
+		std::string *doclist = meta.get(doc_list);
 		d.Parse(doclist->c_str());
 		rapidjson::Value &projectArray = d["__DOCUMENTS__"];
 		Parsing::List *spot = doc;
@@ -116,14 +119,14 @@ void removeDocument(std::string *pname, Parsing::List *doc, Storage::LinearHash<
 	}
 }
 
-void addProject(std::string *pname, Storage::LinearHash<std::string> &table) {
+void addProject(std::string *pname, Storage::LinearHash<std::string> &meta) {
 	std::string proj_list_key("__PROJECTS__");
 	uint64_t project_list = hash(proj_list_key, proj_list_key.size());
 	rapidjson::Document d;
 	rapidjson::Value proj;
 	proj.SetString(pname->c_str(), d.GetAllocator());
-	if (table.contains(project_list)) {
-		std::string *project = table.get(project_list);
+	if (meta.contains(project_list)) {
+		std::string *project = meta.get(project_list);
 		d.Parse(project->c_str());
 		rapidjson::Value &projectArray = d["__PROJECTS__"];
 		projectArray.PushBack(proj, d.GetAllocator());
@@ -133,17 +136,17 @@ void addProject(std::string *pname, Storage::LinearHash<std::string> &table) {
 		rapidjson::Value projectArray(rapidjson::kArrayType);
 		projectArray.PushBack(proj, d.GetAllocator());
 		d.AddMember("__PROJECTS__", projectArray, d.GetAllocator());
-		table.put(project_list, new std::string(toString(&d)));
+		meta.put(project_list, new std::string(toString(&d)));
 	}
 }
 
 // Remove the project name from the project metadata list.
-void removeProject(std::string *pname, Storage::LinearHash<std::string> &table) {
+void removeProject(std::string *pname, Storage::LinearHash<std::string> &meta) {
 	std::string proj_list_key("__PROJECTS__");
 	uint64_t project_list = hash(proj_list_key, proj_list_key.size());
 	rapidjson::Document d;
-	if (table.contains(project_list)) {
-		std::string *projects = table.get(project_list);
+	if (meta.contains(project_list)) {
+		std::string *projects = meta.get(project_list);
 		d.Parse(projects->c_str());
 		rapidjson::Value &projectArray = d["__PROJECTS__"];
 
@@ -160,8 +163,8 @@ void removeProject(std::string *pname, Storage::LinearHash<std::string> &table) 
 
 	// Remove all documents associated with this project.
 	uint64_t proj_hash = hash(*pname, pname->size());
-	if (table.contains(proj_hash)) {
-		std::string *doc_list = table.get(proj_hash);
+	if (meta.contains(proj_hash)) {
+		std::string *doc_list = meta.get(proj_hash);
 		rapidjson::Document d2;
 		d2.Parse(doc_list->c_str());
 		rapidjson::Value &docArray = d2["__DOCUMENTS__"];
@@ -169,20 +172,20 @@ void removeProject(std::string *pname, Storage::LinearHash<std::string> &table) 
 			std::string dd = itr->GetString();
 			std::string proj_doc_key(*pname + "." + dd);
 			uint64_t proj_doc_hash = hash(proj_doc_key, proj_doc_key.size());
-			if (table.contains(proj_doc_hash)) {
-				table.remove(proj_doc_hash);
+			if (meta.contains(proj_doc_hash)) {
+				meta.remove(proj_doc_hash);
 			}
 		}
-		table.remove(proj_hash);
+		meta.remove(proj_hash);
 	}
 }
 
-void removeKey(std::string pname, std::string dname, std::string key, Storage::LinearHash<std::string> &table) {
+void removeKey(std::string pname, std::string dname, std::string key, Storage::LinearHash<std::string> &meta) {
 	std::string doc(pname + "." + dname);
 	uint64_t doc_hash = hash(doc, doc.size());
-	if (table.contains(doc_hash)) {
+	if (meta.contains(doc_hash)) {
 		rapidjson::Document d;
-		std::string *doc_text = table.get(doc_hash);
+		std::string *doc_text = meta.get(doc_hash);
 		d.Parse(doc_text->c_str());
 		if (d.HasMember(key.c_str())) {
 			d.RemoveMember(key.c_str());
@@ -191,10 +194,29 @@ void removeKey(std::string pname, std::string dname, std::string key, Storage::L
 	}
 }
 
-void addFields(std::string pname, std::string dname, rapidjson::Document &d, Storage::LinearHash<std::string> &table) {
+unsigned int appendData(size_t length, std::string data, std::string dataFile) {
+	std::ofstream fout;
+	std::ifstream fin;
+	fin.open(dataFile.c_str(), std::ios::in | std::ios::binary);
+	fin.seekg(0, fin.end);
+	int pos = fin.tellg();
+	fin.close();
+
+	fout.open(dataFile.c_str(), std::ios::app | std::ios::binary);
+	assert(!fout.fail());
+	fout << length << data;
+	fout.close();
+
+	if (pos == -1)	
+		return 0;
+	else
+		return pos;
+}
+
+void addFields(std::string pname, std::string dname, rapidjson::Document &d, Storage::LinearHash<std::string> &meta, Storage::LinearHash<std::string> &indices, std::string dataFile) {
 	std::string key_string(pname + "." + dname);
 	uint64_t key = hash(key_string, key_string.size());
-	if (table.contains(key)) {
+	if (meta.contains(key)) {
 		std::cout << "Table already contains this document!" << std::endl;
 	}
 	rapidjson::Document arrayContainer;
@@ -202,12 +224,13 @@ void addFields(std::string pname, std::string dname, rapidjson::Document &d, Sto
 	rapidjson::Value uuidArray(rapidjson::kArrayType);
 	for (rapidjson::Value::MemberIterator itr = d.MemberBegin(); itr != d.MemberEnd(); ++itr) {
 		// Generate UUID
-		std::string uuid = std::to_string(newUUID64());
+		uint64_t uuid_l = newUUID64();
+		std::string uuid = std::to_string(uuid_l);
 		// Add UUID to json array
 		rapidjson::Value field;
 		field.SetString(uuid.c_str(), arrayContainer.GetAllocator());
 		uuidArray.PushBack(field, arrayContainer.GetAllocator());
-		uint64_t dataKey = hash(uuid, uuid.size());
+
 		rapidjson::Document kv;
 		kv.SetObject();
 		const std::string k_str = itr->name.GetString();
@@ -215,21 +238,28 @@ void addFields(std::string pname, std::string dname, rapidjson::Document &d, Sto
 		rapidjson::Value v(v_tmp, kv.GetAllocator());
 		rapidjson::Value k;
 		k.SetString(k_str.c_str(), kv.GetAllocator());
+
 		rapidjson::Value uuid_v;
 		uuid_v.SetString(uuid.c_str(), kv.GetAllocator());
 		kv.AddMember("__UUID__", uuid_v, kv.GetAllocator());
 		kv.AddMember("__KEY__", k, kv.GetAllocator());
 		kv.AddMember("__VALUE__", v, kv.GetAllocator());	
-		table.put(dataKey, new std::string(toString(&kv)));
+		std::string data = toString(&kv);
+		size_t len = data.size();
+
+		// Write data out to a file, record file offset and save with UUID as key
+		unsigned int offset = appendData(len, data, dataFile);
+		uint64_t uuid_key = hash(uuid, uuid.size());
+		indices.put(uuid_key, new std::string(std::to_string(offset)));
 	}
 	rapidjson::Value name_string;
 	name_string.SetString(dname.c_str(), arrayContainer.GetAllocator());
 	arrayContainer.AddMember("__NAME__", name_string, arrayContainer.GetAllocator());
 	arrayContainer.AddMember("__FIELDS__", uuidArray, arrayContainer.GetAllocator());
-	table.put(key, new std::string(toString(&arrayContainer)));
+	meta.put(key, new std::string(toString(&arrayContainer)));
 }
 
-void execute(Parsing::Query &q, Storage::LinearHash<std::string> &table) {
+void execute(Parsing::Query &q, Storage::LinearHash<std::string> &meta, Storage::LinearHash<std::string> &indices, std::string dataFile) {
 	clock_t start, end;
 	start = std::clock();	
 	switch (q.command) {
@@ -239,9 +269,9 @@ void execute(Parsing::Query &q, Storage::LinearHash<std::string> &table) {
 			// Insert the project and document if it doesn't already exist
 			if (q.project) {
 				uint64_t project_key = hash(*q.project, (*q.project).size());
-				if (table.contains(project_key)) {
+				if (meta.contains(project_key)) {
 					// Project exists.  Append the document to the list
-					std::string *docList = table.get(project_key);
+					std::string *docList = meta.get(project_key);
 					try {
 						rapidjson::Document proj = appendDocument(docList, q.documents);
 						std::string project_json = toString(&proj);
@@ -253,16 +283,16 @@ void execute(Parsing::Query &q, Storage::LinearHash<std::string> &table) {
 				} else {
 					// Project doesn't exist.  Create project and add document if one is being created.
 					rapidjson::Document project = createProject(*q.project, q.documents);
-					addProject(q.project, table);
+					addProject(q.project, meta);
 					std::string project_json = toString(&project);
-					table.put(project_key, new std::string(project_json));
+					meta.put(project_key, new std::string(project_json));
 				}
 			}
 			Parsing::List *spot = q.documents;
 			while (spot) {
 				rapidjson::Document d;
 				if (q.value && !d.Parse(q.value->c_str()).HasParseError()) {
-					addFields(*q.project, spot->value, d, table);
+					addFields(*q.project, spot->value, d, meta, indices, dataFile);
 				} else {
 					// No value.  Create empty documents;
 					d.SetObject();
@@ -286,14 +316,14 @@ void execute(Parsing::Query &q, Storage::LinearHash<std::string> &table) {
 				while (spot) {
 					std::string key(*q.project + "." + spot->value);
 					uint64_t doc_hash = hash(key, key.size());
-					if (table.contains(doc_hash)) {
-						table.remove(doc_hash);
+					if (meta.contains(doc_hash)) {
+						meta.remove(doc_hash);
 					}
-					removeDocument(q.project, spot, table);
+					removeDocument(q.project, spot, meta);
 					spot = spot->next;
 				}
 			} else {
-				removeProject(q.project, table);
+				removeProject(q.project, meta);
 			}
 			break;
 		}
@@ -303,16 +333,16 @@ void execute(Parsing::Query &q, Storage::LinearHash<std::string> &table) {
 			if (!q.project->compare("__PROJECTS__")) {
 				std::string p("__PROJECTS__");
 				uint64_t phash = hash(p, p.size());
-				if (table.contains(phash)) {
-					std::string *data = table.get(phash);
+				if (meta.contains(phash)) {
+					std::string *data = meta.get(phash);
 					std::cout << toPrettyString(data) << std::endl;
 				} else {
 					std::cout << "No projects found." << std::endl;
 				}
 			} else { // List the documents in a specific project
 				uint64_t dhash = hash(*q.project, q.project->size());
-				if (table.contains(dhash)) {
-					std::string *data = table.get(dhash);
+				if (meta.contains(dhash)) {
+					std::string *data = meta.get(dhash);
 					std::cout << toPrettyString(data) << std::endl;
 				} else {
 					std::cout << "No documents found." << std::endl;
@@ -327,7 +357,7 @@ void execute(Parsing::Query &q, Storage::LinearHash<std::string> &table) {
 				std::string doc = q.documents->value;
 				Parsing::List *spot = q.keys;
 				while (spot) {
-					removeKey(*q.project, doc, spot->value, table);
+					removeKey(*q.project, doc, spot->value, meta);
 					spot=spot->next;
 				}
 			}
@@ -354,31 +384,34 @@ inline bool file_exists (const std::string& name) {
 }
 
 int main(int argc, char **argv) {
-	std::string meta_fname("meta.db");
-	std::string btree_fname("indices.bpt");
+	std::string meta_fname("meta.lht");
+	std::string indices_fname("indices.lht");
+	std::string data_fname("data.db");
 	if (argc > 1) {
 		meta_fname = argv[1];
 	}
 	if (argc > 2) {
-		btree_fname = argv[2];
+		indices_fname = argv[2];
+	}
+	if (argc > 3) {
+		data_fname = argv[3];
 	}
 	std::string q = "";
-	Storage::LinearHash<std::string> *table;
-	btree_type bt;
+	Storage::LinearHash<std::string> *meta;
+	Storage::LinearHash<std::string> *indices;
+
 	if (file_exists(meta_fname)) {
-		table = readFromFile(meta_fname);
+		meta = readFromFile(meta_fname);
 	} else {
-		table = new Storage::LinearHash<std::string>(1025,2048);
-	}	
-	if (file_exists(btree_fname)) {
-		std::ifstream in(btree_fname, std::ifstream::in);
-		std::stringstream iss;
-		iss << in.rdbuf();
-		in.close();
-		bt.restore(iss);
+		meta = new Storage::LinearHash<std::string>(1025,2048);
 	}
-	bt.insert2(123, 456);
-	std::cout << bt.find(123)->second << std::endl;
+
+	if (file_exists(indices_fname)) {
+		indices = readFromFile(indices_fname);
+	} else {
+		indices = new Storage::LinearHash<std::string>(1025,2048);
+	}
+
 	while (1) {
 		std::cout << "Enter a query (q to quit):" << std::endl;
 		getline(std::cin, q);
@@ -388,10 +421,13 @@ int main(int argc, char **argv) {
 		Parsing::Parser p(q);
 		Parsing::Query *query = p.parse();
 		if (query) {
-			execute(*query, *table);
+			execute(*query, *meta, *indices, data_fname);
 		}
 		std::cout << std::endl;
 	}
-	dumpToFile(meta_fname, *table);
+
+	dumpToFile(meta_fname, *meta);
+	dumpToFile(indices_fname, *indices);
+
 	return 0;
 }
