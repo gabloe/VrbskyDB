@@ -1,7 +1,7 @@
 OUT=../bin/
 OBJECTS=./objects/
 CC=g++
-CFLAGS=--std=c++11 -O3 -Wall -Wextra
+CFLAGS=--std=c++11 -O3 -Wall -Wextra -g
 INCLUDES += -I ./include/
 
 binary: $(OUT) $(OBJECTS)dbms.o $(OBJECTS)Parser.o $(OBJECTS)Scanner.o

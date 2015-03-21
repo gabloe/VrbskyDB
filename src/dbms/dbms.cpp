@@ -28,21 +28,43 @@ std::string toPrettyString(std::string *doc) {
 	return toPrettyString(&d);
 }
 
+std::string toPrettyString(char *doc) {
+	return toPrettyString(new std::string(doc));
+}
+
 std::string *readData(std::string dataFile, std::string uuid, Storage::LinearHash<std::string> &indices) {
 	uint64_t key = hash(uuid, uuid.size());
 	int ind = atoi(indices.get(key)->c_str());
-		
 	std::ifstream in(dataFile.c_str(), std::ios::in | std::ios::binary);
 	in.seekg(ind);
 
-	int len;
-	in >> len;
-	char *buffer = new char[len];
-	in.read(buffer, len);
+	size_t len;
+	in.read(reinterpret_cast<char*>(&len), sizeof(size_t));
+	std::string ret(len, '\0'); 
+	in.read(&ret[0], len);
 	in.close();
-	std::string *ret = new std::string(buffer);
-	delete[] buffer;
-	return ret;
+	return new std::string(ret);
+}
+
+Parsing::List *extractUUIDArray(std::string project, std::string document, Storage::LinearHash<std::string> &meta) {
+	std::string key(project + "." + document);
+	uint64_t keyHash = hash(key, key.size());
+	Parsing::List *uuidList = new Parsing::List();
+	if (meta.contains(keyHash)) {
+		std::string *fields = meta.get(keyHash);
+		rapidjson::Document doc;
+		doc.Parse(fields->c_str());
+		rapidjson::Value &fieldArray = doc["__FIELDS__"];
+		Parsing::List *spot = uuidList;
+		rapidjson::Value::ConstValueIterator itr = fieldArray.Begin();
+		spot->value = (itr++)->GetString();
+		while (itr != fieldArray.End()) {
+			spot->next = new Parsing::List(itr->GetString());
+			spot = spot->next;
+			++itr;
+		}
+	}
+	return uuidList;
 }
 
 std::string toPrettyString(rapidjson::Document *doc) {
@@ -204,7 +226,8 @@ unsigned int appendData(size_t length, std::string data, std::string dataFile) {
 
 	fout.open(dataFile.c_str(), std::ios::app | std::ios::binary);
 	assert(!fout.fail());
-	fout << length << data;
+	fout.write(reinterpret_cast<char*>(&length), sizeof(length));
+	fout.write(data.c_str(), length);
 	fout.close();
 
 	if (pos == -1)	
@@ -222,7 +245,7 @@ void addFields(std::string pname, std::string dname, rapidjson::Document &d, Sto
 	rapidjson::Document arrayContainer;
 	arrayContainer.SetObject();
 	rapidjson::Value uuidArray(rapidjson::kArrayType);
-	for (rapidjson::Value::MemberIterator itr = d.MemberBegin(); itr != d.MemberEnd(); ++itr) {
+	for (rapidjson::Value::ConstMemberIterator itr = d.MemberBegin(); itr != d.MemberEnd(); ++itr) {
 		// Generate UUID
 		uint64_t uuid_l = newUUID64();
 		std::string uuid = std::to_string(uuid_l);
@@ -234,16 +257,14 @@ void addFields(std::string pname, std::string dname, rapidjson::Document &d, Sto
 		rapidjson::Document kv;
 		kv.SetObject();
 		const std::string k_str = itr->name.GetString();
+		rapidjson::Value k(k_str.c_str(), kv.GetAllocator());
 		rapidjson::Value &v_tmp = d[k_str.c_str()];
 		rapidjson::Value v(v_tmp, kv.GetAllocator());
-		rapidjson::Value k;
-		k.SetString(k_str.c_str(), kv.GetAllocator());
 
 		rapidjson::Value uuid_v;
 		uuid_v.SetString(uuid.c_str(), kv.GetAllocator());
 		kv.AddMember("__UUID__", uuid_v, kv.GetAllocator());
-		kv.AddMember("__KEY__", k, kv.GetAllocator());
-		kv.AddMember("__VALUE__", v, kv.GetAllocator());	
+		kv.AddMember(k, v, kv.GetAllocator());
 		std::string data = toString(&kv);
 		size_t len = data.size();
 
@@ -305,9 +326,23 @@ void execute(Parsing::Query &q, Storage::LinearHash<std::string> &meta, Storage:
 			break;
 		}
 	case Parsing::SELECT:
-		// Build a JSON object with the results
-		q.print();
-		break;
+		{
+			// Build a JSON object with the results
+			Parsing::List *keyList = q.keys;
+			while (keyList) {
+				if (!keyList->value.compare("*")) {
+					// Select all fields from proj.doc
+					Parsing::List *uuidList = extractUUIDArray(*q.project, q.documents->value, meta);
+					while (uuidList) {
+						std::string *field = readData(dataFile, uuidList->value, indices);
+						std::cout << toPrettyString(field) << std::endl;
+						uuidList = uuidList->next;
+					}
+				}
+				keyList = keyList->next;
+			}
+			break;
+		}
 	case Parsing::DELETE:
 		// Delete a project or document
 		{
@@ -363,8 +398,8 @@ void execute(Parsing::Query &q, Storage::LinearHash<std::string> &meta, Storage:
 			}
 			break;
 		}
-	case Parsing::APPEND:
-		// Add a new field of append to an existing field
+	case Parsing::ALTER:
+		// Alter a document
 		q.print();
 		break;
 	default:

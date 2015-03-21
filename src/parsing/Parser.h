@@ -7,11 +7,11 @@
 
 namespace Parsing {
 	const std::string Aggregates[] = {"AVG", "MIN", "MAX", "SUM", "STDEV" /*, TODO: Others. */};
-	const std::string Commands[] = {"CREATE", "INSERT", "APPEND", "REMOVE", "SELECT", "DELETE", "SHOW" /*, TODO: Others. */};
+	const std::string Commands[] = {"CREATE", "INSERT", "ALTER", "REMOVE", "SELECT", "DELETE", "SHOW" /*, TODO: Others. */};
 	enum Command {
 		CREATE = 0,
 		INSERT = 1,
-		APPEND = 2,
+		ALTER = 2,
 		REMOVE = 3,
 		SELECT = 4,
 		DELETE = 5,
@@ -70,7 +70,7 @@ namespace Parsing {
 	private:
 		Scanner sc;
 		bool insert(Query &);
-		bool append(Query &);
+		bool alter(Query &);
 		bool remove(Query &);
 		bool select(Query &);
 		bool ddelete(Query &);

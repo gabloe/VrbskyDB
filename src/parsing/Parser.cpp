@@ -22,8 +22,8 @@ Parsing::Query* Parsing::Parser::parse() {
 		result = create(*q);
 	} else if (!token.compare("insert")) {
 		result = insert(*q);
-	} else if (!token.compare("append")) {
-		result = append(*q);
+	} else if (!token.compare("alter")) {
+		result = alter(*q);
 	} else if (!token.compare("remove")) {
 		result = remove(*q);
 	} else if (!token.compare("select")) {
@@ -95,14 +95,8 @@ bool Parsing::Parser::insert(Parsing::Query &q) {
 	return true;
 }
 
-bool Parsing::Parser::append(Parsing::Query &q) {
-	q.command = APPEND;
-	std::string token = Parsing::Parser::sc.nextToken();
-	if (toLower(token).compare("to")) {
-		Parsing::Parser::sc.push_back(token);
-		std::cout << "PARSING ERROR: Expected 'to', found " << token << std::endl;
-		return false;
-	}
+bool Parsing::Parser::alter(Parsing::Query &q) {
+	q.command = ALTER;
 	q.project = new std::string(Parsing::Parser::sc.nextToken());
 	if (Parsing::Parser::sc.nextChar() != '.') {
 		Parsing::Parser::sc.push_back(1);
@@ -110,7 +104,14 @@ bool Parsing::Parser::append(Parsing::Query &q) {
 		return false;
 	}
 	q.documents = new List(Parsing::Parser::sc.nextToken());
-	q.value = new std::string(Parsing::Parser::sc.nextJSON());
+	std::string token = Parsing::Parser::sc.nextToken();
+	if (!toLower(token).compare("add")) {
+		q.value = new std::string(Parsing::Parser::sc.nextJSON());
+	} else {
+		Parsing::Parser::sc.push_back(token);
+		std::cout << "PARSING ERROR: Expected 'add', found " << token << "." << std::endl;
+		return false;
+	}
 	return true;
 }
 
