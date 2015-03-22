@@ -33,14 +33,6 @@ namespace Parsing {
 			if (aggregate) delete aggregate;
 			if (next) delete next;
 		}
-		void append(T value_) {
-			List<T> l = new List<T>();
-			l->value = value_;
-			if (!next) {
-				l->next = next;
-			}
-			next = l;
-		}
 	};	
 	struct Query {
 		Command command;
