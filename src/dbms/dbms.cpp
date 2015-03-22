@@ -32,6 +32,13 @@ std::string toPrettyString(char *doc) {
 	return toPrettyString(new std::string(doc));
 }
 
+std::string toPrettyString(rapidjson::Document *doc) {
+	rapidjson::StringBuffer out;
+	rapidjson::PrettyWriter<rapidjson::StringBuffer> writer(out);
+	doc->Accept(writer);
+	return out.GetString();
+}
+
 rapidjson::Document readData(std::string dataFile, std::string uuid, Storage::LinearHash<std::string> &indices) {
 	uint64_t key = hash(uuid, uuid.size());
 	int ind = atoi(indices.get(key)->c_str());
@@ -52,8 +59,9 @@ rapidjson::Document readData(std::string dataFile, std::string uuid, Storage::Li
 Parsing::List<std::string> *extractUUIDArray(std::string project, std::string document, Storage::LinearHash<std::string> &meta) {
 	std::string key(project + "." + document);
 	uint64_t keyHash = hash(key, key.size());
-	Parsing::List<std::string> *uuidList = new Parsing::List<std::string>();
+	Parsing::List<std::string> *uuidList = NULL; 
 	if (meta.contains(keyHash)) {
+		uuidList = new Parsing::List<std::string>();
 		std::string *fields = meta.get(keyHash);
 		rapidjson::Document doc;
 		doc.Parse(fields->c_str());
@@ -68,13 +76,6 @@ Parsing::List<std::string> *extractUUIDArray(std::string project, std::string do
 		}
 	}
 	return uuidList;
-}
-
-std::string toPrettyString(rapidjson::Document *doc) {
-	rapidjson::StringBuffer out;
-	rapidjson::PrettyWriter<rapidjson::StringBuffer> writer(out);
-	doc->Accept(writer);
-	return out.GetString();
 }
 
 // Create a JSON object containing a project name and list of documents (one document initially)
@@ -248,7 +249,15 @@ void addFields(std::string pname, std::string dname, rapidjson::Document &d, Sto
 	rapidjson::Document arrayContainer;
 	arrayContainer.SetObject();
 	rapidjson::Value uuidArray(rapidjson::kArrayType);
-	for (rapidjson::Value::ConstMemberIterator itr = d.MemberBegin(); itr != d.MemberEnd(); ++itr) {
+	rapidjson::Value::ConstMemberIterator itr = d.MemberBegin();
+        while (itr != d.MemberEnd()) {
+		rapidjson::Document kv;
+		kv.SetObject();
+		const std::string k_str = itr->name.GetString();
+		rapidjson::Value k(k_str.c_str(), kv.GetAllocator());
+		rapidjson::Value &v_tmp = d[k_str.c_str()];
+		rapidjson::Value v(v_tmp, kv.GetAllocator());
+
 		// Generate UUID
 		uint64_t uuid_l = newUUID64();
 		std::string uuid = std::to_string(uuid_l);
@@ -256,13 +265,6 @@ void addFields(std::string pname, std::string dname, rapidjson::Document &d, Sto
 		rapidjson::Value field;
 		field.SetString(uuid.c_str(), arrayContainer.GetAllocator());
 		uuidArray.PushBack(field, arrayContainer.GetAllocator());
-
-		rapidjson::Document kv;
-		kv.SetObject();
-		const std::string k_str = itr->name.GetString();
-		rapidjson::Value k(k_str.c_str(), kv.GetAllocator());
-		rapidjson::Value &v_tmp = d[k_str.c_str()];
-		rapidjson::Value v(v_tmp, kv.GetAllocator());
 
 		rapidjson::Value uuid_v;
 		uuid_v.SetString(uuid.c_str(), kv.GetAllocator());
@@ -275,6 +277,8 @@ void addFields(std::string pname, std::string dname, rapidjson::Document &d, Sto
 		unsigned int offset = appendData(len, data, dataFile);
 		uint64_t uuid_key = hash(uuid, uuid.size());
 		indices.put(uuid_key, new std::string(std::to_string(offset)));
+
+		d.RemoveMember(k_str.c_str());
 	}
 	rapidjson::Value name_string;
 	name_string.SetString(dname.c_str(), arrayContainer.GetAllocator());
@@ -374,6 +378,7 @@ void execute(Parsing::Query &q, Storage::LinearHash<std::string> &meta, Storage:
 			while (spot) {
 				rapidjson::Document d;
 				if (q.value && !d.Parse(q.value->c_str()).HasParseError()) {
+					std::cout << toPrettyString(&d) << std::endl;
 					addFields(*q.project, spot->value, d, meta, indices, dataFile);
 				} else {
 					// No value.  Create empty documents;
@@ -390,24 +395,25 @@ void execute(Parsing::Query &q, Storage::LinearHash<std::string> &meta, Storage:
 		{
 			// Build a JSON object with the results
 			Parsing::List<std::string> *keyList = q.keys;
-			Parsing::List<rapidjson::Document> *fieldList = new Parsing::List<rapidjson::Document>();
-
-			// Select all fields from proj.doc
-			Parsing::List<rapidjson::Document> *spot = fieldList;
 			Parsing::List<std::string> *uuidList = extractUUIDArray(*q.project, q.documents->value, meta);
+			Parsing::List<rapidjson::Document> *fieldList = NULL; 
 			if (uuidList) {
+				fieldList = new Parsing::List<rapidjson::Document>();
+
+				// Select all fields from proj.doc
+				Parsing::List<rapidjson::Document> *spot = fieldList;
+
 				spot->value = readData(dataFile, uuidList->value, indices);
 				uuidList = uuidList->next;
-			}
 
-			// Build a linked list of fields
-			while (uuidList) {
-				spot->next = new Parsing::List<rapidjson::Document>();
-				spot = spot->next;
-				spot->value = readData(dataFile, uuidList->value, indices);
-				uuidList = uuidList->next;
+				// Build a linked list of fields
+				while (uuidList) {
+					spot->next = new Parsing::List<rapidjson::Document>();
+					spot = spot->next;
+					spot->value = readData(dataFile, uuidList->value, indices);
+					uuidList = uuidList->next;
+				}
 			}
-
 			// Filter the fields
 			Parsing::List<rapidjson::Document> *filtered = filterFields(fieldList, keyList);
 			std::string *result = combineFields(filtered);

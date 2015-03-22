@@ -832,14 +832,15 @@ public:
     template <typename SourceAllocator>
     GenericValue& operator[](const GenericValue<Encoding, SourceAllocator>& name) {
         MemberIterator member = FindMember(name);
-        if (member != MemberEnd())
+        if (member != MemberEnd()) {
             return member->value;
-        else {
+        } else {
             RAPIDJSON_ASSERT(false);    // see above note
             static GenericValue NullValue;
             return NullValue;
         }
     }
+
     template <typename SourceAllocator>
     const GenericValue& operator[](const GenericValue<Encoding, SourceAllocator>& name) const { return const_cast<GenericValue&>(*this)[name]; }
 
