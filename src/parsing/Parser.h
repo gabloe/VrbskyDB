@@ -22,30 +22,43 @@ namespace Parsing {
 		SUM   = 1,
 		STDEV = 2
 	};
+	template <typename T>
 	struct List {
 		Aggregate *aggregate;
-		std::string value;
-		List *next;
-		List(std::string value_): aggregate(NULL), value(value_), next(NULL) {}
-		List(): aggregate(NULL), value(""), next(NULL) {}
-	};
+		T value;
+		List<T> *next;
+		List<T>(T value_): aggregate(NULL), value(value_), next(NULL) {}
+		List<T>(): aggregate(NULL), next(NULL) {}
+		~List<T>() {
+			if (aggregate) delete aggregate;
+			if (next) delete next;
+		}
+		void append(T value_) {
+			List<T> l = new List<T>();
+			l->value = value_;
+			if (!next) {
+				l->next = next;
+			}
+			next = l;
+		}
+	};	
 	struct Query {
 		Command command;
 		std::string *project;
-		List *documents;
-		List *keys;
+		List<std::string> *documents;
+		List<std::string> *keys;
 		std::string *value;
 		Query(): project(NULL), documents(NULL), keys(NULL), value(NULL) {}
 		void print() {
 			std::cout << "Command: " << Commands[command] << std::endl;
 			if (project)
 				std::cout << "Project: " << *project << std::endl;
-			List *docspot = documents;
+			List<std::string> *docspot = documents;
 			while (docspot) {
 				std::cout << "Document: " << docspot->value << std::endl;
 				docspot = docspot->next;
 			}
-			List *keyspot = keys;
+			List<std::string> *keyspot = keys;
 			while (keyspot) {
 				std::cout << "Key: ";
 				if (keyspot->aggregate) {
@@ -76,9 +89,9 @@ namespace Parsing {
 		bool ddelete(Query &);
 		bool create(Query &);
 		bool show(Query &q);
-		List *keyList();
-		bool aggregate(List *);
-		List *idList();
+		List<std::string> *keyList();
+		bool aggregate(List<std::string> *);
+		List<std::string> *idList();
 		bool withDocumentsPending();
 		bool withValuePending();
 		bool aggregatePending();

@@ -32,7 +32,7 @@ std::string toPrettyString(char *doc) {
 	return toPrettyString(new std::string(doc));
 }
 
-std::string *readData(std::string dataFile, std::string uuid, Storage::LinearHash<std::string> &indices) {
+rapidjson::Document readData(std::string dataFile, std::string uuid, Storage::LinearHash<std::string> &indices) {
 	uint64_t key = hash(uuid, uuid.size());
 	int ind = atoi(indices.get(key)->c_str());
 	std::ifstream in(dataFile.c_str(), std::ios::in | std::ios::binary);
@@ -43,23 +43,26 @@ std::string *readData(std::string dataFile, std::string uuid, Storage::LinearHas
 	std::string ret(len, '\0'); 
 	in.read(&ret[0], len);
 	in.close();
-	return new std::string(ret);
+	rapidjson::Document doc;
+	doc.Parse(ret.c_str());
+	doc.RemoveMember("__UUID__");
+	return doc;
 }
 
-Parsing::List *extractUUIDArray(std::string project, std::string document, Storage::LinearHash<std::string> &meta) {
+Parsing::List<std::string> *extractUUIDArray(std::string project, std::string document, Storage::LinearHash<std::string> &meta) {
 	std::string key(project + "." + document);
 	uint64_t keyHash = hash(key, key.size());
-	Parsing::List *uuidList = new Parsing::List();
+	Parsing::List<std::string> *uuidList = new Parsing::List<std::string>();
 	if (meta.contains(keyHash)) {
 		std::string *fields = meta.get(keyHash);
 		rapidjson::Document doc;
 		doc.Parse(fields->c_str());
 		rapidjson::Value &fieldArray = doc["__FIELDS__"];
-		Parsing::List *spot = uuidList;
+		Parsing::List<std::string> *spot = uuidList;
 		rapidjson::Value::ConstValueIterator itr = fieldArray.Begin();
 		spot->value = (itr++)->GetString();
 		while (itr != fieldArray.End()) {
-			spot->next = new Parsing::List(itr->GetString());
+			spot->next = new Parsing::List<std::string>(itr->GetString());
 			spot = spot->next;
 			++itr;
 		}
@@ -75,7 +78,7 @@ std::string toPrettyString(rapidjson::Document *doc) {
 }
 
 // Create a JSON object containing a project name and list of documents (one document initially)
-rapidjson::Document createProject(std::string &name, Parsing::List *doc) {
+rapidjson::Document createProject(std::string &name, Parsing::List<std::string> *doc) {
 	rapidjson::Document project;
 	project.SetObject();
 	rapidjson::Document::AllocatorType& allocator = project.GetAllocator();
@@ -94,7 +97,7 @@ rapidjson::Document createProject(std::string &name, Parsing::List *doc) {
 }
 
 // Given a JSON string, parse the JSON object and append a document name to the array.
-rapidjson::Document appendDocument(std::string *value, Parsing::List *doc) {
+rapidjson::Document appendDocument(std::string *value, Parsing::List<std::string> *doc) {
 	rapidjson::Document project;
 	project.Parse(value->c_str());
 	rapidjson::Document::AllocatorType& allocator = project.GetAllocator();
@@ -117,7 +120,7 @@ rapidjson::Document appendDocument(std::string *value, Parsing::List *doc) {
 	return project;
 }
 
-void removeDocument(std::string *pname, Parsing::List *doc, Storage::LinearHash<std::string> &meta) {
+void removeDocument(std::string *pname, Parsing::List<std::string> *doc, Storage::LinearHash<std::string> &meta) {
 	std::string proj_list_key(*pname);
 	uint64_t doc_list = hash(proj_list_key, proj_list_key.size());
 	rapidjson::Document d;
@@ -125,7 +128,7 @@ void removeDocument(std::string *pname, Parsing::List *doc, Storage::LinearHash<
 		std::string *doclist = meta.get(doc_list);
 		d.Parse(doclist->c_str());
 		rapidjson::Value &projectArray = d["__DOCUMENTS__"];
-		Parsing::List *spot = doc;
+		Parsing::List<std::string> *spot = doc;
 		while (spot) {
 			for (rapidjson::Value::ConstValueIterator itr = projectArray.Begin(); itr != projectArray.End(); ++itr) {
 				std::string dd = itr->GetString();
@@ -280,6 +283,64 @@ void addFields(std::string pname, std::string dname, rapidjson::Document &d, Sto
 	meta.put(key, new std::string(toString(&arrayContainer)));
 }
 
+std::string *combineFields(Parsing::List<rapidjson::Document> *fields) {
+	rapidjson::Document doc;
+	doc.SetObject();
+	while (fields) {
+		rapidjson::Document &field = fields->value;
+		for (rapidjson::Value::ConstMemberIterator itr = field.MemberBegin(); itr != field.MemberEnd(); ++itr) {
+			const std::string k_str = itr->name.GetString();
+			rapidjson::Value k(k_str.c_str(), doc.GetAllocator());
+			rapidjson::Value &v_tmp = field[k_str.c_str()];
+			rapidjson::Value v(v_tmp, doc.GetAllocator());
+			doc.AddMember(k, v, doc.GetAllocator());
+		}
+		fields = fields->next;
+	}
+	std::string res = toString(&doc);
+	return new std::string(res);
+}
+
+Parsing::List<rapidjson::Document> *filterFields(Parsing::List<rapidjson::Document> *fields, Parsing::List<std::string> *keys) {
+
+	if (keys) {
+		if (!keys->value.compare("*")) return fields;
+	}
+
+	Parsing::List<rapidjson::Document> *result = NULL; 
+	Parsing::List<rapidjson::Document> *result_spot = NULL; 
+	
+	while (keys) {
+		if (!keys->value.compare("*")) {
+			std::cout << "If selecting all fields, '*' must appear first." << std::endl;
+			return NULL;
+		}
+		Parsing::List<rapidjson::Document> *spot = fields;
+		while (spot) {
+			rapidjson::Document &field = spot->value;
+			if (field.HasMember(keys->value.c_str())) {
+				rapidjson::Value k(keys->value.c_str(), field.GetAllocator());
+				rapidjson::Value &v_tmp = field[keys->value.c_str()];
+				rapidjson::Value v(v_tmp, field.GetAllocator());
+				if (!result_spot) {
+					result = new Parsing::List<rapidjson::Document>();
+					result->value.SetObject();
+					result->value.AddMember(k, v, result->value.GetAllocator());
+					result_spot = result;
+				} else {
+					result_spot->next = new Parsing::List<rapidjson::Document>();
+					result_spot = result_spot->next;
+					result_spot->value.SetObject();
+					result_spot->value.AddMember(k, v, result->value.GetAllocator());
+				}
+			}
+			spot = spot->next;
+		}
+		keys = keys->next;
+	}
+	return result;
+}
+
 void execute(Parsing::Query &q, Storage::LinearHash<std::string> &meta, Storage::LinearHash<std::string> &indices, std::string dataFile) {
 	clock_t start, end;
 	start = std::clock();	
@@ -309,7 +370,7 @@ void execute(Parsing::Query &q, Storage::LinearHash<std::string> &meta, Storage:
 					meta.put(project_key, new std::string(project_json));
 				}
 			}
-			Parsing::List *spot = q.documents;
+			Parsing::List<std::string> *spot = q.documents;
 			while (spot) {
 				rapidjson::Document d;
 				if (q.value && !d.Parse(q.value->c_str()).HasParseError()) {
@@ -328,25 +389,36 @@ void execute(Parsing::Query &q, Storage::LinearHash<std::string> &meta, Storage:
 	case Parsing::SELECT:
 		{
 			// Build a JSON object with the results
-			Parsing::List *keyList = q.keys;
-			while (keyList) {
-				if (!keyList->value.compare("*")) {
-					// Select all fields from proj.doc
-					Parsing::List *uuidList = extractUUIDArray(*q.project, q.documents->value, meta);
-					while (uuidList) {
-						std::string *field = readData(dataFile, uuidList->value, indices);
-						std::cout << toPrettyString(field) << std::endl;
-						uuidList = uuidList->next;
-					}
-				}
-				keyList = keyList->next;
+			Parsing::List<std::string> *keyList = q.keys;
+			Parsing::List<rapidjson::Document> *fieldList = new Parsing::List<rapidjson::Document>();
+
+			// Select all fields from proj.doc
+			Parsing::List<rapidjson::Document> *spot = fieldList;
+			Parsing::List<std::string> *uuidList = extractUUIDArray(*q.project, q.documents->value, meta);
+			if (uuidList) {
+				spot->value = readData(dataFile, uuidList->value, indices);
+				uuidList = uuidList->next;
 			}
+
+			// Build a linked list of fields
+			while (uuidList) {
+				spot->next = new Parsing::List<rapidjson::Document>();
+				spot = spot->next;
+				spot->value = readData(dataFile, uuidList->value, indices);
+				uuidList = uuidList->next;
+			}
+
+			// Filter the fields
+			Parsing::List<rapidjson::Document> *filtered = filterFields(fieldList, keyList);
+			std::string *result = combineFields(filtered);
+			std::cout << toPrettyString(result) << std::endl;
+			
 			break;
 		}
 	case Parsing::DELETE:
 		// Delete a project or document
 		{
-			Parsing::List *spot = q.documents;
+			Parsing::List<std::string> *spot = q.documents;
 			if (spot) {
 				while (spot) {
 					std::string key(*q.project + "." + spot->value);
@@ -390,7 +462,7 @@ void execute(Parsing::Query &q, Storage::LinearHash<std::string> &meta, Storage:
 			// Remove a key
 			if (q.documents) {
 				std::string doc = q.documents->value;
-				Parsing::List *spot = q.keys;
+				Parsing::List<std::string> *spot = q.keys;
 				while (spot) {
 					removeKey(*q.project, doc, spot->value, meta);
 					spot=spot->next;

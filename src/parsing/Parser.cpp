@@ -90,7 +90,7 @@ bool Parsing::Parser::insert(Parsing::Query &q) {
 		std::cout << "PARSING ERROR: Expected a dot" << std::endl;
 		return false;
 	}
-	q.documents = new List(Parsing::Parser::sc.nextToken());
+	q.documents = new List<std::string>(Parsing::Parser::sc.nextToken());
 	q.value = new std::string(Parsing::Parser::sc.nextJSON());
 	return true;
 }
@@ -103,7 +103,7 @@ bool Parsing::Parser::alter(Parsing::Query &q) {
 		std::cout << "PARSING ERROR: Expected a dot" << std::endl;
 		return false;
 	}
-	q.documents = new List(Parsing::Parser::sc.nextToken());
+	q.documents = new List<std::string>(Parsing::Parser::sc.nextToken());
 	std::string token = Parsing::Parser::sc.nextToken();
 	if (!toLower(token).compare("add")) {
 		q.value = new std::string(Parsing::Parser::sc.nextJSON());
@@ -135,7 +135,7 @@ bool Parsing::Parser::remove(Parsing::Query &q) {
 		std::cout << "PARSING ERROR: Expected a dot" << std::endl;
 		return false;
 	}
-	q.documents = new List(Parsing::Parser::sc.nextToken());
+	q.documents = new List<std::string>(Parsing::Parser::sc.nextToken());
 	return true;
 }
 
@@ -159,7 +159,7 @@ bool Parsing::Parser::select(Parsing::Query &q) {
 		std::cout << "PARSING ERROR: Expected a dot" << std::endl;
 		return false;
 	}
-	q.documents = new List(Parsing::Parser::sc.nextToken());
+	q.documents = new List<std::string>(Parsing::Parser::sc.nextToken());
 	return true;
 }
 
@@ -172,7 +172,7 @@ bool Parsing::Parser::ddelete(Parsing::Query &q) {
 			std::cout << "PARSING ERROR: Expected a dot" << std::endl;
 			return false;
 		}
-		q.documents = new List(Parsing::Parser::sc.nextToken());
+		q.documents = new List<std::string>(Parsing::Parser::sc.nextToken());
 		return true;
 	} else if (!toLower(token).compare("project")) {
 		q.project = new std::string(Parsing::Parser::sc.nextToken());
@@ -212,7 +212,7 @@ bool Parsing::Parser::create(Parsing::Query &q) {
 			std::cout << "PARSING ERROR: Expected a dot." << std::endl;
 			return false;
 		}
-		q.documents = new List(Parsing::Parser::sc.nextToken());
+		q.documents = new List<std::string>(Parsing::Parser::sc.nextToken());
 		if (withValuePending()) {
 			q.value = new std::string(Parsing::Parser::sc.nextJSON());
 		}
@@ -225,8 +225,8 @@ bool Parsing::Parser::create(Parsing::Query &q) {
 
 }
 
-Parsing::List *Parsing::Parser::keyList() {
-	Parsing::List *item = new Parsing::List();
+Parsing::List<std::string> *Parsing::Parser::keyList() {
+	Parsing::List<std::string> *item = new Parsing::List<std::string>();
 	if (aggregatePending()) {
 		if (!aggregate(item)) {
 			throw std::runtime_error("PARSING ERROR: Malformed aggregate.");
@@ -252,7 +252,7 @@ Parsing::List *Parsing::Parser::keyList() {
 
 }
 
-bool Parsing::Parser::aggregate(Parsing::List *list) {
+bool Parsing::Parser::aggregate(Parsing::List<std::string> *list) {
 	std::string token = Parsing::Parser::sc.nextToken();
 	if (Parsing::Parser::sc.nextChar() != '(') {
 		std::cout << "PARSING ERROR: Expected open parenthesis." << std::endl;
@@ -272,7 +272,7 @@ bool Parsing::Parser::aggregate(Parsing::List *list) {
 	return true;
 }
 
-Parsing::List * Parsing::Parser::idList() {
+Parsing::List<std::string> * Parsing::Parser::idList() {
 	std::string id = Parsing::Parser::sc.nextToken();
 	if (id.size() == 0) {
 		Parsing::Parser::sc.push_back(id);
@@ -281,7 +281,7 @@ Parsing::List * Parsing::Parser::idList() {
 		Parsing::Parser::sc.push_back(id);
 		throw std::runtime_error("PARSING ERROR: Key cannot begin with an underscore.");
 	}
-	List *doc = new List(id);
+	List<std::string> *doc = new List<std::string>(id);
 	char next = Parsing::Parser::sc.nextChar();
 	if (next == ',') {
 		doc->next = idList();
