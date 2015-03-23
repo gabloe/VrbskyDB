@@ -377,11 +377,13 @@ void processAggregates(Parsing::List<rapidjson::Document> *fields, Parsing::List
 		while (spot) {
 			rapidjson::Document &d = spot->value;
 			if (!d.HasMember(key.c_str())) {
+				parent = spot;
 				spot = spot->next;
 				continue;
 			}
 			rapidjson::Value &v = d[key.c_str()];
 			if (!v.IsNumber()) {
+				parent = spot;
 				spot = spot->next;
 				continue;
 			}
@@ -395,13 +397,15 @@ void processAggregates(Parsing::List<rapidjson::Document> *fields, Parsing::List
 			parent = spot;
 			spot = spot->next;	
 		}
-		parent->next = new Parsing::List<rapidjson::Document>();
-		std::string fieldName(aggName + "(" + key + ")");
-		rapidjson::Value k(fieldName.c_str(), parent->next->value.GetAllocator());
-		rapidjson::Value v;
-		v.SetDouble(res);
-		parent->next->value.SetObject();
-		parent->next->value.AddMember(k, v, parent->next->value.GetAllocator());
+		if (parent) {
+			parent->next = new Parsing::List<rapidjson::Document>();
+			std::string fieldName(aggName + "(" + key + ")");
+			rapidjson::Value k(fieldName.c_str(), parent->next->value.GetAllocator());
+			rapidjson::Value v;
+			v.SetDouble(res);
+			parent->next->value.SetObject();
+			parent->next->value.AddMember(k, v, parent->next->value.GetAllocator());
+		}
 		aggs = aggs->next;
 	}
 }
