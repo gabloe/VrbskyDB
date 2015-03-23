@@ -12,6 +12,8 @@
 #include <rapidjson/prettywriter.h>
 #include <UUID.h>
 
+
+// TODO: Why are these not in a header file?
 void execute(Parsing::Query &, Storage::LinearHash<std::string> &);
 std::string toPrettyString(std::string *);
 std::string toPrettyString(rapidjson::Document *);
@@ -23,6 +25,12 @@ std::string toString(rapidjson::Document *doc) {
 	doc->Accept(writer);
 	std::string str = buffer.GetString();
 	return str;
+}
+
+std::string toPrettyString(std::string &doc) {
+	rapidjson::Document d;
+	d.Parse(doc.c_str());
+	return toPrettyString(&d);
 }
 
 std::string toPrettyString(std::string *doc) {
@@ -42,6 +50,7 @@ std::string toPrettyString(rapidjson::Document *doc) {
 	return out.GetString();
 }
 
+// Given a uuid return a document if it exists
 rapidjson::Document readData(std::string dataFile, std::string uuid, Storage::LinearHash<std::string> &indices) {
 	uint64_t key = hash(uuid, uuid.size());
 	int ind = atoi(indices.get(key)->c_str());
@@ -59,16 +68,21 @@ rapidjson::Document readData(std::string dataFile, std::string uuid, Storage::Li
 	return doc;
 }
 
+//  Given a project name we return a list of all UUID values stored in it
 Parsing::List<std::string> *extractUUIDArray(std::string project, std::string document, Storage::LinearHash<std::string> &meta) {
 	std::string key(project + "." + document);
 	uint64_t keyHash = hash(key, key.size());
 	Parsing::List<std::string> *uuidList = NULL; 
-	if (meta.contains(keyHash)) {
+	if (meta.contains(keyHash)) {   // If project exists
+		rapidjson::Document doc;
+
+        // Initial list
 		uuidList = new Parsing::List<std::string>();
 		std::string *fields = meta.get(keyHash);
-		rapidjson::Document doc;
+
 		doc.Parse(fields->c_str());
 		rapidjson::Value &fieldArray = doc["__FIELDS__"];
+
 		Parsing::List<std::string> *spot = uuidList;
 		rapidjson::Value::ConstValueIterator itr = fieldArray.Begin();
 		spot->value = (itr++)->GetString();
@@ -78,6 +92,7 @@ Parsing::List<std::string> *extractUUIDArray(std::string project, std::string do
 			++itr;
 		}
 	}
+
 	return uuidList;
 }
 
@@ -169,28 +184,8 @@ void addProject(std::string *pname, Storage::LinearHash<std::string> &meta) {
 	}
 }
 
-// Remove the project name from the project metadata list.
-void removeProject(std::string *pname, Storage::LinearHash<std::string> &meta) {
-	std::string proj_list_key("__PROJECTS__");
-	uint64_t project_list = hash(proj_list_key, proj_list_key.size());
-	rapidjson::Document d;
-	if (meta.contains(project_list)) {
-		std::string *projects = meta.get(project_list);
-		d.Parse(projects->c_str());
-		rapidjson::Value &projectArray = d["__PROJECTS__"];
-
-		for (rapidjson::Value::ConstValueIterator itr = projectArray.Begin(); itr != projectArray.End(); ++itr) {
-			std::string dd = itr->GetString();
-			if (!dd.compare(*pname)) {
-				projectArray.Erase(itr);
-				break;
-			}
-		}
-
-		*projects = toString(&d);
-	}
-
-	// Remove all documents associated with this project.
+// Given a project remove all documents from it
+void removeDocuments( std::string *pname , Storage::LinearHash<std::string> &meta ) {
 	uint64_t proj_hash = hash(*pname, pname->size());
 	if (meta.contains(proj_hash)) {
 		std::string *doc_list = meta.get(proj_hash);
@@ -207,6 +202,33 @@ void removeProject(std::string *pname, Storage::LinearHash<std::string> &meta) {
 		}
 		meta.remove(proj_hash);
 	}
+}
+
+// Remove the project name from the project metadata list.
+void removeProject(std::string *pname, Storage::LinearHash<std::string> &meta) {
+	std::string proj_list_key("__PROJECTS__");
+	uint64_t project_list = hash(proj_list_key, proj_list_key.size());
+	rapidjson::Document d;
+	if (meta.contains(project_list)) {
+		std::string *projects = meta.get(project_list);
+		d.Parse(projects->c_str());
+		rapidjson::Value &projectArray = d["__PROJECTS__"];
+
+        // TODO: map function on list?
+		for (rapidjson::Value::ConstValueIterator itr = projectArray.Begin(); itr != projectArray.End(); ++itr) {
+			std::string dd = itr->GetString();
+			if (!dd.compare(*pname)) {
+				projectArray.Erase(itr);
+				break;
+			}
+		}
+
+        // Update data in hashtable
+		*projects = toString(&d);
+
+        removeDocuments( pname , meta );
+	}
+
 }
 
 void removeKey(std::string pname, std::string dname, std::string key, Storage::LinearHash<std::string> &meta) {
@@ -243,6 +265,7 @@ unsigned int appendData(size_t length, std::string data, std::string dataFile) {
 		return pos;
 }
 
+// Add firleds to a document
 void addFields(std::string pname, std::string dname, rapidjson::Document &d, Storage::LinearHash<std::string> &meta, Storage::LinearHash<std::string> &indices, std::string dataFile) {
 	std::string key_string(pname + "." + dname);
 	uint64_t key = hash(key_string, key_string.size());

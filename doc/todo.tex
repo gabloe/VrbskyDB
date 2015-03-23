@@ -1,0 +1,65 @@
+
+\documentclass{article}
+
+\usepackage{fullpage}
+
+
+\begin{document}
+
+Todo
+
+\begin{itemize}
+
+    \item   Update CLI to support
+        \begin{itemize}
+            \item    History (hitting up/down)
+            \item    Ignore invalid characters
+            \item    Multi-line commands
+        \end{itemize}
+    \item   Update Grammar to support
+        \begin{itemize}
+            \item    Query on Sub-fields
+            \item    Create indexes on specific fields
+            \item    Think about how data is stored, conceptual model
+            \item    Support field names not as strings
+        \end{itemize}
+    \item   Update file format to support chunking
+        \begin{itemize}
+            \item   Fixed width document/blocks
+            \item   Support chaining and free lists
+            \item   Compaction
+            \item   Limits on size?
+        \end{itemize}
+    \item   Support Querying
+        \begin{itemize}
+            \item    On fields
+            \item    Aggregate
+            \item    "Where" clauses
+        \end{itemize}
+    \item   Indexes
+        \begin{itemize}
+            \item    Type?
+            \item    Per field and compound?
+        \end{itemize}
+    \item   Allow updating data
+        \begin{itemize}
+            \item    Support criteria?
+        \end{itemize}
+    \item   Logging
+        \begin{itemize}
+            \item   Look this up
+        \end{itemize}
+    \item   Checkpoints
+        \begin{itemize}
+            \item    Start writing to new file
+            \item    On rollback just re-read old file and delete new
+            \item    On commit merge
+        \end{itemize}
+    \item    Caching (Maybe)
+        \begin{itemize}
+            \item    Cache blocks that are used often?
+        \end{itemize}
+
+\end{itemize}
+
+\end{document}

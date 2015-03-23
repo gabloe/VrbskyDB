@@ -1,0 +1,54 @@
+
+
+\documentclass{article}
+
+\usepackage{fullpage}
+
+\begin{document}
+
+\section{Introduction}
+
+In this documnt we talk about the design of our database.
+
+\section{File-Formats}
+
+\subsection{LinearHash}
+
+TODO: Fill this out
+
+
+\subsection{Database}
+
+The data is stored in a flat file divided into blocks.
+The file starts with some meta data related to free blocks and how many blocks are in use.
+Each block can contain multiple documents.
+Each document contains the size along with the data.
+If during an insert the size of the data is too large to fit into the block then it is chunked into multiple blocks.
+
+\begin{verbatim}
+
+    const int BlockSize = 128;
+    const int DocumentSize = 128;
+
+    struct DataBase {
+        int num_blocks;
+        int file_size;
+        Document *free_list;
+        Block *Blocks;  // NumElements = file_size / (BlockSize + sizeof(int));
+    };
+
+    struct Block {
+        int number_documents;
+        Document docs[BlockSize];
+    };
+
+    struct Document {
+        int length;
+        void *next;
+        char data[DOCUMENT_SIZE]
+    };
+
+\end{verbatim}
+
+
+\end{document}

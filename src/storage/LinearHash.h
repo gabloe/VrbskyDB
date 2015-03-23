@@ -659,7 +659,8 @@ namespace Storage {
 //
 
 // File I/O
-void dumpToFile(std::string filename, Storage::LinearHash<std::string> &hash) {
+template <typename T>
+void dumpToFile(std::string filename, Storage::LinearHash<T> &hash) {
 	std::ofstream outfile(filename, std::ofstream::binary);
 	// header
 	uint64_t num_buckets = hash.bucket_count();
@@ -687,7 +688,7 @@ void dumpToFile(std::string filename, Storage::LinearHash<std::string> &hash) {
 
 		uint64_t key = pair.getKey();
 		uint64_t  length = pair.getValue()->length();
-		const char* data = pair.getValue()->c_str();
+		T *data = pair.getValue();
 
 		// Key
 		outfile.write(reinterpret_cast<char*>(&key), sizeof(key));
@@ -696,7 +697,8 @@ void dumpToFile(std::string filename, Storage::LinearHash<std::string> &hash) {
 		outfile.write(reinterpret_cast<char*>(&length), sizeof(length));
 
 		// Data
-		outfile.write(data, length);
+        outfile << *data;
+		//outfile.write(data, length);
 
 	}
 
