@@ -33,6 +33,34 @@ namespace Parsing {
 			if (aggregate) delete aggregate;
 			if (next) delete next;
 		}
+		void unique() {
+			if (!std::is_same<T, std::string>::value) {
+				std::cout << "Unique only works for linked list of type std::string" << std::endl;
+				return;
+			}
+			List<T> *writeSpot = this;
+			while (writeSpot) {
+				T temp1 = writeSpot->value;
+				if (writeSpot->aggregate) {
+					writeSpot = writeSpot->next;
+					continue;
+				}
+				List<T> *readSpot = writeSpot->next;
+				while (readSpot) {
+					if (readSpot->aggregate) {
+						readSpot = readSpot->next;
+						continue;
+					}
+					T temp2 = readSpot->value;
+					// Found a dup
+					if (!temp1.compare(temp2)) {
+						writeSpot->next = readSpot->next;
+					}
+					readSpot = readSpot->next;
+				}
+				writeSpot = writeSpot->next;
+			}
+		}
 	};	
 	struct Query {
 		Command command;

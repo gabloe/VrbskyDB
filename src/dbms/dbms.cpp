@@ -350,6 +350,10 @@ Parsing::List<rapidjson::Document> *filterFields(Parsing::List<rapidjson::Docume
 			std::cout << "If selecting all fields, '*' must appear first." << std::endl;
 			return NULL;
 		}
+		if (keys->aggregate) {
+			keys = keys->next;
+			continue;
+		}
 		Parsing::List<rapidjson::Document> *spot = fields;
 		while (spot) {
 			rapidjson::Document &field = spot->value;
@@ -513,8 +517,9 @@ void execute(Parsing::Query &q, Storage::LinearHash<std::string> &meta, Storage:
 				}
 			}
 			// Filter the fields
-			Parsing::List<rapidjson::Document> *filtered = filterFields(fieldList, keyList);
+			keyList->unique();
 			Parsing::List<std::string> *aggregates = extractAggregates(keyList);
+			Parsing::List<rapidjson::Document> *filtered = filterFields(fieldList, keyList);
 
 			// Process aggregate functions
 			processAggregates(filtered, aggregates);
