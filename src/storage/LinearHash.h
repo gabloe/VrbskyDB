@@ -288,7 +288,9 @@ namespace Storage {
 			// If actually full
 			if (num_splits_ == 0) {
 				Bucket **r = new Bucket*[2 * num_buckets_];				// allocate new bucket
-				Assert("Error: could not grow Linear Hash Table", r != 0);
+                if( DEBUG ) {
+				    Assert("Error: could not grow Linear Hash Table", r != 0);
+                }
 
 				memset(r, 0, sizeof(Bucket*)* 2 * num_buckets_);
 
@@ -510,8 +512,10 @@ namespace Storage {
 				uint64_t *new_keys = new uint64_t[new_size];
 				T **new_values	= new T*[new_size];
 				
-				Assert( "Bucket could not grow" , new_keys != NULL );
-				Assert( "Bucket could not grow" , new_values != NULL );
+                if( DEBUG ) {
+                    Assert( "Bucket could not grow" , new_keys != NULL );
+                    Assert( "Bucket could not grow" , new_values != NULL );
+                }
 				
 				for( uint64_t i = 0 ; i < num_elements_ ; ++i ) {
 					new_keys[i] = keys_[i];
@@ -696,10 +700,12 @@ void dumpToFile(std::string filename, Storage::LinearHash<std::string> &hash) {
 
 	}
 
-	if( count != num_elements ) {
-		std::cout << "Count: " << count << ", NumElements: " << num_elements << std::endl;
-	}
-	Assert("Missing some items", count == num_elements);
+    if (DEBUG) {
+	    Assert("Missing some items", count == num_elements);
+        if( count != num_elements ) {
+            std::cout << "Count: " << count << ", NumElements: " << num_elements << std::endl;
+        }
+    }
 	outfile.close();
 }
 
