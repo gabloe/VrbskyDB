@@ -1,8 +1,11 @@
+#include <fstream> 
+#include <sstream> 
+#include <limits>
+#include <cstddef>
+
 #include "../storage/LinearHash.h"
 #include "../parsing/Parser.h"
 #include "../parsing/Scanner.h"
-#include <fstream> 
-#include <sstream> 
 #include <rapidjson/document.h>
 #include <rapidjson/writer.h>
 #include <rapidjson/stringbuffer.h>
@@ -243,12 +246,16 @@ unsigned int appendData(size_t length, std::string data, std::string dataFile) {
 void addFields(std::string pname, std::string dname, rapidjson::Document &d, Storage::LinearHash<std::string> &meta, Storage::LinearHash<std::string> &indices, std::string dataFile) {
 	std::string key_string(pname + "." + dname);
 	uint64_t key = hash(key_string, key_string.size());
-	if (meta.contains(key)) {
-		std::cout << "Table already contains this document!" << std::endl;
-	}
 	rapidjson::Document arrayContainer;
-	arrayContainer.SetObject();
+	// If the document exists, we just want to append
 	rapidjson::Value uuidArray(rapidjson::kArrayType);
+	if (meta.contains(key)) {
+		std::string *fieldArrayStr = meta.get(key);
+		arrayContainer.Parse(fieldArrayStr->c_str());
+		uuidArray = arrayContainer["__FIELDS__"];
+	} else {
+		arrayContainer.SetObject();
+	}
 	rapidjson::Value::ConstMemberIterator itr = d.MemberBegin();
         while (itr != d.MemberEnd()) {
 		rapidjson::Document kv;
@@ -276,6 +283,31 @@ void addFields(std::string pname, std::string dname, rapidjson::Document &d, Sto
 		unsigned int offset = appendData(len, data, dataFile);
 		uint64_t uuid_key = hash(uuid, uuid.size());
 		indices.put(uuid_key, new std::string(std::to_string(offset)));
+
+		// Insert uuid for particular field in metadata
+		std::string fieldKeyStr(pname + "." + dname + "." + k_str);
+		uint64_t fieldKey = hash(fieldKeyStr, fieldKeyStr.size());
+
+		rapidjson::Value field2;
+		field2.SetString(uuid.c_str(), arrayContainer.GetAllocator());
+		// Duplicates...
+		if (meta.contains(fieldKey)) {
+			std::string *uuids = meta.get(fieldKey);
+			rapidjson::Document uuid_doc;
+			uuid_doc.Parse(uuids->c_str());
+			rapidjson::Value &uuidArray = uuid_doc["__FIELDS__"];
+			uuidArray.PushBack(field2, uuid_doc.GetAllocator());
+			*uuids = toString(&uuid_doc);
+		} else {
+			rapidjson::Document uuid_doc;
+			uuid_doc.SetObject();
+			rapidjson::Value uuidArray;
+			uuidArray.SetArray();
+			uuidArray.PushBack(field2, uuid_doc.GetAllocator());
+			uuid_doc.AddMember("__FIELDS__", uuidArray, uuid_doc.GetAllocator());
+			std::string uuids = toString(&uuid_doc);
+			meta.put(fieldKey, new std::string(uuids));
+		}
 
 		d.RemoveMember(k_str.c_str());
 	}
@@ -461,11 +493,12 @@ void execute(Parsing::Query &q, Storage::LinearHash<std::string> &meta, Storage:
 			// Build a JSON object with the results
 			Parsing::List<std::string> *keyList = q.keys;
 			Parsing::List<std::string> *uuidList = extractUUIDArray(*q.project, q.documents->value, meta);
-			Parsing::List<rapidjson::Document> *fieldList = NULL; 
+			Parsing::List<rapidjson::Document> *fieldList = NULL;
 			if (uuidList) {
 				fieldList = new Parsing::List<rapidjson::Document>();
 
-				// Select all fields from proj.doc
+				// Select all fields from proj.doc.  This is not optimal.  Should only read the fields that we want.
+				// Modify this to hash proj.doc.key to get array of UUID's for that key and duplicates...
 				Parsing::List<rapidjson::Document> *spot = fieldList;
 
 				spot->value = readData(dataFile, uuidList->value, indices);
@@ -597,7 +630,7 @@ int main(int argc, char **argv) {
 
 	while (1) {
 		std::cout << "Enter a query (q to quit):" << std::endl;
-		getline(std::cin, q);
+		std::getline(std::cin, q);
 		if (!q.compare("q")) {
 			break;
 		}
