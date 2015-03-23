@@ -259,8 +259,7 @@ void addFields(std::string pname, std::string dname, rapidjson::Document &d, Sto
 		rapidjson::Value v(v_tmp, kv.GetAllocator());
 
 		// Generate UUID
-		uint64_t uuid_l = newUUID64();
-		std::string uuid = std::to_string(uuid_l);
+		std::string uuid = newUUID();
 		// Add UUID to json array
 		rapidjson::Value field;
 		field.SetString(uuid.c_str(), arrayContainer.GetAllocator());
@@ -345,6 +344,68 @@ Parsing::List<rapidjson::Document> *filterFields(Parsing::List<rapidjson::Docume
 	return result;
 }
 
+Parsing::List<std::string> *extractAggregates(Parsing::List<std::string> *keys) {
+	Parsing::List<std::string> *result = NULL;
+	Parsing::List<std::string> *spot = NULL;
+	while (keys) {
+		if (keys->aggregate != NULL) {
+			if (!spot) {
+				result = new Parsing::List<std::string>();
+				result->aggregate = keys->aggregate;
+				result->value = keys->value;
+				spot = result;
+			} else {
+				spot->next = new Parsing::List<std::string>();
+				spot = spot->next;
+				spot->aggregate = keys->aggregate;
+				spot->value = keys->value;
+			}	
+		}
+		keys = keys->next;
+	}
+	return result;
+}
+
+void processAggregates(Parsing::List<rapidjson::Document> *fields, Parsing::List<std::string> *aggs) {
+	while (aggs) {
+		Parsing::Aggregate f = *(aggs->aggregate);
+		std::string aggName = Parsing::Aggregates[f];
+		std::string key = aggs->value;
+		double res = 0.0;
+		Parsing::List<rapidjson::Document> *spot = fields;
+		Parsing::List<rapidjson::Document> *parent = NULL;
+		while (spot) {
+			rapidjson::Document &d = spot->value;
+			if (!d.HasMember(key.c_str())) {
+				spot = spot->next;
+				continue;
+			}
+			rapidjson::Value &v = d[key.c_str()];
+			if (!v.IsNumber()) {
+				spot = spot->next;
+				continue;
+			}
+			if (!aggName.compare("SUM")) {
+				if (v.IsDouble()) {
+					res += v.GetDouble();
+				} else {
+					res += v.GetInt();
+				}
+			}
+			parent = spot;
+			spot = spot->next;	
+		}
+		parent->next = new Parsing::List<rapidjson::Document>();
+		std::string fieldName(aggName + "(" + key + ")");
+		rapidjson::Value k(fieldName.c_str(), parent->next->value.GetAllocator());
+		rapidjson::Value v;
+		v.SetDouble(res);
+		parent->next->value.SetObject();
+		parent->next->value.AddMember(k, v, parent->next->value.GetAllocator());
+		aggs = aggs->next;
+	}
+}
+
 void execute(Parsing::Query &q, Storage::LinearHash<std::string> &meta, Storage::LinearHash<std::string> &indices, std::string dataFile) {
 	clock_t start, end;
 	start = std::clock();	
@@ -416,6 +477,11 @@ void execute(Parsing::Query &q, Storage::LinearHash<std::string> &meta, Storage:
 			}
 			// Filter the fields
 			Parsing::List<rapidjson::Document> *filtered = filterFields(fieldList, keyList);
+			Parsing::List<std::string> *aggregates = extractAggregates(keyList);
+
+			// Process aggregate functions
+			processAggregates(filtered, aggregates);
+			
 			std::string *result = combineFields(filtered);
 			std::cout << toPrettyString(result) << std::endl;
 			

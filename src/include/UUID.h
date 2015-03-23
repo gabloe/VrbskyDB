@@ -7,17 +7,9 @@ extern "C"
 #endif
 }
 
-unsigned long long newUUID64();
-unsigned int newUUID();
-
-uint64_t newUUID64()
+std::string newUUID()
 {
-   return ((uint64_t)newUUID() << 32) | (uint64_t)newUUID();
-}
-
-unsigned int newUUID()
-{
-std::string res("0x");
+std::string res;
 #ifdef WIN32
     UUID uuid;
     UuidCreate ( &uuid );
@@ -34,6 +26,5 @@ std::string res("0x");
     char s[37];
     uuid_unparse ( uuid, s );
 #endif
-    res += s;
-    return std::stoul(res, nullptr, 16);
+    return std::string(s);
 }
