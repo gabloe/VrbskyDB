@@ -48,7 +48,7 @@ std::string toPrettyString(rapidjson::Document *doc) {
 // Given a uuid return a document if it exists
 rapidjson::Document readData(std::string dataFile, std::string uuid, Storage::LinearHash<uint64_t> &indices) {
 	uint64_t key = hash(uuid, uuid.size());
-	size_t ind = 0;
+	uint64_t ind = 0;
     indices.get(key,ind);
 	std::ifstream in(dataFile.c_str(), std::ios::in | std::ios::binary);
 	in.seekg(ind);

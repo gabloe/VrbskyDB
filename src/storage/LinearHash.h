@@ -27,6 +27,41 @@ typedef unsigned __int64 uint64_t;
 // Globals
 const uint64_t INF = std::numeric_limits<uint64_t>::max();
 
+template <typename T> 
+struct Convert {
+    const char *t;
+    uint64_t unused;
+    Convert( const char *data , uint64_t len ) {
+        t = data;
+        unused = len;
+    }
+    const T Data() { return *reinterpret_cast<const T*>(t); }
+};
+
+template <> 
+struct Convert<std::string> {
+    std::string str;
+    Convert( const char* data , uint64_t len ) {
+        str = std::string( data , len );
+    }
+    const std::string& Data() { return str; }
+};
+
+template <typename T> 
+struct Wrapper {
+    T &t;
+    Wrapper( T &t ) : t(t) {}
+    const char *Data() { return reinterpret_cast<char*>(&t); }
+    size_t Size() { return sizeof(T); }
+};
+
+template <> 
+struct Wrapper<std::string> {
+    std::string &t;
+    Wrapper( std::string &t ) : t(t) {}
+    const char *Data() { return t.c_str(); }
+    size_t Size() { return t.length(); }
+};
 
 // Defines
 #define tests false
@@ -171,7 +206,7 @@ namespace Storage {
                     return key;
                 }
 
-                T getValue() {
+                T &getValue() {
                     return value;
                 }
 
@@ -443,11 +478,18 @@ namespace Storage {
                             // This bucket is empty or I am done with it
                             if( curr == NULL || curr->count_ == 0 || iter == end) {
                                 ++b_pos;
+                                if( b_pos == num_buckets_ ) {
+                                    buckets_ = NULL;
+                                    return;
+                                }
                                 curr = buckets_[b_pos];
-                                if( curr != NULL ) {
+                                // Got some stuff in this bucket!
+                                if( curr != NULL && curr->count_ != 0 ) {
                                     iter = curr->pairs_.begin();
                                     end = curr->pairs_.end();
-                                    return;
+                                    if( (*iter).init ) {
+                                        return;
+                                    }
                                 }
                                 continue;
                             }
@@ -463,11 +505,12 @@ namespace Storage {
                     }
 
 
-                    Tuple<T> operator*() {
+                    Tuple<T> &operator*() {
                         return *iter;
                     }
 
                     MyIterator &operator++() {
+                        ++iter;
                         next();
                         return *this;
                     }
@@ -527,7 +570,6 @@ namespace Storage {
                     // Special function only called when just created
                     // Bucket and need to fill it right away
                     void append(uint64_t key, T &value) {
-                        std::cout << "Pushing " << value << std::endl;
                         pairs_.push_back( Tuple<T>( key , value ) );
                         ++count_;
                     }
@@ -634,9 +676,11 @@ void dumpToFile(std::string filename, Storage::LinearHash<T> &hash) {
         ++count;
         auto pair = *iter;
 
+
+        Wrapper<T> w( pair.getValue() );
+
         uint64_t key = pair.getKey();
-        uint64_t  length = sizeof(pair.getValue());
-        T data = pair.getValue();
+        uint64_t  length = w.Size();
 
         // Key
         outfile.write(reinterpret_cast<char*>(&key), sizeof(key));
@@ -645,9 +689,7 @@ void dumpToFile(std::string filename, Storage::LinearHash<T> &hash) {
         outfile.write(reinterpret_cast<char*>(&length), sizeof(length));
 
         // Data
-        std::cout << "Writing the data " << data << std::endl;
-        outfile << data;
-        //outfile.write( data , length);
+        outfile.write( w.Data() , length);
 
     }
 
@@ -689,14 +731,14 @@ Storage::LinearHash<T> *readFromFile(std::string filename) {
     for (uint64_t i = 0; i < num_elements; ++i) {
         uint64_t key, length;
 
-        //T t;
 
         infile.read(reinterpret_cast<char*>(&key), sizeof(uint64_t));
         infile.read(reinterpret_cast<char*>(&length), sizeof(uint64_t));
-        infile.read(reinterpret_cast<char*>(&str_buffer), length);
+        infile.read(reinterpret_cast<char*>(str_buffer), length);
 
-        //infile >> t;
-        //result->put(key, T(str_buffer));
+        Convert<T> c( str_buffer , length );
+        
+        result->put(key, c.Data() );
     }
 
     infile.close();
