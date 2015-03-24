@@ -422,39 +422,37 @@ namespace Storage {
                         num_buckets_ = num_b;
                         num_elements_ = num_e;
 
-                        curr = buckets_[0];
+                        curr = NULL;
                         b_pos = 0;
 
                         next();
 
                     }
 
+                    // Locate the next item
                     void next() {
                         if( buckets_ == NULL ) return;
 
                         do {
+                            // Out of buckets
                             if( b_pos == num_buckets_ ) {
                                 buckets_ = NULL;
                                 return;
                             }
                             
-                            if( curr == NULL || curr->count_ == 0) {
-                                ++b_pos;
-                                curr = buckets_[b_pos];
-                                continue;
-                            }
-
-                            
-                            if( iter == end ) {
+                            // This bucket is empty or I am done with it
+                            if( curr == NULL || curr->count_ == 0 || iter == end) {
                                 ++b_pos;
                                 curr = buckets_[b_pos];
                                 if( curr != NULL ) {
                                     iter = curr->pairs_.begin();
                                     end = curr->pairs_.end();
+                                    return;
                                 }
                                 continue;
-                            } 
+                            }
                             
+                            // Go to next item
                             if ( !(*iter).init ) {
                                 ++iter;
                                 continue;
