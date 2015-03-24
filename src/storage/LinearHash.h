@@ -151,6 +151,47 @@ uint64_t search(K* s, K v, uint64_t start, uint64_t end) {
 
 namespace Storage {
 
+    template <typename T>
+    class Tuple {
+    public:
+        uint64_t key;
+        T value;
+        bool init = false;
+
+        Tuple() {
+        }
+
+        Tuple(uint64_t k, T v) {
+            init = true;
+            key = k;
+            value = v;
+        }
+
+        uint64_t getKey() {
+            return key;
+        }
+
+        T getValue() {
+            return value;
+        }
+
+        bool operator==( const Tuple<T> &other) const {
+            // If initialized we check
+            if( init ) {
+                return this->key == other.key;
+            }
+            // Otherwise nope
+            return false;
+        }
+
+        bool operator==( const uint64_t &key) const {
+            if( init ) {
+                return this->key == key;
+            }
+            return false;
+        }
+    };
+
 	template <typename T>
 	class LinearHash {
 
@@ -208,7 +249,7 @@ namespace Storage {
 		}
 
 		// Given a key and value we place it in the hash table
-		void put(uint64_t key, T *value) {
+		void put(uint64_t key, T value) {
 
 			// Get the bucket to place into
 			uint64_t index = computeIndex(key);
@@ -235,27 +276,32 @@ namespace Storage {
 			++num_items_;	// How many items in the table
 		}
 
-		T *get(uint64_t key) {
+        size_t getElementCount() {
+            return this->total_elements_;
+        }
+
+		int get(uint64_t key , T &data ) {
 			uint64_t index = computeIndex(key);
 			Bucket *b = getBucket(index);
 			if (b == NULL) {
-				return NULL;
+                return -1;
 			}
-			return b->get(key);
+			return b->get(key , data );
 		}
 
-		T *remove(uint64_t key) {
+		int remove(uint64_t key) {
 			uint64_t index = computeIndex(key);
 			Bucket *b = getBucket(index);
 			if (b == NULL) {
-				return NULL;
+                return -1;
 			}
 			--num_items_;
 			return b->remove(key);
 		}
 
 		bool contains(uint64_t key) {
-			return get(key) != NULL;
+            T t;
+			return get(key,t) == 0;
 		}
 
 		uint64_t bucket_count() {
@@ -313,16 +359,13 @@ namespace Storage {
 
 			for (uint64_t i = 0; i < end; ++i) {
 
-				uint64_t idx = computeIndex(prev->keys_[i]);
+				uint64_t idx = computeIndex(prev->pairs_[i].key);
 
 				if (idx == second) {		// Move to other
-
-					next->append(prev->keys_[i], prev->values_[i]);
-					prev->values_[i] = NULL;
+					next->append(prev->pairs_[i].key, prev->pairs_[i].value);
 				} else {
 					if (unmoved != i) {	// If not in their place already, then move
-						prev->keys_[unmoved] = prev->keys_[i];
-						prev->values_[unmoved] = prev->values_[i];
+						prev->pairs_[unmoved] = prev->pairs_[i];
 					}
 					++unmoved;	// Didn't move so count
 				}
@@ -352,24 +395,6 @@ namespace Storage {
 			return buckets_[index];
 		}
 
-		class MyTuple {
-		public:
-			uint64_t key;
-			T* value;
-
-			MyTuple(uint64_t k, T* v) {
-				key = k;
-				value = v;
-			}
-
-			uint64_t getKey() {
-				return key;
-			}
-
-			T* getValue() {
-				return value;
-			}
-		};
 
 		class MyIterator {
 		private:
@@ -396,14 +421,16 @@ namespace Storage {
 				pos = b_pos = 0;
 
 				total = num_buckets + splits;
+                // Each up all the empties
 				while (pos < total) {
-					if (bucket == NULL) {
+					if (bucket == NULL || bucket->count_ == 0) {
 						bucket = bs[++pos];
 					} else {
 						break;
 					}
 				}
 
+                // Looks like it was empty all along
 				if (pos == total) {
 					buckets = NULL;
 					bucket = NULL;
@@ -411,10 +438,9 @@ namespace Storage {
 				}
 			}
 
-			MyTuple operator*() {
-				MyTuple ret(bucket->keys_[b_pos], bucket->values_[b_pos]);
+			Tuple<T> operator*() {
 				++b_pos;
-				return ret;
+				return bucket->pairs_[b_pos];
 			}
 
 			MyIterator &operator++() {
@@ -459,9 +485,7 @@ namespace Storage {
 			uint64_t count_;
 
 			// Data
-			uint64_t *keys_;
-			T **values_;
-
+            std::vector< Tuple<T> > pairs_;
 
 			Bucket(uint64_t num_elements) {
 
@@ -469,11 +493,7 @@ namespace Storage {
 				total_count_ = count_ = 0;
 
 				// Data
-				keys_ = new uint64_t[num_elements_];
-				values_ = new T*[num_elements_];
-
-				memset(values_, 0, sizeof(T*)* num_elements_);
-
+                pairs_ = std::vector< Tuple<T> >( num_elements_ );
 			}
 
 			Bucket(Bucket &other) {
@@ -481,13 +501,7 @@ namespace Storage {
 				total_count_ = count_ = other.count_;
 
 				// Data
-				keys_ = new uint64_t[num_elements_];
-				values_ = new T*[num_elements_];
-
-				for (uint64_t i = 0; i < count_; ++i) {
-					keys_[i] = other.keys_[i];
-					values_[i] = other.values_[i];
-				}
+                pairs_ = std::vector<Tuple<T> >( other.pairs_ );
 
 			}
 
@@ -496,135 +510,56 @@ namespace Storage {
 				count_ = 0;
 				num_elements_ = 0;
 
-				if (keys_ != NULL) {
-					delete[] keys_;
-					delete[] values_;
-				}
-
-				keys_ = NULL;
-				values_ = NULL;
-
 			}
-			
-			void resize() {
-				uint64_t new_size = 2* num_elements_;
-				
-				uint64_t *new_keys = new uint64_t[new_size];
-				T **new_values	= new T*[new_size];
-				
-                if( DEBUG ) {
-                    Assert( "Bucket could not grow" , new_keys != NULL );
-                    Assert( "Bucket could not grow" , new_values != NULL );
-                }
-				
-				for( uint64_t i = 0 ; i < num_elements_ ; ++i ) {
-					new_keys[i] = keys_[i];
-					new_values[i] = values_[i];
-				}
-				
-				delete[] keys_;
-				delete[] values_;
-				
-				num_elements_ = new_size;
-				keys_ = new_keys;
-				values_ = new_values;
-			}
-
 
 			// Special function only called when just created
 			// Bucket and need to fill it right away
-			void append(uint64_t key, T *value) {
-				Bucket *curr = this;
-				while (curr->full()) {
-					resize();					
-				}
-				curr->sort(key, value);
-				++curr->count_;
+			void append(uint64_t key, T &value) {
+                pairs_.push_back( Tuple<T>( key , value ) );
+				++count_;
 			}
 
 			// Returns true if collision
-			bool put(uint64_t key, T *value) {
+			bool put(uint64_t key, T &value) {
 				
-				uint64_t index = search( keys_ , key , 0 , count_ );
-				if( index != INF ) {
-					if (values_[index] != NULL) {
-						delete values_[index];	// Remove old
-					}
-					values_[index] = value;	// Add new
+				auto pos = std::find( pairs_.begin() , pairs_.end() , key );
+				if( pos != pairs_.end() ) {
+                    (*pos).value = value;
 					return true;
 				}
-				append( key , value );
-                                return false;
+                pairs_.push_back( Tuple<T>( key , value ) );
+                return false;
 			}
 
 			// Search for a value given a key in this bucket
-			T *get(uint64_t key) {
-				uint64_t index = search( keys_ , key , 0 , count_ );
-				if (index == INF) {
-					return NULL;
+			int get(uint64_t key , T &data) {
+				auto pos = std::find( pairs_.begin() , pairs_.end() , key );
+				if ( pos == pairs_.end() ) {
+                    return -1;
 				}
-				return values_[index];
+                data = (*pos).value;
+                return 0;
 			}
 
-			T *remove(uint64_t key) {
+			int remove(uint64_t key) {
 				// Find my bucket
-				uint64_t index = search( keys_ , key , 0 , count_ );
 				
+				auto pos = std::find( pairs_.begin() , pairs_.end() , key );
 				// We don't actually have it
-				if (index == INF) {
-					return NULL;
+				if ( pos == pairs_.end() ) {
+                    return -1;
 				}
 
 				// Remove from bucket, keep sorted maybe
-				T* v = values_[index];
+				T v = (*pos).value;
+                pairs_.erase( pos );
 				--count_;
 				
-				if (DoSort) {
-					while (index < count_) {
-						swap(keys_, index, index + 1);
-						swap(values_, index, index + 1);
-						++index;
-					}
-				} else {
-					swap(keys_, index, count_);
-					swap(values_, index, count_);
-				}
-				
-				return v;
+                return 0;
 			}
 
 			bool full() {
 				return count_ == num_elements_;
-			}
-
-			// Binary search
-			void sort(uint64_t k, T* v) {
-				uint64_t i = count_;
-				if (DoSort) {
-					//*
-					// While our key is strictly smaller than the previous key
-					while (i > 0 && keys_[i - 1] > k) {
-						// Copy them up
-						keys_[i] = keys_[i - 1];
-						values_[i] = values_[i - 1];
-						--i;
-					}
-					// */
-				}
-				keys_[i] = k;
-				values_[i] = v;
-			}
-
-			void print(uint64_t pos) {
-				if (pos > count_) return;
-
-				print(pos * 2 + 1);
-
-				auto i = pos;
-				while (i > 0) { std::cout << "  "; i /= 2; }
-				std::cout << " " << keys_[pos] << " " << std::endl;;
-
-				print(pos * 2 + 2);
 			}
 
 
@@ -687,8 +622,8 @@ void dumpToFile(std::string filename, Storage::LinearHash<T> &hash) {
 		auto pair = *iter;
 
 		uint64_t key = pair.getKey();
-		uint64_t  length = pair.getValue()->length();
-		T *data = pair.getValue();
+		uint64_t  length = sizeof(pair.getValue());
+		T data = pair.getValue();
 
 		// Key
 		outfile.write(reinterpret_cast<char*>(&key), sizeof(key));
@@ -697,8 +632,8 @@ void dumpToFile(std::string filename, Storage::LinearHash<T> &hash) {
 		outfile.write(reinterpret_cast<char*>(&length), sizeof(length));
 
 		// Data
-        outfile << *data;
-		//outfile.write(data, length);
+        outfile << data;
+		//outfile.write( data, length);
 
 	}
 
@@ -711,9 +646,10 @@ void dumpToFile(std::string filename, Storage::LinearHash<T> &hash) {
 	outfile.close();
 }
 
-Storage::LinearHash<std::string> *readFromFile(std::string filename) {
+template <typename T>
+Storage::LinearHash<T> *readFromFile(std::string filename) {
 	std::ifstream infile(filename, std::ofstream::binary);
-	Storage::LinearHash<std::string> *result;
+	Storage::LinearHash<T> *result;
 
 	uint64_t num_buckets, size_bucket, num_elements;
 
@@ -733,7 +669,7 @@ Storage::LinearHash<std::string> *readFromFile(std::string filename) {
 	// I would hope this is large enough...
 	char *str_buffer = new char[1024 * 1024];
 
-	result = new Storage::LinearHash<std::string>(num_buckets, size_bucket);
+	result = new Storage::LinearHash<T>(num_buckets, size_bucket);
 
 	// Data
 	for (uint64_t i = 0; i < num_elements; ++i) {
@@ -743,7 +679,7 @@ Storage::LinearHash<std::string> *readFromFile(std::string filename) {
 		infile.read(reinterpret_cast<char*>(&length), sizeof(uint64_t));
 		infile.read(str_buffer, length);
 
-		result->put(key, new std::string(str_buffer, length));
+		result->put(key, T(str_buffer));
 	}
 
 	infile.close();

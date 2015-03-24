@@ -27,20 +27,15 @@ std::string toString(rapidjson::Document *doc) {
 	return str;
 }
 
-std::string toPrettyString(std::string &doc) {
+
+std::string toPrettyString(std::string doc) {
 	rapidjson::Document d;
 	d.Parse(doc.c_str());
 	return toPrettyString(&d);
 }
 
-std::string toPrettyString(std::string *doc) {
-	rapidjson::Document d;
-	d.Parse(doc->c_str());
-	return toPrettyString(&d);
-}
-
 std::string toPrettyString(char *doc) {
-	return toPrettyString(new std::string(doc));
+	return toPrettyString(std::string(doc));
 }
 
 std::string toPrettyString(rapidjson::Document *doc) {
@@ -51,9 +46,10 @@ std::string toPrettyString(rapidjson::Document *doc) {
 }
 
 // Given a uuid return a document if it exists
-rapidjson::Document readData(std::string dataFile, std::string uuid, Storage::LinearHash<std::string> &indices) {
+rapidjson::Document readData(std::string dataFile, std::string uuid, Storage::LinearHash<uint64_t> &indices) {
 	uint64_t key = hash(uuid, uuid.size());
-	int ind = atoi(indices.get(key)->c_str());
+	size_t ind = 0;
+    indices.get(key,ind);
 	std::ifstream in(dataFile.c_str(), std::ios::in | std::ios::binary);
 	in.seekg(ind);
 
@@ -78,9 +74,10 @@ Parsing::List<std::string> *extractUUIDArray(std::string project, std::string do
 
         // Initial list
 		uuidList = new Parsing::List<std::string>();
-		std::string *fields = meta.get(keyHash);
+		std::string fields;
+        meta.get(keyHash,fields);
 
-		doc.Parse(fields->c_str());
+		doc.Parse(fields.c_str());
 		rapidjson::Value &fieldArray = doc["__FIELDS__"];
 
 		Parsing::List<std::string> *spot = uuidList;
@@ -116,9 +113,9 @@ rapidjson::Document createProject(std::string &name, Parsing::List<std::string> 
 }
 
 // Given a JSON string, parse the JSON object and append a document name to the array.
-rapidjson::Document appendDocument(std::string *value, Parsing::List<std::string> *doc) {
+rapidjson::Document appendDocument(std::string &value, Parsing::List<std::string> *doc) {
 	rapidjson::Document project;
-	project.Parse(value->c_str());
+	project.Parse(value.c_str());
 	rapidjson::Document::AllocatorType& allocator = project.GetAllocator();
 	if (project.HasMember("__DOCUMENTS__")) {
 		rapidjson::Value &documentArray = project["__DOCUMENTS__"];
@@ -139,13 +136,14 @@ rapidjson::Document appendDocument(std::string *value, Parsing::List<std::string
 	return project;
 }
 
-void removeDocument(std::string *pname, Parsing::List<std::string> *doc, Storage::LinearHash<std::string> &meta) {
-	std::string proj_list_key(*pname);
+void removeDocument(std::string &pname, Parsing::List<std::string> *doc, Storage::LinearHash<std::string> &meta) {
+	std::string proj_list_key(pname);
 	uint64_t doc_list = hash(proj_list_key, proj_list_key.size());
 	rapidjson::Document d;
 	if (meta.contains(doc_list)) {
-		std::string *doclist = meta.get(doc_list);
-		d.Parse(doclist->c_str());
+		std::string doclist;
+        meta.get(doc_list,doclist);
+		d.Parse(doclist.c_str());
 		rapidjson::Value &projectArray = d["__DOCUMENTS__"];
 		Parsing::List<std::string> *spot = doc;
 		while (spot) {
@@ -159,42 +157,45 @@ void removeDocument(std::string *pname, Parsing::List<std::string> *doc, Storage
 			}
 			spot = spot->next;
 		}
-		*doclist = toString(&d);
+        meta.put(doc_list, toString(&d) );
 	}
 }
 
-void addProject(std::string *pname, Storage::LinearHash<std::string> &meta) {
+void addProject(std::string &pname, Storage::LinearHash<std::string> &meta) {
 	std::string proj_list_key("__PROJECTS__");
 	uint64_t project_list = hash(proj_list_key, proj_list_key.size());
 	rapidjson::Document d;
 	rapidjson::Value proj;
-	proj.SetString(pname->c_str(), d.GetAllocator());
+	proj.SetString(pname.c_str(), d.GetAllocator());
+
 	if (meta.contains(project_list)) {
-		std::string *project = meta.get(project_list);
-		d.Parse(project->c_str());
+		std::string project;
+        meta.get(project_list,project);
+		d.Parse(project.c_str());
 		rapidjson::Value &projectArray = d["__PROJECTS__"];
 		projectArray.PushBack(proj, d.GetAllocator());
-		*project = toString(&d);
 	} else {
 		d.SetObject();
 		rapidjson::Value projectArray(rapidjson::kArrayType);
 		projectArray.PushBack(proj, d.GetAllocator());
 		d.AddMember("__PROJECTS__", projectArray, d.GetAllocator());
-		meta.put(project_list, new std::string(toString(&d)));
 	}
+
+    meta.put( project_list, toString(&d) );
 }
 
 // Given a project remove all documents from it
-void removeDocuments( std::string *pname , Storage::LinearHash<std::string> &meta ) {
-	uint64_t proj_hash = hash(*pname, pname->size());
+void removeDocuments( std::string &pname , Storage::LinearHash<std::string> &meta ) {
+	uint64_t proj_hash = hash(pname, pname.size());
 	if (meta.contains(proj_hash)) {
-		std::string *doc_list = meta.get(proj_hash);
+		std::string doc_list;
+        meta.get(proj_hash, doc_list);
 		rapidjson::Document d2;
-		d2.Parse(doc_list->c_str());
+		d2.Parse(doc_list.c_str());
 		rapidjson::Value &docArray = d2["__DOCUMENTS__"];
 		for (rapidjson::Value::ConstValueIterator itr = docArray.Begin(); itr != docArray.End(); ++itr) {
 			std::string dd = itr->GetString();
-			std::string proj_doc_key(*pname + "." + dd);
+			std::string proj_doc_key(pname + "." + dd);
 			uint64_t proj_doc_hash = hash(proj_doc_key, proj_doc_key.size());
 			if (meta.contains(proj_doc_hash)) {
 				meta.remove(proj_doc_hash);
@@ -205,26 +206,28 @@ void removeDocuments( std::string *pname , Storage::LinearHash<std::string> &met
 }
 
 // Remove the project name from the project metadata list.
-void removeProject(std::string *pname, Storage::LinearHash<std::string> &meta) {
+void removeProject(std::string &pname, Storage::LinearHash<std::string> &meta) {
 	std::string proj_list_key("__PROJECTS__");
 	uint64_t project_list = hash(proj_list_key, proj_list_key.size());
 	rapidjson::Document d;
 	if (meta.contains(project_list)) {
-		std::string *projects = meta.get(project_list);
-		d.Parse(projects->c_str());
+		std::string projects;
+        meta.get(project_list,projects);
+
+		d.Parse(projects.c_str());
 		rapidjson::Value &projectArray = d["__PROJECTS__"];
 
         // TODO: map function on list?
 		for (rapidjson::Value::ConstValueIterator itr = projectArray.Begin(); itr != projectArray.End(); ++itr) {
 			std::string dd = itr->GetString();
-			if (!dd.compare(*pname)) {
+			if (!dd.compare(pname)) {
 				projectArray.Erase(itr);
 				break;
 			}
 		}
 
         // Update data in hashtable
-		*projects = toString(&d);
+        meta.put( project_list , toString( &d ) );
 
         removeDocuments( pname , meta );
 	}
@@ -236,16 +239,17 @@ void removeKey(std::string pname, std::string dname, std::string key, Storage::L
 	uint64_t doc_hash = hash(doc, doc.size());
 	if (meta.contains(doc_hash)) {
 		rapidjson::Document d;
-		std::string *doc_text = meta.get(doc_hash);
-		d.Parse(doc_text->c_str());
+		std::string doc_text;
+        meta.get(doc_hash,doc_text);
+		d.Parse(doc_text.c_str());
 		if (d.HasMember(key.c_str())) {
 			d.RemoveMember(key.c_str());
-			*doc_text = toString(&d);
+            meta.put(doc_hash,toString(&d));
 		}
 	}
 }
 
-unsigned int appendData(size_t length, std::string data, std::string dataFile) {
+uint64_t appendData(size_t length, std::string data, std::string dataFile) {
 	std::ofstream fout;
 	std::ifstream fin;
 	fin.open(dataFile.c_str(), std::ios::in | std::ios::binary);
@@ -266,15 +270,20 @@ unsigned int appendData(size_t length, std::string data, std::string dataFile) {
 }
 
 // Add firleds to a document
-void addFields(std::string pname, std::string dname, rapidjson::Document &d, Storage::LinearHash<std::string> &meta, Storage::LinearHash<std::string> &indices, std::string dataFile) {
+void addFields(std::string pname, std::string dname, rapidjson::Document &d,
+        Storage::LinearHash<std::string> &meta,
+        Storage::LinearHash<uint64_t> &indices,
+        std::string dataFile) {
+
 	std::string key_string(pname + "." + dname);
 	uint64_t key = hash(key_string, key_string.size());
 	rapidjson::Document arrayContainer;
 	// If the document exists, we just want to append
 	rapidjson::Value uuidArray(rapidjson::kArrayType);
 	if (meta.contains(key)) {
-		std::string *fieldArrayStr = meta.get(key);
-		arrayContainer.Parse(fieldArrayStr->c_str());
+		std::string fieldArrayStr;
+        meta.get(key,fieldArrayStr);
+		arrayContainer.Parse(fieldArrayStr.c_str());
 		uuidArray = arrayContainer["__FIELDS__"];
 	} else {
 		arrayContainer.SetObject();
@@ -303,9 +312,9 @@ void addFields(std::string pname, std::string dname, rapidjson::Document &d, Sto
 		size_t len = data.size();
 
 		// Write data out to a file, record file offset and save with UUID as key
-		unsigned int offset = appendData(len, data, dataFile);
+		uint64_t offset = appendData(len, data, dataFile);
 		uint64_t uuid_key = hash(uuid, uuid.size());
-		indices.put(uuid_key, new std::string(std::to_string(offset)));
+		indices.put(uuid_key, offset);
 
 		// Insert uuid for particular field in metadata
 		std::string fieldKeyStr(pname + "." + dname + "." + k_str);
@@ -315,12 +324,13 @@ void addFields(std::string pname, std::string dname, rapidjson::Document &d, Sto
 		field2.SetString(uuid.c_str(), arrayContainer.GetAllocator());
 		// Duplicates...
 		if (meta.contains(fieldKey)) {
-			std::string *uuids = meta.get(fieldKey);
+			std::string uuids;
+            meta.get(fieldKey,uuids);
 			rapidjson::Document uuid_doc;
-			uuid_doc.Parse(uuids->c_str());
+			uuid_doc.Parse(uuids.c_str());
 			rapidjson::Value &uuidArray = uuid_doc["__FIELDS__"];
 			uuidArray.PushBack(field2, uuid_doc.GetAllocator());
-			*uuids = toString(&uuid_doc);
+            meta.put(fieldKey,toString(&uuid_doc));
 		} else {
 			rapidjson::Document uuid_doc;
 			uuid_doc.SetObject();
@@ -329,7 +339,7 @@ void addFields(std::string pname, std::string dname, rapidjson::Document &d, Sto
 			uuidArray.PushBack(field2, uuid_doc.GetAllocator());
 			uuid_doc.AddMember("__FIELDS__", uuidArray, uuid_doc.GetAllocator());
 			std::string uuids = toString(&uuid_doc);
-			meta.put(fieldKey, new std::string(uuids));
+			meta.put(fieldKey, uuids);
 		}
 
 		d.RemoveMember(k_str.c_str());
@@ -338,10 +348,10 @@ void addFields(std::string pname, std::string dname, rapidjson::Document &d, Sto
 	name_string.SetString(dname.c_str(), arrayContainer.GetAllocator());
 	arrayContainer.AddMember("__NAME__", name_string, arrayContainer.GetAllocator());
 	arrayContainer.AddMember("__FIELDS__", uuidArray, arrayContainer.GetAllocator());
-	meta.put(key, new std::string(toString(&arrayContainer)));
+	meta.put(key, toString(&arrayContainer));
 }
 
-std::string *combineFields(Parsing::List<rapidjson::Document> *fields) {
+std::string combineFields(Parsing::List<rapidjson::Document> *fields) {
 	rapidjson::Document doc;
 	doc.SetObject();
 	while (fields) {
@@ -355,8 +365,7 @@ std::string *combineFields(Parsing::List<rapidjson::Document> *fields) {
 		}
 		fields = fields->next;
 	}
-	std::string res = toString(&doc);
-	return new std::string(res);
+    return toString(&doc);
 }
 
 Parsing::List<rapidjson::Document> *filterFields(Parsing::List<rapidjson::Document> *fields, Parsing::List<std::string> *keys) {
@@ -469,7 +478,7 @@ void processAggregates(Parsing::List<rapidjson::Document> *fields, Parsing::List
 	}
 }
 
-void execute(Parsing::Query &q, Storage::LinearHash<std::string> &meta, Storage::LinearHash<std::string> &indices, std::string dataFile) {
+void execute(Parsing::Query &q, Storage::LinearHash<std::string> &meta, Storage::LinearHash<uint64_t> &indices, std::string dataFile) {
 	clock_t start, end;
 	start = std::clock();	
 	switch (q.command) {
@@ -481,11 +490,12 @@ void execute(Parsing::Query &q, Storage::LinearHash<std::string> &meta, Storage:
 				uint64_t project_key = hash(*q.project, (*q.project).size());
 				if (meta.contains(project_key)) {
 					// Project exists.  Append the document to the list
-					std::string *docList = meta.get(project_key);
+					std::string docList;
+                    meta.get(project_key,docList);
 					try {
 						rapidjson::Document proj = appendDocument(docList, q.documents);
 						std::string project_json = toString(&proj);
-						*docList = project_json;
+                        meta.put( project_key , project_json );
 					} catch (std::runtime_error &e) {
 						std::cout << e.what() << std::endl;
 						return;
@@ -493,9 +503,9 @@ void execute(Parsing::Query &q, Storage::LinearHash<std::string> &meta, Storage:
 				} else {
 					// Project doesn't exist.  Create project and add document if one is being created.
 					rapidjson::Document project = createProject(*q.project, q.documents);
-					addProject(q.project, meta);
+					addProject( *q.project, meta);
 					std::string project_json = toString(&project);
-					meta.put(project_key, new std::string(project_json));
+					meta.put(project_key, project_json);
 				}
 			}
 			Parsing::List<std::string> *spot = q.documents;
@@ -503,7 +513,7 @@ void execute(Parsing::Query &q, Storage::LinearHash<std::string> &meta, Storage:
 				rapidjson::Document d;
 				if (q.value && !d.Parse(q.value->c_str()).HasParseError()) {
 					std::cout << toPrettyString(&d) << std::endl;
-					addFields(*q.project, spot->value, d, meta, indices, dataFile);
+					addFields( *q.project, spot->value, d, meta, indices, dataFile);
 				} else {
 					// No value.  Create empty documents;
 					d.SetObject();
@@ -547,7 +557,7 @@ void execute(Parsing::Query &q, Storage::LinearHash<std::string> &meta, Storage:
 			// Process aggregate functions
 			processAggregates(filtered, aggregates);
 			
-			std::string *result = combineFields(filtered);
+			std::string result = combineFields(filtered);
 			std::cout << toPrettyString(result) << std::endl;
 			
 			break;
@@ -563,11 +573,11 @@ void execute(Parsing::Query &q, Storage::LinearHash<std::string> &meta, Storage:
 					if (meta.contains(doc_hash)) {
 						meta.remove(doc_hash);
 					}
-					removeDocument(q.project, spot, meta);
+					removeDocument( *q.project, spot, meta);
 					spot = spot->next;
 				}
 			} else {
-				removeProject(q.project, meta);
+				removeProject( *q.project, meta);
 			}
 			break;
 		}
@@ -578,15 +588,17 @@ void execute(Parsing::Query &q, Storage::LinearHash<std::string> &meta, Storage:
 				std::string p("__PROJECTS__");
 				uint64_t phash = hash(p, p.size());
 				if (meta.contains(phash)) {
-					std::string *data = meta.get(phash);
+					std::string data;
+                    meta.get(phash,data);
 					std::cout << toPrettyString(data) << std::endl;
 				} else {
 					std::cout << "No projects found." << std::endl;
 				}
 			} else { // List the documents in a specific project
-				uint64_t dhash = hash(*q.project, q.project->size());
+				uint64_t dhash = hash( *q.project, q.project->size());
 				if (meta.contains(dhash)) {
-					std::string *data = meta.get(dhash);
+					std::string data;
+                    meta.get(dhash,data);
 					std::cout << toPrettyString(data) << std::endl;
 				} else {
 					std::cout << "No documents found." << std::endl;
@@ -642,18 +654,18 @@ int main(int argc, char **argv) {
 	}
 	std::string q = "";
 	Storage::LinearHash<std::string> *meta;
-	Storage::LinearHash<std::string> *indices;
+	Storage::LinearHash<uint64_t> *indices;
 
 	if (file_exists(meta_fname)) {
-		meta = readFromFile(meta_fname);
+		meta = readFromFile<std::string>(meta_fname);
 	} else {
 		meta = new Storage::LinearHash<std::string>(1025,2048);
 	}
 
 	if (file_exists(indices_fname)) {
-		indices = readFromFile(indices_fname);
+		indices = readFromFile<uint64_t>(indices_fname);
 	} else {
-		indices = new Storage::LinearHash<std::string>(1025,2048);
+		indices = new Storage::LinearHash<uint64_t>(1025,2048);
 	}
 
 	while (1) {
@@ -665,7 +677,7 @@ int main(int argc, char **argv) {
 		Parsing::Parser p(q);
 		Parsing::Query *query = p.parse();
 		if (query) {
-			execute(*query, *meta, *indices, data_fname);
+			execute( *query, *meta, *indices, data_fname);
 		}
 		std::cout << std::endl;
 	}
