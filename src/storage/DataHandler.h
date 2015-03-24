@@ -1,6 +1,9 @@
 
 #include "LinearHash.h"
 
+
+
+
 namespace Storage {
 
     const uint64_t KB = 1024;
@@ -34,6 +37,18 @@ namespace Storage {
             } while ( remaining > 0 );
 
             return d.offset;
+        }
+
+        Document getEmptyDocument() {
+            // Create new document
+            if( freeList == None ) {
+                ++num_documents;
+                return Document( db );
+            }
+
+            Document d = Document( filename , freeList );
+            freeList = d.next;
+
         }
 
     };
@@ -80,6 +95,8 @@ namespace Storage {
     struct Document {
         uint64_t offset;
         uint64_t length;
+        uint64_t next;
+
         char *data;
 
         // Load a document given a file and offset
