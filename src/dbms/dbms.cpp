@@ -659,15 +659,72 @@ int myNewline(int count, int key) {
 	}
 	return 0;
 }
+ 
+void * xmalloc (int size) {
+    void *buf;
+ 
+    buf = malloc (size);
+    if (!buf) {
+        fprintf (stderr, "Error: Out of memory. Exiting.'n");
+        exit (1);
+    }
+ 
+    return buf;
+}
+
+char * dupstr (char* s) {
+  char *r;
+ 
+  r = (char*) xmalloc ((strlen (s) + 1));
+  strcpy (r, s);
+  return (r);
+}
+
+char *myMatcher(const char *text, int state) {
+    static int list_index, len;
+    char *name;
+ 
+    if (!state) {
+        list_index = 0;
+        len = strlen (text);
+    }
+ 
+    while ((name = (char *)Parsing::Commands[list_index].c_str())) {
+        list_index++;
+ 
+        if (strncasecmp (name, text, len) == 0) {
+            return (dupstr(name));
+	}
+    }
+ 
+    /* If no names matched, then return NULL. */
+    return ((char *)NULL);
+}
+
+static char **myAutoComplete(const char * text, int start, int end) {
+	int unused = end;
+	unused = 0;
+
+	char **matches = (char **)NULL;
+	if (start == 0) {
+		matches = rl_completion_matches((char *)text, &myMatcher);
+	} else {
+		rl_bind_key('\t', rl_abort);
+	}
+
+	return matches;
+}
 
 
 int start_readline(void) {
-	// Disable autocomplete for now.  Get this working at some point.
-	rl_bind_key('\t',rl_insert);
+	// Enable limited autocomplete
+	rl_attempted_completion_function = myAutoComplete;
+	rl_bind_key('\t', rl_complete);
 
 	// Handle multi-line input
 	rl_bind_key('\r', myNewline);
 	rl_bind_key('\n', myNewline);
+	
 	return 0;
 }
 
@@ -705,6 +762,9 @@ int main(int argc, char **argv) {
 	std::cout << "Enter a query (q to quit):" << std::endl;
 	while (1) {
 		buf = readline("> ");
+		// re-enable autocomplete
+		rl_bind_key('\t', rl_complete);
+
 		if (buf == NULL) {
 			break;
 		}
