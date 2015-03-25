@@ -5,9 +5,9 @@ CFLAGS=--std=c++11 -O3 -Wall -Wextra -g
 INCLUDES += -I ./include/
 OS = $(shell uname)
 ifeq ($(OS), Darwin)
-   LIBS += 
+   LIBS += -L/opt/local/lib -lreadline
 else
-   LIBS += -luuid
+   LIBS += -luuid -lreadline
 endif
 
 binary: $(OUT) $(OBJECTS)dbms.o $(OBJECTS)Parser.o $(OBJECTS)Scanner.o

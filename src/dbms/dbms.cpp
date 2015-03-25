@@ -6,12 +6,14 @@
 #include "../storage/LinearHash.h"
 #include "../parsing/Parser.h"
 #include "../parsing/Scanner.h"
+
+#include <readline/readline.h>
+#include <readline/history.h>
 #include <rapidjson/document.h>
 #include <rapidjson/writer.h>
 #include <rapidjson/stringbuffer.h>
 #include <rapidjson/prettywriter.h>
 #include <UUID.h>
-
 
 // TODO: Why are these not in a header file?
 void execute(Parsing::Query &, Storage::LinearHash<std::string> &);
@@ -69,6 +71,11 @@ Parsing::List<std::string> *extractUUIDArray(std::string project, std::string do
 	Parsing::List<std::string> *uuidList = NULL; 
 	Parsing::List<std::string> *spot = NULL;
 	while (fieldList) {
+		// Don't count aggregate functions
+		if (fieldList->aggregate != NULL) {
+			fieldList = fieldList->next;
+			continue;
+		}
 		std::string key(project + "." + document);
 		if (fieldList->value.compare("*") != 0) {
 			key += "." + fieldList->value;
@@ -532,6 +539,7 @@ void execute(Parsing::Query &q, Storage::LinearHash<std::string> &meta, Storage:
 		{
 			// Build a JSON object with the results
 			Parsing::List<std::string> *keyList = q.keys;
+			keyList->unique();
 			Parsing::List<std::string> *aggregates = extractAggregates(keyList);
 			Parsing::List<std::string> *uuidList = extractUUIDArray(*q.project, q.documents->value, keyList, meta);
 			Parsing::List<rapidjson::Document> *fieldList = NULL;
@@ -639,6 +647,30 @@ inline bool file_exists (const std::string& name) {
     }
 }
 
+int myNewline(int count, int key) {
+	int unused = count;
+	unused = key;
+	if (rl_line_buffer[rl_point-1] == ';' ||
+	    strcmp(rl_line_buffer, "q") == 0) {
+		rl_done = 1;
+		std::cout << "\n";
+	} else { 
+		std::cout << "\n> ";
+	}
+	return 0;
+}
+
+
+int start_readline(void) {
+	// Disable autocomplete for now.  Get this working at some point.
+	rl_bind_key('\t',rl_insert);
+
+	// Handle multi-line input
+	rl_bind_key('\r', myNewline);
+	rl_bind_key('\n', myNewline);
+	return 0;
+}
+
 int main(int argc, char **argv) {
 	std::string meta_fname("meta.lht");
 	std::string indices_fname("indices.lht");
@@ -652,7 +684,7 @@ int main(int argc, char **argv) {
 	if (argc > 3) {
 		data_fname = argv[3];
 	}
-	std::string q = "";
+	char *buf;
 	Storage::LinearHash<std::string> *meta;
 	Storage::LinearHash<uint64_t> *indices;
 
@@ -668,9 +700,19 @@ int main(int argc, char **argv) {
 		indices = new Storage::LinearHash<uint64_t>(1025,2048);
 	}
 
+	rl_startup_hook = start_readline;
+
+	std::cout << "Enter a query (q to quit):" << std::endl;
 	while (1) {
-		std::cout << "Enter a query (q to quit):" << std::endl;
-		std::getline(std::cin, q);
+		buf = readline("> ");
+		if (buf == NULL) {
+			break;
+		}
+		if (buf[0] != 0) {
+			add_history(buf);
+		}
+
+		std::string q(buf);
 		if (!q.compare("q")) {
 			break;
 		}
@@ -681,7 +723,8 @@ int main(int argc, char **argv) {
 		}
 		std::cout << std::endl;
 	}
-
+	std::cout << "Goodbye!" << std::endl;
+	free(buf);
 	dumpToFile(meta_fname, *meta);
 	dumpToFile(indices_fname, *indices);
 
