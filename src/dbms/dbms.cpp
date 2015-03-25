@@ -67,9 +67,14 @@ rapidjson::Document readData(std::string dataFile, std::string uuid, Storage::Li
 }
 
 //  Given a project name we return a list of all UUID values stored in it
-Parsing::List<std::string> *extractUUIDArray(std::string project, std::string document, Parsing::List<std::string> *fieldList, Storage::LinearHash<std::string> &meta) {
+Parsing::List<std::string> *extractUUIDArray(std::string project,
+					     std::string document, 
+					     Parsing::List<std::string> *fieldList,
+					     Storage::LinearHash<std::string> &meta) {
+
 	Parsing::List<std::string> *uuidList = NULL; 
 	Parsing::List<std::string> *spot = NULL;
+
 	while (fieldList) {
 		// Don't count aggregate functions
 		if (fieldList->aggregate != NULL) {
@@ -224,12 +229,12 @@ void removeProject(std::string &pname, Storage::LinearHash<std::string> &meta) {
 	rapidjson::Document d;
 	if (meta.contains(project_list)) {
 		std::string projects;
-        meta.get(project_list,projects);
+        	meta.get(project_list,projects);
 
 		d.Parse(projects.c_str());
 		rapidjson::Value &projectArray = d["__PROJECTS__"];
 
-        // TODO: map function on list?
+       	 	// TODO: map function on list?
 		for (rapidjson::Value::ConstValueIterator itr = projectArray.Begin(); itr != projectArray.End(); ++itr) {
 			std::string dd = itr->GetString();
 			if (!dd.compare(pname)) {
@@ -238,10 +243,10 @@ void removeProject(std::string &pname, Storage::LinearHash<std::string> &meta) {
 			}
 		}
 
-        // Update data in hashtable
-        meta.put( project_list , toString( &d ) );
+        	// Update data in hashtable
+        	meta.put( project_list , toString( &d ) );
 
-        removeDocuments( pname , meta );
+        	removeDocuments( pname , meta );
 	}
 
 }
@@ -252,11 +257,11 @@ void removeKey(std::string pname, std::string dname, std::string key, Storage::L
 	if (meta.contains(doc_hash)) {
 		rapidjson::Document d;
 		std::string doc_text;
-        meta.get(doc_hash,doc_text);
+        	meta.get(doc_hash,doc_text);
 		d.Parse(doc_text.c_str());
 		if (d.HasMember(key.c_str())) {
 			d.RemoveMember(key.c_str());
-            meta.put(doc_hash,toString(&d));
+            		meta.put(doc_hash,toString(&d));
 		}
 	}
 }
@@ -311,6 +316,7 @@ void addFields(std::string pname, std::string dname, rapidjson::Document &d,
 
 		// Generate UUID
 		std::string uuid = newUUID();
+
 		// Add UUID to json array
 		rapidjson::Value field;
 		field.SetString(uuid.c_str(), arrayContainer.GetAllocator());
@@ -337,12 +343,12 @@ void addFields(std::string pname, std::string dname, rapidjson::Document &d,
 		// Duplicates...
 		if (meta.contains(fieldKey)) {
 			std::string uuids;
-            meta.get(fieldKey,uuids);
+            		meta.get(fieldKey,uuids);
 			rapidjson::Document uuid_doc;
 			uuid_doc.Parse(uuids.c_str());
 			rapidjson::Value &uuidArray = uuid_doc["__FIELDS__"];
 			uuidArray.PushBack(field2, uuid_doc.GetAllocator());
-            meta.put(fieldKey,toString(&uuid_doc));
+            		meta.put(fieldKey,toString(&uuid_doc));
 		} else {
 			rapidjson::Document uuid_doc;
 			uuid_doc.SetObject();
@@ -353,7 +359,6 @@ void addFields(std::string pname, std::string dname, rapidjson::Document &d,
 			std::string uuids = toString(&uuid_doc);
 			meta.put(fieldKey, uuids);
 		}
-
 		d.RemoveMember(k_str.c_str());
 	}
 	rapidjson::Value name_string;
@@ -446,10 +451,12 @@ Parsing::List<std::string> *extractAggregates(Parsing::List<std::string> *keys) 
 
 void processAggregates(Parsing::List<rapidjson::Document> *fields, Parsing::List<std::string> *aggs) {
 	while (aggs) {
-		Parsing::Aggregate f = *(aggs->aggregate);
+		Parsing::Aggregate &f = *(aggs->aggregate);
 		std::string aggName = Parsing::Aggregates[f];
 		std::string key = aggs->value;
-		double res = 0.0;
+
+		bool first_run = true;
+		double res = 0;
 		Parsing::List<rapidjson::Document> *spot = fields;
 		Parsing::List<rapidjson::Document> *parent = NULL;
 		while (spot) {
@@ -465,12 +472,44 @@ void processAggregates(Parsing::List<rapidjson::Document> *fields, Parsing::List
 				spot = spot->next;
 				continue;
 			}
-			if (!aggName.compare("SUM")) {
+			if (f == Parsing::SUM) {
+				if (first_run) {
+					res = 0.0;
+				}
 				if (v.IsDouble()) {
 					res += v.GetDouble();
 				} else {
 					res += v.GetInt();
 				}
+			} else if (f == Parsing::MIN) {
+				double tmp;
+				if (first_run) {
+					res = std::numeric_limits<double>::max();	
+				}
+				if (v.IsDouble()) {
+					tmp = v.GetDouble();
+				} else {
+					tmp = v.GetInt();
+				}
+				if (tmp < res) {
+					res = tmp;
+				}	
+			} else if (f == Parsing::MAX) {
+				double tmp;
+				if (first_run) {
+					res = std::numeric_limits<double>::min();	
+				}
+				if (v.IsDouble()) {
+					tmp = v.GetDouble();
+				} else {
+					tmp = v.GetInt();
+				}
+				if (tmp > res) {
+					res = tmp;
+				}	
+			}
+			if (first_run) {
+				first_run = false;
 			}
 			parent = spot;
 			spot = spot->next;	

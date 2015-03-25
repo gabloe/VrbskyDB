@@ -19,8 +19,10 @@ namespace Parsing {
 	};
 	enum Aggregate {
 		AVG   = 0,
-		SUM   = 1,
-		STDEV = 2
+		MIN   = 1,
+		MAX   = 2,
+		SUM   = 3,
+		STDEV = 4
 	};
 	template <typename T>
 	struct List {

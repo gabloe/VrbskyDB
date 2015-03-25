@@ -68,7 +68,7 @@ struct Wrapper<std::string> {
 #define DoSort false
 #define DEBUG false
 
-#define max(A,B) (A) > (B) ? (A) : (B)
+#define _MAX(A,B) (A) > (B) ? (A) : (B)
 
 
 // Helper Functions
