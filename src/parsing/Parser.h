@@ -8,6 +8,8 @@
 namespace Parsing {
 	const std::string Aggregates[] = {"AVG", "MIN", "MAX", "SUM", "STDEV" /*, TODO: Others. */};
 	const std::string Commands[] = {"CREATE", "INSERT", "ALTER", "REMOVE", "SELECT", "DELETE", "SHOW" /*, TODO: Others. */};
+	const std::string CreateArgs[] = {"PROJECT", "DOCUMENT", "WITH", "VALUE"};
+	const std::string SelectArgs[] = {"FROM", "WHERE", "GROUPBY"};
 	enum Command {
 		CREATE = 0,
 		INSERT = 1,

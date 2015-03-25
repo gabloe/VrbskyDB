@@ -687,8 +687,6 @@ inline bool file_exists (const std::string& name) {
 }
 
 int myNewline(int count, int key) {
-	int unused = count;
-	unused = key;
 	if (rl_line_buffer[rl_point-1] == ';' ||
 	    strcmp(rl_line_buffer, "q") == 0) {
 		rl_done = 1;
@@ -719,14 +717,16 @@ char * dupstr (char* s) {
   return (r);
 }
 
-char *myMatcher(const char *text, int state) {
+char *cmdMatcher(const char *text, int state) {
     static int list_index, len;
     char *name;
- 
+
     if (!state) {
         list_index = 0;
         len = strlen (text);
     }
+
+    if (len == 0) return (char *)NULL;
  
     while ((name = (char *)Parsing::Commands[list_index].c_str())) {
         list_index++;
@@ -740,17 +740,75 @@ char *myMatcher(const char *text, int state) {
     return ((char *)NULL);
 }
 
-static char **myAutoComplete(const char * text, int start, int end) {
-	int unused = end;
-	unused = 0;
+char *createMatcher(const char *text, int state) {
+    static int list_index, len = 0;
+    char *name;
 
+    char *token = strtok((char *)text, " ");
+
+    if (!state && token) {
+        list_index = 0;
+        len = strlen (token);
+    }
+
+    if (!token || len == 0) return (char *)NULL;
+
+    while ((name = (char *)Parsing::CreateArgs[list_index].c_str())) {
+        list_index++;
+ 
+        if (strncasecmp (name, token, len) == 0) {
+            return (dupstr(name));
+	}
+    }
+ 
+    /* If no names matched, then return NULL. */
+    return (char *)NULL;
+}
+
+char *selectMatcher(const char *text, int state) {
+    static int list_index, len = 0;
+    char *name;
+
+    char *token = strtok((char *)text, " ");
+
+    if (!state && token) {
+        list_index = 0;
+        len = strlen (token);
+    }
+
+    if (!token || len == 0) return (char *)NULL;
+
+    while ((name = (char *)Parsing::SelectArgs[list_index].c_str())) {
+        list_index++;
+ 
+        if (strncasecmp (name, token, len) == 0) {
+            return (dupstr(name));
+	}
+    }
+ 
+    /* If no names matched, then return NULL. */
+    return (char *)NULL;
+}
+
+static char **myAutoComplete(const char * text, int start, int end) {
 	char **matches = (char **)NULL;
 	if (start == 0) {
-		matches = rl_completion_matches((char *)text, &myMatcher);
+		matches = rl_completion_matches((char *)text, &cmdMatcher);
 	} else {
-		rl_bind_key('\t', rl_abort);
-	}
+		char *copy = (char *)malloc(strlen(rl_line_buffer) + 1);
+		strcpy(copy, rl_line_buffer);
+		char *tokens = strtok(copy, " ");
+		if (!tokens) return (char **)NULL;
+		if (!strncasecmp(tokens, "create", 6)) {
+			matches = rl_completion_matches((char *)text, &createMatcher);
+		}
+		if (!strncasecmp(tokens, "select", 6)) {
+			matches = rl_completion_matches((char *)text, &selectMatcher);
+		}
 
+		free(copy);
+	}
+	
 	return matches;
 }
 
