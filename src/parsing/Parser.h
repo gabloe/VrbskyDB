@@ -27,11 +27,17 @@ namespace Parsing {
 		Aggregate *aggregate;
 		T value;
 		List<T> *next;
-		List<T>(T value_): aggregate(NULL), value(value_), next(NULL) {}
-		List<T>(): aggregate(NULL), next(NULL) {}
+		List<T> *tail;
+		List<T>(T value_): aggregate(NULL), value(value_), next(NULL), tail(this) {}
+		List<T>(Aggregate *agg, T value_): aggregate(agg), value(value_), next(NULL), tail(this) {}
+		List<T>(): aggregate(NULL), next(NULL), tail(this) {}
 		~List<T>() {
 			if (aggregate) delete aggregate;
 			if (next) delete next;
+		}
+		void append(List<T> *val) {
+			tail->next = val;
+			tail = val;
 		}
 		void unique() {
 			if (!std::is_same<T, std::string>::value) {

@@ -65,31 +65,36 @@ rapidjson::Document readData(std::string dataFile, std::string uuid, Storage::Li
 }
 
 //  Given a project name we return a list of all UUID values stored in it
-Parsing::List<std::string> *extractUUIDArray(std::string project, std::string document, Storage::LinearHash<std::string> &meta) {
-	std::string key(project + "." + document);
-	uint64_t keyHash = hash(key, key.size());
+Parsing::List<std::string> *extractUUIDArray(std::string project, std::string document, Parsing::List<std::string> *fieldList, Storage::LinearHash<std::string> &meta) {
 	Parsing::List<std::string> *uuidList = NULL; 
-	if (meta.contains(keyHash)) {   // If project exists
-		rapidjson::Document doc;
-
-        // Initial list
-		uuidList = new Parsing::List<std::string>();
-		std::string fields;
-        meta.get(keyHash,fields);
-
-		doc.Parse(fields.c_str());
-		rapidjson::Value &fieldArray = doc["__FIELDS__"];
-
-		Parsing::List<std::string> *spot = uuidList;
-		rapidjson::Value::ConstValueIterator itr = fieldArray.Begin();
-		spot->value = (itr++)->GetString();
-		while (itr != fieldArray.End()) {
-			spot->next = new Parsing::List<std::string>(itr->GetString());
-			spot = spot->next;
-			++itr;
+	Parsing::List<std::string> *spot = NULL;
+	while (fieldList) {
+		std::string key(project + "." + document);
+		if (fieldList->value.compare("*") != 0) {
+			key += "." + fieldList->value;
 		}
-	}
+		uint64_t keyHash = hash(key, key.size());
+		if (meta.contains(keyHash)) {   // If project exists
+			std::string fields;
+			meta.get(keyHash,fields);
 
+			rapidjson::Document doc;
+
+			doc.Parse(fields.c_str());
+			rapidjson::Value &fieldArray = doc["__FIELDS__"];
+
+			rapidjson::Value::ConstValueIterator itr = fieldArray.Begin();
+			if (uuidList == NULL) {
+				uuidList = new Parsing::List<std::string>((itr++)->GetString());
+				spot = uuidList;
+			}
+			while (itr != fieldArray.End()) {
+				Parsing::List<std::string> *node = new Parsing::List<std::string>((itr++)->GetString());
+				spot->append(node);
+			}
+		}
+		fieldList = fieldList->next;
+	}
 	return uuidList;
 }
 
@@ -423,11 +428,9 @@ Parsing::List<std::string> *extractAggregates(Parsing::List<std::string> *keys) 
 				result->value = keys->value;
 				spot = result;
 			} else {
-				spot->next = new Parsing::List<std::string>();
-				spot = spot->next;
-				spot->aggregate = keys->aggregate;
-				spot->value = keys->value;
-			}	
+				Parsing::List<std::string> *node = new Parsing::List<std::string>(keys->aggregate, keys->value);
+				spot->append(node);
+			}
 		}
 		keys = keys->next;
 	}
@@ -529,13 +532,12 @@ void execute(Parsing::Query &q, Storage::LinearHash<std::string> &meta, Storage:
 		{
 			// Build a JSON object with the results
 			Parsing::List<std::string> *keyList = q.keys;
-			Parsing::List<std::string> *uuidList = extractUUIDArray(*q.project, q.documents->value, meta);
+			Parsing::List<std::string> *aggregates = extractAggregates(keyList);
+			Parsing::List<std::string> *uuidList = extractUUIDArray(*q.project, q.documents->value, keyList, meta);
 			Parsing::List<rapidjson::Document> *fieldList = NULL;
 			if (uuidList) {
 				fieldList = new Parsing::List<rapidjson::Document>();
 
-				// Select all fields from proj.doc.  This is not optimal.  Should only read the fields that we want.
-				// Modify this to hash proj.doc.key to get array of UUID's for that key and duplicates...
 				Parsing::List<rapidjson::Document> *spot = fieldList;
 
 				spot->value = readData(dataFile, uuidList->value, indices);
@@ -550,8 +552,6 @@ void execute(Parsing::Query &q, Storage::LinearHash<std::string> &meta, Storage:
 				}
 			}
 			// Filter the fields
-			keyList->unique();
-			Parsing::List<std::string> *aggregates = extractAggregates(keyList);
 			Parsing::List<rapidjson::Document> *filtered = filterFields(fieldList, keyList);
 
 			// Process aggregate functions
