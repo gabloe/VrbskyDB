@@ -723,7 +723,6 @@ char *cmdMatcher(const char *text, int state) {
 
     if (!state) {
     	list_index = 0;
-	len = 0;
     	len = strlen(text);
     }
 
@@ -741,25 +740,35 @@ char *cmdMatcher(const char *text, int state) {
 char *createMatcher(const char *text, int state) {
     static int list_index, len;
     char *name;
-    bool matchAll = false;
-
-    char *token = strtok((char *)text, " ");
-
-    if (!token) {
-	matchAll = true;
-    }
 
     if (!state) {
         list_index = 0;
-    }
-
-    if (token) {
-        len = strlen(token);
+        len = strlen(text);
     }
 
     while (list_index < sizeof(Parsing::CreateArgs) / sizeof(Parsing::CreateArgs[0])) {
 	name = (char *)Parsing::CreateArgs[list_index++].c_str();
-        if (strncasecmp (name, token, len) == 0 || matchAll) {
+        if (strncasecmp (name, text, len) == 0) {
+            return (dupstr(name));
+	}
+    }
+ 
+    /* If no names matched, then return NULL. */
+    return (char *)NULL;
+}
+
+char *selectFromMatcher(const char *text, int state) {
+    static int list_index, len;
+    char *name;
+
+    if (!state) {
+        list_index = 0;
+        len = strlen(text);
+    }
+
+    while (list_index < sizeof(Parsing::SelectArgs) / sizeof(Parsing::SelectArgs[0])) {
+	name = (char *)Parsing::SelectArgs[list_index++].c_str();
+        if (strncasecmp (name, text, len) == 0) {
             return (dupstr(name));
 	}
     }
@@ -769,33 +778,14 @@ char *createMatcher(const char *text, int state) {
 }
 
 char *selectMatcher(const char *text, int state) {
-    static int list_index, len;
-    char *name;
-    bool matchAll = false;
-
-    char *token = strtok((char *)text, " ");
-
-    if (!token) {
-	matchAll = true;
-    }
-
     if (!state) {
-	list_index = 0;
+       char *arr = (char *)malloc(5);
+       strcpy(arr, "FROM");
+       arr[4] = '\0';
+       return arr;
+    } else {
+       return (char *)NULL;
     }
-
-    if (token) {
-        len = strlen(token);
-    }
-
-    while (list_index < sizeof(Parsing::SelectArgs) / sizeof(Parsing::SelectArgs[0])) {
-	name = (char *)Parsing::SelectArgs[list_index++].c_str();
-        if (strncasecmp (name, token, len) == 0 || matchAll) {
-            return (dupstr(name));
-	}
-    }
- 
-    /* If no names matched, then return NULL. */
-    return (char *)NULL;
 }
 
 char *documentMatcher(const char *text, int state) {
@@ -809,6 +799,20 @@ char *documentMatcher(const char *text, int state) {
     }
 }
 
+std::vector<std::string> split(const char *str, char c = ' ') {
+    std::vector<std::string> result;
+    do {
+        const char *begin = str;
+        while(*str != c && *str) {
+            str++;
+	}
+
+        result.push_back(std::string(begin, str));
+    } while (0 != *str++);
+
+    return result;
+}
+
 static char **myAutoComplete(const char * text, int start, int end) {
 	char **matches = (char **)NULL;
 	if (start == 0) {
@@ -820,29 +824,26 @@ static char **myAutoComplete(const char * text, int start, int end) {
 		char *copy = (char *)malloc(strlen(rl_line_buffer) + 1);
 		strcpy(copy, rl_line_buffer);
 
-		if (!strncasecmp(copy, "create document", 15)) {
-			// If more text has been entered, dont try to autocomplete it.
-			if (strlen(copy) < 17) {
-				matches = rl_completion_matches((char *)text, &documentMatcher);
+		std::vector<std::string> tokens = split((const char *)copy);
+
+		if (!strcasecmp(tokens[0].c_str(), "create")) {
+			if (tokens.size() == 3) {
+				if (!strcasecmp(tokens[1].c_str(), "document")) {
+					matches = rl_completion_matches((char *)tokens.back().c_str(), &documentMatcher);
+				}
+			} else if (tokens.size() == 2) {
+				matches = rl_completion_matches((char *)tokens.back().c_str(), &createMatcher);
 			}
 			free(copy);
 			return matches;
 		}
 
-		if (!strncasecmp(copy, "create project", 14)) {
-			free(copy);
-			return matches;
-		}
-
-		if (!strncasecmp(copy, "create", 6)) {
-			matches = rl_completion_matches((char *)text, &createMatcher);
-			free(copy);
-			return matches;
-		}
-
-		if (!strncasecmp(copy, "select", 6)) {
-			if (strlen(copy) < 8) {
-				matches = rl_completion_matches((char *)text, &selectMatcher);
+		if (!strcasecmp(tokens[0].c_str(), "select")) {
+			if (tokens.size() == 3) {
+				// Handle arguments to select
+				matches = rl_completion_matches((char *)tokens.back().c_str(), &selectFromMatcher);
+			} else if (tokens.size() == 2) {
+				matches = rl_completion_matches((char *)tokens.back().c_str(), &selectMatcher);
 			}
 			free(copy);
 			return matches;
