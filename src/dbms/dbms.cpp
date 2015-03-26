@@ -834,20 +834,14 @@ static char **myAutoComplete(const char * text, int start, int end) {
 			} else if (tokens.size() == 2) {
 				matches = rl_completion_matches((char *)tokens.back().c_str(), &createMatcher);
 			}
-			free(copy);
-			return matches;
-		}
-
-		if (!strcasecmp(tokens[0].c_str(), "select")) {
+		} else if (!strcasecmp(tokens[0].c_str(), "select")) {
 			if (tokens.size() == 3) {
-				// Handle arguments to select
 				matches = rl_completion_matches((char *)tokens.back().c_str(), &selectFromMatcher);
 			} else if (tokens.size() == 2) {
 				matches = rl_completion_matches((char *)tokens.back().c_str(), &selectMatcher);
 			}
-			free(copy);
-			return matches;
 		}
+		free(copy);
 	}
 
 	return matches;
