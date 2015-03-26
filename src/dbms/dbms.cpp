@@ -722,16 +722,14 @@ char *cmdMatcher(const char *text, int state) {
     char *name;
 
     if (!state) {
-        list_index = 0;
-        len = strlen (text);
+    	list_index = 0;
+	len = 0;
+    	len = strlen(text);
     }
 
-    if (len == 0) return (char *)NULL;
- 
-    while ((name = (char *)Parsing::Commands[list_index].c_str())) {
-        list_index++;
- 
-        if (strncasecmp (name, text, len) == 0) {
+    while (list_index < sizeof(Parsing::Commands) / sizeof(Parsing::Commands[0])) {
+	name = (char *)Parsing::Commands[list_index++].c_str();
+        if (!strncasecmp(name, text, len)) {
             return (dupstr(name));
 	}
     }
@@ -741,22 +739,27 @@ char *cmdMatcher(const char *text, int state) {
 }
 
 char *createMatcher(const char *text, int state) {
-    static int list_index, len = 0;
+    static int list_index, len;
     char *name;
+    bool matchAll = false;
 
     char *token = strtok((char *)text, " ");
 
-    if (!state && token) {
-        list_index = 0;
-        len = strlen (token);
+    if (!token) {
+	matchAll = true;
     }
 
-    if (!token || len == 0) return (char *)NULL;
+    if (!state) {
+        list_index = 0;
+    }
 
-    while ((name = (char *)Parsing::CreateArgs[list_index].c_str())) {
-        list_index++;
- 
-        if (strncasecmp (name, token, len) == 0) {
+    if (token) {
+        len = strlen(token);
+    }
+
+    while (list_index < sizeof(Parsing::CreateArgs) / sizeof(Parsing::CreateArgs[0])) {
+	name = (char *)Parsing::CreateArgs[list_index++].c_str();
+        if (strncasecmp (name, token, len) == 0 || matchAll) {
             return (dupstr(name));
 	}
     }
@@ -766,22 +769,27 @@ char *createMatcher(const char *text, int state) {
 }
 
 char *selectMatcher(const char *text, int state) {
-    static int list_index, len = 0;
+    static int list_index, len;
     char *name;
+    bool matchAll = false;
 
     char *token = strtok((char *)text, " ");
 
-    if (!state && token) {
-        list_index = 0;
-        len = strlen (token);
+    if (!token) {
+	matchAll = true;
     }
 
-    if (!token || len == 0) return (char *)NULL;
+    if (!state) {
+	list_index = 0;
+    }
 
-    while ((name = (char *)Parsing::SelectArgs[list_index].c_str())) {
-        list_index++;
- 
-        if (strncasecmp (name, token, len) == 0) {
+    if (token) {
+        len = strlen(token);
+    }
+
+    while (list_index < sizeof(Parsing::SelectArgs) / sizeof(Parsing::SelectArgs[0])) {
+	name = (char *)Parsing::SelectArgs[list_index++].c_str();
+        if (strncasecmp (name, token, len) == 0 || matchAll) {
             return (dupstr(name));
 	}
     }
@@ -790,33 +798,73 @@ char *selectMatcher(const char *text, int state) {
     return (char *)NULL;
 }
 
+char *documentMatcher(const char *text, int state) {
+    if (!state) {
+       char *arr = (char *)malloc(11);
+       strcpy(arr, "WITH VALUE");
+       arr[10] = '\0';
+       return arr;
+    } else {
+       return (char *)NULL;
+    }
+}
+
 static char **myAutoComplete(const char * text, int start, int end) {
 	char **matches = (char **)NULL;
 	if (start == 0) {
 		matches = rl_completion_matches((char *)text, &cmdMatcher);
 	} else {
+
+		// TODO: Make this more robust...
+
 		char *copy = (char *)malloc(strlen(rl_line_buffer) + 1);
 		strcpy(copy, rl_line_buffer);
-		char *tokens = strtok(copy, " ");
-		if (!tokens) return (char **)NULL;
-		if (!strncasecmp(tokens, "create", 6)) {
-			matches = rl_completion_matches((char *)text, &createMatcher);
-		}
-		if (!strncasecmp(tokens, "select", 6)) {
-			matches = rl_completion_matches((char *)text, &selectMatcher);
+
+		if (!strncasecmp(copy, "create document", 15)) {
+			// If more text has been entered, dont try to autocomplete it.
+			if (strlen(copy) < 17) {
+				matches = rl_completion_matches((char *)text, &documentMatcher);
+			}
+			free(copy);
+			return matches;
 		}
 
-		free(copy);
+		if (!strncasecmp(copy, "create project", 14)) {
+			free(copy);
+			return matches;
+		}
+
+		if (!strncasecmp(copy, "create", 6)) {
+			matches = rl_completion_matches((char *)text, &createMatcher);
+			free(copy);
+			return matches;
+		}
+
+		if (!strncasecmp(copy, "select", 6)) {
+			if (strlen(copy) < 8) {
+				matches = rl_completion_matches((char *)text, &selectMatcher);
+			}
+			free(copy);
+			return matches;
+		}
 	}
-	
+
 	return matches;
 }
 
+int myCompletion(int count, int key) {
+	return rl_complete_internal('@');
+}
+
+char *myDummy(const char *x, int y) {
+	return (char*)NULL;
+}
 
 int start_readline(void) {
 	// Enable limited autocomplete
 	rl_attempted_completion_function = myAutoComplete;
-	rl_bind_key('\t', rl_complete);
+	rl_completion_entry_function = myDummy;
+	rl_bind_key('\t', myCompletion);	
 
 	// Handle multi-line input
 	rl_bind_key('\r', myNewline);
@@ -859,8 +907,6 @@ int main(int argc, char **argv) {
 	std::cout << "Enter a query (q to quit):" << std::endl;
 	while (1) {
 		buf = readline("> ");
-		// re-enable autocomplete
-		rl_bind_key('\t', rl_complete);
 
 		if (buf == NULL) {
 			break;
