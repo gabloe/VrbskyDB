@@ -42,7 +42,14 @@ namespace Parsing {
 		std::string result = "";
 		spot++;
 		char t = query.at(pos);
-		if (t != '{') {
+		bool matchSquare = false;
+		bool matchBrace = false;
+		if (t == '{') {
+			matchBrace = true;
+		} else if (t == '[') {
+			matchSquare = true;
+		} else {
+			std::cout << "Found " << t << std::endl;
 			throw std::runtime_error("SCAN ERROR: Expected open brace.");
 		}
 		int numOpen = 1;
@@ -52,10 +59,12 @@ namespace Parsing {
 			pos = spot;
 			spot++;
 			t = query.at(pos);
-			if (t == '{') {
+			if (  (t == '{' && matchBrace) ||
+			      (t == '[' && matchSquare) ) {
 				numOpen++;
 			}
-			if (t == '}') {
+			if (  (t == '}' && matchBrace) ||
+			      (t == ']' && matchSquare) ) {
 				numClosed++;
 			}
 			result += t;
@@ -88,6 +97,11 @@ namespace Parsing {
 			result = result + t;
 		}
 		return result;
+	}
+
+	int Scanner::nextInt() {
+		std::string token = nextToken();
+		return atoi(token.c_str());
 	}
 
 	void Scanner::skipWhiteSpace() {

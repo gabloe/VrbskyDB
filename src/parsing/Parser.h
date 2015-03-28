@@ -3,21 +3,25 @@
 
 #include <string>
 #include <iostream>
+#include <rapidjson/document.h>
+#include <rapidjson/writer.h>
+#include <rapidjson/stringbuffer.h>
 #include "Scanner.h"
 
 namespace Parsing {
+
+
 	const std::string Aggregates[] = {"AVG", "MIN", "MAX", "SUM", "STDEV" /*, TODO: Others. */};
-	const std::string Commands[] = {"CREATE", "INSERT", "ALTER", "REMOVE", "SELECT", "DELETE", "SHOW" /*, TODO: Others. */};
+	const std::string Commands[] = {"CREATE", "INSERT", "SELECT", "DELETE", "UPDATE", "SHOW" /*, TODO: Others. */};
 	const std::string CreateArgs[] = {"PROJECT", "DOCUMENT"};
 	const std::string SelectArgs[] = {"WHERE", "GROUP BY"};
 	enum Command {
 		CREATE = 0,
 		INSERT = 1,
-		ALTER = 2,
-		REMOVE = 3,
-		SELECT = 4,
-		DELETE = 5,
-		SHOW   = 6
+		SELECT = 2,
+		DELETE = 3,
+		UPDATE = 4,
+		SHOW   = 5
 	};
 	enum Aggregate {
 		AVG   = 0,
@@ -26,86 +30,38 @@ namespace Parsing {
 		SUM   = 3,
 		STDEV = 4
 	};
-	template <typename T>
-	struct List {
-		Aggregate *aggregate;
-		T value;
-		List<T> *next;
-		List<T> *tail;
-		List<T>(T value_): aggregate(NULL), value(value_), next(NULL), tail(this) {}
-		List<T>(Aggregate *agg, T value_): aggregate(agg), value(value_), next(NULL), tail(this) {}
-		List<T>(): aggregate(NULL), next(NULL), tail(this) {}
-		~List<T>() {
-			if (aggregate) delete aggregate;
-			if (next) delete next;
-		}
-		void append(List<T> *val) {
-			tail->next = val;
-			tail = val;
-		}
-		void unique() {
-			if (!std::is_same<T, std::string>::value) {
-				std::cout << "Unique only works for linked list of type std::string" << std::endl;
-				return;
-			}
-			List<T> *writeSpot = this;
-			while (writeSpot) {
-				T temp1 = writeSpot->value;
-				if (writeSpot->aggregate) {
-					writeSpot = writeSpot->next;
-					continue;
-				}
-				List<T> *readSpot = writeSpot->next;
-				while (readSpot) {
-					if (readSpot->aggregate) {
-						readSpot = readSpot->next;
-						continue;
-					}
-					T temp2 = readSpot->value;
-					// Found a dup
-					if (!temp1.compare(temp2)) {
-						writeSpot->next = readSpot->next;
-					}
-					readSpot = readSpot->next;
-				}
-				writeSpot = writeSpot->next;
-			}
-		}
-	};	
 	struct Query {
 		Command command;
 		std::string *project;
-		List<std::string> *documents;
-		List<std::string> *keys;
-		std::string *value;
-		Query(): project(NULL), documents(NULL), keys(NULL), value(NULL) {}
+		rapidjson::Document *with;
+		rapidjson::Document *where;
+		rapidjson::Document *fields;
+		int limit;
+		Query(): project(NULL), with(NULL), where(NULL), fields(NULL) {}
+		std::string docToString(rapidjson::Document *doc) {
+		    rapidjson::StringBuffer buffer;
+		    rapidjson::Writer<rapidjson::StringBuffer> writer(buffer);
+		    doc->Accept(writer);
+		    std::string str = buffer.GetString();
+		    return str;
+		}
 		void print() {
 			std::cout << "Command: " << Commands[command] << std::endl;
-			if (project)
+			if (project) {
 				std::cout << "Project: " << *project << std::endl;
-			List<std::string> *docspot = documents;
-			while (docspot) {
-				std::cout << "Document: " << docspot->value << std::endl;
-				docspot = docspot->next;
 			}
-			List<std::string> *keyspot = keys;
-			while (keyspot) {
-				std::cout << "Key: ";
-				if (keyspot->aggregate) {
-					std::cout << Aggregates[*(keyspot->aggregate)] << "(";
-				}
-				std::cout << keyspot->value;
-				if (keyspot->aggregate) {
-					std::cout << ")" << std::endl;
-				} else {
-					std::cout << std::endl;
-				}
-				keyspot = keyspot->next;
+			if (with) {
+				std::cout << "With:" << docToString(with) << std::endl;
 			}
-			if (value)
-				std::cout << "Value: " << *value << std::endl;
+			if (where) {
+				std::cout << "Where:" << docToString(where) << std::endl;
+			}
+			if (fields) {
+				std::cout << "Fields:" << docToString(fields) << std::endl;
+			}
 		}
 	};
+
 	class Parser {
 	public:
 		Parser(std::string q): sc(q) {}
@@ -113,18 +69,15 @@ namespace Parsing {
 	private:
 		Scanner sc;
 		bool insert(Query &);
-		bool alter(Query &);
-		bool remove(Query &);
+		bool update(Query &);
 		bool select(Query &);
 		bool ddelete(Query &);
 		bool create(Query &);
 		bool show(Query &q);
-		List<std::string> *keyList();
-		bool aggregate(List<std::string> *);
-		List<std::string> *idList();
-		bool withDocumentsPending();
-		bool withValuePending();
 		bool aggregatePending();
+		bool aggregate(rapidjson::Document *);
+		bool limitPending();
+		rapidjson::Document *fieldList();
 	};
 }
 

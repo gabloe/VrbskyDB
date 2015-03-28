@@ -3,6 +3,7 @@
 #include <limits>
 #include <cstddef>
 
+#include "dbms.h"
 #include "../storage/LinearHash.h"
 #include "../parsing/Parser.h"
 #include "../parsing/Scanner.h"
@@ -14,15 +15,6 @@
 #include <rapidjson/stringbuffer.h>
 #include <rapidjson/prettywriter.h>
 #include <UUID.h>
-
-#define LENGTH(A) sizeof(A)/sizeof(A[0])
-
-// TODO: Why are these not in a header file?
-void execute(Parsing::Query &, Storage::LinearHash<std::string> &);
-std::string toPrettyString(std::string *);
-std::string toPrettyString(rapidjson::Document *);
-
-#define UNUSED(id)
 
 // Convert a JSON object to a std::string
 std::string toString(rapidjson::Document *doc) {
@@ -748,14 +740,13 @@ char *cmdMatcher(const char *text, int state) {
 
 char *createMatcher(const char *text, int state) {
     static unsigned int list_index, len;
-    return matcher( text , state, list_index , len, Parsing::CreateArgs , LENGTH(Parsing::Commands) );
+    return matcher( text , state, list_index , len, Parsing::CreateArgs , LENGTH(Parsing::CreateArgs) );
 }
 
 char *selectFromMatcher(const char *text, int state) {
     static unsigned int list_index, len;
-    return matcher( text , state, list_index , len, Parsing::SelectArgs , LENGTH(Parsing::Commands) );
+    return matcher( text , state, list_index , len, Parsing::SelectArgs , LENGTH(Parsing::SelectArgs) );
 }
-
 
 char *selectMatcher(const char *UNUSED(text), int state) {
     if (!state) {
@@ -779,6 +770,19 @@ char *documentMatcher(const char *UNUSED(text), int state) {
     }
 }
 
+char *dotMatcher(const char *text, int state) {
+    if (!state) {
+	unsigned int len = strlen(text);
+        char *arr = (char *)malloc(len + 2);
+        strcpy(arr, text);
+	strcpy(arr+len, ".");
+        arr[len+1] = '\0';
+        return arr;
+    } else {
+        return (char *)NULL;
+    }
+}
+
 std::vector<std::string> split(const char *str, char c = ' ') {
     std::vector<std::string> result;
     do {
@@ -788,7 +792,7 @@ std::vector<std::string> split(const char *str, char c = ' ') {
         }
 
         result.push_back(std::string(begin, str));
-    } while (0 != *str++);
+    } while ('\0' != *str++);
 
     return result;
 }
@@ -807,9 +811,19 @@ static char **myAutoComplete(const char * text, int start, int UNUSED(end)) {
         std::vector<std::string> tokens = split((const char *)copy);
 
         if (!strcasecmp(tokens[0].c_str(), "create")) {
-            if (tokens.size() == 3) {
-                if (!strcasecmp(tokens[1].c_str(), "document")) {
-                    matches = rl_completion_matches((char *)tokens.back().c_str(), &documentMatcher);
+            if (tokens.size() == 4) {
+		if (!strcasecmp(tokens[1].c_str(), "document")) {
+                    matches = rl_completion_matches((char *)NULL, &documentMatcher);
+                }
+            } else if (tokens.size() == 3) {
+		// Ignore if the project name is empty
+		if (tokens[2].size() == 0) {
+			free(copy);
+			return matches;
+		}
+		// If there is no dot.  Add one.
+                if (tokens[2].find(".") == std::string::npos) {
+                    matches = rl_completion_matches((char *)tokens.back().c_str(), &dotMatcher);
                 }
             } else if (tokens.size() == 2) {
                 matches = rl_completion_matches((char *)tokens.back().c_str(), &createMatcher);

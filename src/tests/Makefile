@@ -10,6 +10,13 @@ all: $(OUT)LinearHashTest $(OUT)ParserTest # $(OUT)UUIDTest
 run: $(OUT)LinearHashTest $(OUT)ParserTest $(OUT)UUIDTest
 	cd $(OUT) && ./ParserTest && ./LinearHashTest && ./UUIDTest
 
+RapidJSONTest: $(OUT)RapidJSONTest
+
+ParserTest: $(OUT)ParserTest
+
+$(OUT)RapidJSONTest: $(OUT) ./rapidjsontest.cpp
+	$(CC) $(CFLAGS) $(INCLUDES) ./rapidjsontest.cpp -o $(OUT)RapidJSONTest
+
 $(OUT)LinearHashTest: $(OUT) ./LinearHashTest.cpp
 	$(CC) $(CFLAGS) $(INCLUDES) ./LinearHashTest.cpp -o $(OUT)LinearHashTest
 
