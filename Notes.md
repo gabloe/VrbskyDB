@@ -24,7 +24,7 @@ DELETE FROM People WHERE { "fName" : "Todd" };
 
 ## Create Index
 
-CREATE INDEX ON { field [ , field , ... ] };
+CREATE INDEX ON [ field1 , field2 , ... ];
 
 ## Find
 
