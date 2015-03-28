@@ -8,6 +8,8 @@
 namespace Parsing {
 	const std::string Aggregates[] = {"AVG", "MIN", "MAX", "SUM", "STDEV" /*, TODO: Others. */};
 	const std::string Commands[] = {"CREATE", "INSERT", "ALTER", "REMOVE", "SELECT", "DELETE", "SHOW" /*, TODO: Others. */};
+	const std::string CreateArgs[] = {"PROJECT", "DOCUMENT"};
+	const std::string SelectArgs[] = {"WHERE", "GROUP BY"};
 	enum Command {
 		CREATE = 0,
 		INSERT = 1,
@@ -19,19 +21,27 @@ namespace Parsing {
 	};
 	enum Aggregate {
 		AVG   = 0,
-		SUM   = 1,
-		STDEV = 2
+		MIN   = 1,
+		MAX   = 2,
+		SUM   = 3,
+		STDEV = 4
 	};
 	template <typename T>
 	struct List {
 		Aggregate *aggregate;
 		T value;
 		List<T> *next;
-		List<T>(T value_): aggregate(NULL), value(value_), next(NULL) {}
-		List<T>(): aggregate(NULL), next(NULL) {}
+		List<T> *tail;
+		List<T>(T value_): aggregate(NULL), value(value_), next(NULL), tail(this) {}
+		List<T>(Aggregate *agg, T value_): aggregate(agg), value(value_), next(NULL), tail(this) {}
+		List<T>(): aggregate(NULL), next(NULL), tail(this) {}
 		~List<T>() {
 			if (aggregate) delete aggregate;
 			if (next) delete next;
+		}
+		void append(List<T> *val) {
+			tail->next = val;
+			tail = val;
 		}
 		void unique() {
 			if (!std::is_same<T, std::string>::value) {
