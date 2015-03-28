@@ -20,6 +20,8 @@ void execute(Parsing::Query &, Storage::LinearHash<std::string> &);
 std::string toPrettyString(std::string *);
 std::string toPrettyString(rapidjson::Document *);
 
+#define UNUSED(id)
+
 // Convert a JSON object to a std::string
 std::string toString(rapidjson::Document *doc) {
 	rapidjson::StringBuffer buffer;
@@ -686,7 +688,7 @@ inline bool file_exists (const std::string& name) {
     }
 }
 
-int myNewline(int count, int key) {
+int myNewline(int UNUSED(count), int UNUSED(key)) {
 	if (rl_line_buffer[rl_point-1] == ';' ||
 	    strcmp(rl_line_buffer, "q") == 0) {
 		rl_done = 1;
@@ -718,7 +720,7 @@ char * dupstr (char* s) {
 }
 
 char *cmdMatcher(const char *text, int state) {
-    static int list_index, len;
+    static unsigned int list_index, len;
     char *name;
 
     if (!state) {
@@ -738,7 +740,7 @@ char *cmdMatcher(const char *text, int state) {
 }
 
 char *createMatcher(const char *text, int state) {
-    static int list_index, len;
+    static unsigned int list_index, len;
     char *name;
 
     if (!state) {
@@ -758,7 +760,7 @@ char *createMatcher(const char *text, int state) {
 }
 
 char *selectFromMatcher(const char *text, int state) {
-    static int list_index, len;
+    static unsigned int list_index, len;
     char *name;
 
     if (!state) {
@@ -777,7 +779,7 @@ char *selectFromMatcher(const char *text, int state) {
     return (char *)NULL;
 }
 
-char *selectMatcher(const char *text, int state) {
+char *selectMatcher(const char *UNUSED(text), int state) {
     if (!state) {
        char *arr = (char *)malloc(5);
        strcpy(arr, "FROM");
@@ -788,7 +790,7 @@ char *selectMatcher(const char *text, int state) {
     }
 }
 
-char *documentMatcher(const char *text, int state) {
+char *documentMatcher(const char *UNUSED(text), int state) {
     if (!state) {
        char *arr = (char *)malloc(11);
        strcpy(arr, "WITH VALUE");
@@ -813,7 +815,7 @@ std::vector<std::string> split(const char *str, char c = ' ') {
     return result;
 }
 
-static char **myAutoComplete(const char * text, int start, int end) {
+static char **myAutoComplete(const char * text, int start, int UNUSED(end)) {
 	char **matches = (char **)NULL;
 	if (start == 0) {
 		matches = rl_completion_matches((char *)text, &cmdMatcher);
@@ -847,11 +849,11 @@ static char **myAutoComplete(const char * text, int start, int end) {
 	return matches;
 }
 
-int myCompletion(int count, int key) {
+int myCompletion(int UNUSED(count), int UNUSED(key)) {
 	return rl_complete_internal('@');
 }
 
-char *myDummy(const char *x, int y) {
+char *myDummy(const char *UNUSED(count), int UNUSED(key)) {
 	return (char*)NULL;
 }
 
