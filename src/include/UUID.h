@@ -1,6 +1,6 @@
 extern "C"
 {
-#ifdef WIN32
+#ifdef _WIN32
 #include <Rpc.h>
 #else
 #include <uuid/uuid.h>
