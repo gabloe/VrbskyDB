@@ -16,16 +16,6 @@
 #include <rapidjson/prettywriter.h>
 #include <UUID.h>
 
-// Convert a JSON object to a std::string
-std::string toString(rapidjson::Document *doc) {
-    rapidjson::StringBuffer buffer;
-    rapidjson::Writer<rapidjson::StringBuffer> writer(buffer);
-    doc->Accept(writer);
-    std::string str = buffer.GetString();
-    return str;
-}
-
-
 std::string toPrettyString(std::string doc) {
     rapidjson::Document d;
     d.Parse(doc.c_str());

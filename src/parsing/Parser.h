@@ -8,9 +8,16 @@
 #include <rapidjson/stringbuffer.h>
 #include "Scanner.h"
 
+// Convert a JSON object to a std::string
+inline std::string docToString(rapidjson::Document *doc) {
+    rapidjson::StringBuffer buffer;
+    rapidjson::Writer<rapidjson::StringBuffer> writer(buffer);
+    doc->Accept(writer);
+    std::string str = buffer.GetString();
+    return str;
+}
+
 namespace Parsing {
-
-
 	const std::string Aggregates[] = {"AVG", "MIN", "MAX", "SUM", "STDEV" /*, TODO: Others. */};
 	const std::string Commands[] = {"CREATE", "INSERT", "SELECT", "DELETE", "UPDATE", "SHOW" /*, TODO: Others. */};
 	const std::string CreateArgs[] = {"PROJECT", "DOCUMENT"};
@@ -23,6 +30,7 @@ namespace Parsing {
 		UPDATE = 4,
 		SHOW   = 5
 	};
+
 	enum Aggregate {
 		AVG   = 0,
 		MIN   = 1,
@@ -30,6 +38,7 @@ namespace Parsing {
 		SUM   = 3,
 		STDEV = 4
 	};
+
 	struct Query {
 		Command command;
 		std::string *project;
@@ -37,27 +46,23 @@ namespace Parsing {
 		rapidjson::Document *where;
 		rapidjson::Document *fields;
 		int limit;
-		Query(): project(NULL), with(NULL), where(NULL), fields(NULL) {}
-		std::string docToString(rapidjson::Document *doc) {
-		    rapidjson::StringBuffer buffer;
-		    rapidjson::Writer<rapidjson::StringBuffer> writer(buffer);
-		    doc->Accept(writer);
-		    std::string str = buffer.GetString();
-		    return str;
-		}
+		Query(): project(NULL), with(NULL), where(NULL), fields(NULL), limit(-1) {}
 		void print() {
 			std::cout << "Command: " << Commands[command] << std::endl;
 			if (project) {
 				std::cout << "Project: " << *project << std::endl;
 			}
 			if (with) {
-				std::cout << "With:" << docToString(with) << std::endl;
+				std::cout << "With: " << docToString(with) << std::endl;
 			}
 			if (where) {
-				std::cout << "Where:" << docToString(where) << std::endl;
+				std::cout << "Where: " << docToString(where) << std::endl;
 			}
 			if (fields) {
-				std::cout << "Fields:" << docToString(fields) << std::endl;
+				std::cout << "Fields: " << docToString(fields) << std::endl;
+			}
+			if (limit > -1) {
+				std::cout << "Limit: " << limit << std::endl;
 			}
 		}
 	};
