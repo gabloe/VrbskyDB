@@ -1,0 +1,5 @@
+../objects/Parser.o: In function `Parsing::toString(rapidjson::GenericDocument<rapidjson::UTF8<char>, rapidjson::MemoryPoolAllocator<rapidjson::CrtAllocator>, rapidjson::CrtAllocator>*)':
+Parser.cpp:(.text+0x1d90): multiple definition of `Parsing::toString(rapidjson::GenericDocument<rapidjson::UTF8<char>, rapidjson::MemoryPoolAllocator<rapidjson::CrtAllocator>, rapidjson::CrtAllocator>*)'
+/tmp/ccqHYxjv.o:/home/thunder/NoSQL-Project/src/tests/./../parsing/Parser.h:13: first defined here
+collect2: error: ld returned 1 exit status
+make: *** [../../bin/ParserTest] Error 1
