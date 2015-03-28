@@ -12,7 +12,7 @@ INSERT INTO herp WITH [ { "Hello" : "World" } , {"Hello" : "Moto" } ];	% Insert 
 
 ## Update
 
-UPDATE IN p_name WITH { json } WHERE { criteria } 
+UPDATE p_name WITH { json } WHERE { criteria } 
 
 UPDATE herp WITH { "Hello" : "Goodbye" } WHERE { "Hello" : "Moto" } LIMIT 1;
 
