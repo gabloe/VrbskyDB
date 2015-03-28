@@ -15,6 +15,8 @@
 #include <rapidjson/prettywriter.h>
 #include <UUID.h>
 
+#define LENGTH(A) sizeof(A)/sizeof(A[0])
+
 // TODO: Why are these not in a header file?
 void execute(Parsing::Query &, Storage::LinearHash<std::string> &);
 std::string toPrettyString(std::string *);
@@ -689,7 +691,7 @@ inline bool file_exists (const std::string& name) {
 }
 
 int myNewline(int UNUSED(count), int UNUSED(key)) {
-    if (rl_line_buffer[rl_point-1] == ';' ||
+    if (rl_line_buffer[strlen(rl_line_buffer)-1] == ';' ||
             strcmp(rl_line_buffer, "q") == 0) {
         rl_done = 1;
         std::cout << "\n";
@@ -720,14 +722,14 @@ char * dupstr (char* s) {
 }
 
 
-char *matcher( const char *text , int state, unsigned int &list_index , unsigned int &len , const std::string stuff[] ) {
+char *matcher( const char *text , int state, unsigned int &list_index , unsigned int &len , const std::string stuff[] , unsigned int length ) {
     char *name;
     if (!state) {
         list_index = 0;
         len = strlen(text);
     }
 
-    while (list_index < sizeof(stuff) / sizeof(stuff[0])) {
+    while (list_index < length) {
         name = (char *)stuff[list_index++].c_str();
         if (!strncasecmp(name, text, len)) {
             return (dupstr(name));
@@ -741,17 +743,17 @@ char *matcher( const char *text , int state, unsigned int &list_index , unsigned
 
 char *cmdMatcher(const char *text, int state) {
     static unsigned int list_index, len;
-    return matcher( text , state, list_index , len, Parsing::Commands );
+    return matcher( text , state, list_index , len, Parsing::Commands , LENGTH(Parsing::Commands) );
 }
 
 char *createMatcher(const char *text, int state) {
     static unsigned int list_index, len;
-    return matcher( text , state, list_index , len, Parsing::CreateArgs );
+    return matcher( text , state, list_index , len, Parsing::CreateArgs , LENGTH(Parsing::Commands) );
 }
 
 char *selectFromMatcher(const char *text, int state) {
     static unsigned int list_index, len;
-    return matcher( text , state, list_index , len, Parsing::SelectArgs );
+    return matcher( text , state, list_index , len, Parsing::SelectArgs , LENGTH(Parsing::Commands) );
 }
 
 
@@ -885,6 +887,7 @@ int main(int argc, char **argv) {
             break;
         }
         if (buf[0] != 0) {
+            std::cout << "Adding to history: " << buf << std::endl;
             add_history(buf);
         }
 
@@ -895,6 +898,7 @@ int main(int argc, char **argv) {
         Parsing::Parser p(q);
         Parsing::Query *query = p.parse();
         if (query) {
+            std::cout << "Buf: " << buf << std::endl;
             execute( *query, *meta, *indices, data_fname);
         }
         std::cout << std::endl;
