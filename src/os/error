@@ -1,0 +1,45 @@
+In file included from FileSystem.h:7:0,
+                 from FileSystem.cpp:7:
+File.h: In constructor ‘os::File::File(std::string)’:
+File.h:27:17: error: uninitialized reference member ‘os::File::other’ [-fpermissive]
+                 File( std::string filename ) {
+                 ^
+FileSystem.cpp: In member function ‘bool os::FileSystem::unlink(std::string)’:
+FileSystem.cpp:458:34: error: no matching function for call to ‘os::File::File(os::File)’
+         File file = open(filename);
+                                  ^
+FileSystem.cpp:458:34: note: candidates are:
+In file included from FileSystem.h:7:0,
+                 from FileSystem.cpp:7:
+File.h:29:17: note: os::File::File(os::File&)
+                 File( File &other ) : other(other) , copy(true) {}
+                 ^
+File.h:29:17: note:   no known conversion for argument 1 from ‘os::File’ to ‘os::File&’
+File.h:27:17: note: os::File::File(std::string)
+                 File( std::string filename ) {
+                 ^
+File.h:27:17: note:   no known conversion for argument 1 from ‘os::File’ to ‘std::string {aka std::basic_string<char>}’
+File.h:26:17: note: os::File::File()
+                 File() : other(*this), copy(false) {} 
+                 ^
+File.h:26:17: note:   candidate expects 0 arguments, 1 provided
+FileSystem.cpp: In member function ‘bool os::FileSystem::exists(std::string)’:
+FileSystem.cpp:463:34: error: no matching function for call to ‘os::File::File(os::File)’
+         File file = open(filename);
+                                  ^
+FileSystem.cpp:463:34: note: candidates are:
+In file included from FileSystem.h:7:0,
+                 from FileSystem.cpp:7:
+File.h:29:17: note: os::File::File(os::File&)
+                 File( File &other ) : other(other) , copy(true) {}
+                 ^
+File.h:29:17: note:   no known conversion for argument 1 from ‘os::File’ to ‘os::File&’
+File.h:27:17: note: os::File::File(std::string)
+                 File( std::string filename ) {
+                 ^
+File.h:27:17: note:   no known conversion for argument 1 from ‘os::File’ to ‘std::string {aka std::basic_string<char>}’
+File.h:26:17: note: os::File::File()
+                 File() : other(*this), copy(false) {} 
+                 ^
+File.h:26:17: note:   candidate expects 0 arguments, 1 provided
+make: *** [all] Error 1
