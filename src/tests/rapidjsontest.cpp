@@ -1,7 +1,10 @@
-#include <rapidjson/document.h>
-#include <rapidjson/stringbuffer.h>
-#include <rapidjson/writer.h>
+#include <pretty.h>
 #include <iostream>
+
+void foo(rapidjson::Document *d) {
+	std::string ser = toString(d);
+	std::cout << ser << std::endl;
+}
 
 int main(void) {
 	rapidjson::Document *d = new rapidjson::Document();
@@ -10,8 +13,6 @@ int main(void) {
 	v.SetString("Hello");
 	d->PushBack(v, d->GetAllocator());
 
-
-	std::string ser = toString(d);
-	std::cout << ser << std::endl;
+	foo(d);
 	return 0;
 }

@@ -3,25 +3,17 @@
 
 #include <string>
 #include <iostream>
-#include <rapidjson/document.h>
-#include <rapidjson/writer.h>
-#include <rapidjson/stringbuffer.h>
+#include <pretty.h>
 #include "Scanner.h"
-
-// Convert a JSON object to a std::string
-inline std::string docToString(rapidjson::Document *doc) {
-    rapidjson::StringBuffer buffer;
-    rapidjson::Writer<rapidjson::StringBuffer> writer(buffer);
-    doc->Accept(writer);
-    std::string str = buffer.GetString();
-    return str;
-}
 
 namespace Parsing {
 	const std::string Aggregates[] = {"AVG", "MIN", "MAX", "SUM", "STDEV" /*, TODO: Others. */};
 	const std::string Commands[] = {"CREATE", "INSERT", "SELECT", "DELETE", "UPDATE", "SHOW" /*, TODO: Others. */};
-	const std::string CreateArgs[] = {"PROJECT", "DOCUMENT"};
-	const std::string SelectArgs[] = {"WHERE", "GROUP BY"};
+	const std::string CreateArgs[] = {"INDEX"};
+	const std::string SelectArgs[] = {"FROM"};
+	const std::string InsertArgs[] = {"WITH"};
+	const std::string SelectFromArgs[] = {"WHERE", "GROUP BY", "LIMIT"};
+	const std::string UpdateArgs[] = {"WITH", "WHERE", "LIMIT"};
 	enum Command {
 		CREATE = 0,
 		INSERT = 1,
@@ -52,14 +44,14 @@ namespace Parsing {
 			if (project) {
 				std::cout << "Project: " << *project << std::endl;
 			}
+			if (fields) {
+				std::cout << "Fields:" << std::endl << toPrettyString(fields) << std::endl;
+			}
 			if (with) {
-				std::cout << "With: " << docToString(with) << std::endl;
+				std::cout << "With:" << std::endl <<  toPrettyString(with) << std::endl;
 			}
 			if (where) {
-				std::cout << "Where: " << docToString(where) << std::endl;
-			}
-			if (fields) {
-				std::cout << "Fields: " << docToString(fields) << std::endl;
+				std::cout << "Where: " << std::endl << toPrettyString(where) << std::endl;
 			}
 			if (limit > -1) {
 				std::cout << "Limit: " << limit << std::endl;
