@@ -6,5 +6,6 @@
 #define UNUSED(id)
 
 void execute(Parsing::Query &, Storage::LinearHash<std::string> &);
-std::string toPrettyString(std::string *);
-std::string toPrettyString(rapidjson::Document *);
+
+typedef Storage::LinearHash<uint64_t> INDICES;
+typedef Storage::LinearHash<std::string> META;

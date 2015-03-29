@@ -8,6 +8,7 @@ Query parser for the NoSQL database management system.
 #include <rapidjson/document.h>
 #include <rapidjson/writer.h>
 #include <rapidjson/stringbuffer.h>
+#include <pretty.h>
 #include "Scanner.h"
 #include "Parser.h"
 
