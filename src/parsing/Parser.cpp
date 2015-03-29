@@ -249,17 +249,26 @@ bool Parsing::Parser::aggregate(rapidjson::Document *doc) {
 		return false;
 	}
 
+	std::string aggregate;
+
+	int numAggregates = sizeof(Aggregates) / sizeof(std::string);
+	for (int i=0; i<numAggregates; ++i) {
+		if (!toLower(funct).compare(toLower(Aggregates[i]))) {
+			aggregate = Aggregates[i];
+		}
+	}
+
 	rapidjson::Value obj;
 	obj.SetObject();
 
 	rapidjson::Value functVal;
-	functVal.SetString(funct.c_str(), doc->GetAllocator());
+	functVal.SetString(aggregate.c_str(), doc->GetAllocator());
 	
 	rapidjson::Value fieldVal;
 	fieldVal.SetString(field.c_str(), doc->GetAllocator());
 
-	obj.AddMember("Function", functVal, doc->GetAllocator());
-	obj.AddMember("Field", fieldVal, doc->GetAllocator());
+	obj.AddMember("function", functVal, doc->GetAllocator());
+	obj.AddMember("field", fieldVal, doc->GetAllocator());
 
 	doc->PushBack(obj, doc->GetAllocator());
 	return true;

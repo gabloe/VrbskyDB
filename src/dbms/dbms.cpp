@@ -102,6 +102,42 @@ void insertDocument(const rapidjson::Value &doc, uint64_t projHash, INDICES &ind
 }
 
 /*
+ *	updateProjectList ---
+ *
+ *	Insert the project name into the metadata array of project names.
+ *
+ */
+
+void updateProjectList(std::string pname, META &meta) {
+	std::string key("__PROJECTS__");
+	uint64_t keyHash = hash(key, key.size());
+	if (!meta.contains(keyHash)) {
+		meta.put(keyHash, "[]");
+	}
+
+	// Get the array of project names
+	std::string arr;
+	meta.get(keyHash, arr);
+	
+	// Parse the array into a JSON object
+	rapidjson::Document d;
+	d.Parse(arr.c_str());
+	
+	// Ensure that it is, in fact an array
+	assert(d.GetType() == rapidjson::kArrayType);
+
+	// Create a new entry for the project name
+	rapidjson::Value project;
+	project.SetString(pname.c_str(), d.GetAllocator());
+
+	// Insert the project name into the array
+	d.PushBack(project, d.GetAllocator());
+	
+	// Update the metadata with the modified array
+	meta.put(keyHash, toString(&d));
+}
+
+/*
  *	insertDocuments ---
  *
  *	1.)
@@ -130,6 +166,8 @@ void insertDocuments(rapidjson::Document &docs, std::string pname, INDICES &indi
 		meta.get(projectHash, proj_uuid);
 		uuidHash = hash(proj_uuid, proj_uuid.size());
 	}
+
+	updateProjectList(pname, meta);
 
 	// If it't an array of documents.  Iterate over them and insert each document.
 	if (docs.GetType() == rapidjson::kArrayType) {
@@ -181,7 +219,19 @@ void execute(Parsing::Query &q, META &meta, INDICES &indices, std::string dataFi
             }
         case Parsing::SHOW:
             {
-		q.print();
+		std::string key("__PROJECTS__");
+		uint64_t keyHash = hash(key, key.size());
+		if (meta.contains(keyHash)) {
+			std::string arr;
+			meta.get(keyHash, arr);
+			if (!arr.compare("[]")) {
+				std::cout << "No projects found!" << std::endl;
+			} else {
+				std::cout << toPrettyString(arr) << std::endl;
+			}
+		} else {
+			std::cout << "No projects found!" << std::endl;
+		}
                 break;
             }
         case Parsing::UPDATE:
