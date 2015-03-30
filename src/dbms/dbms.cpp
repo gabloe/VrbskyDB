@@ -126,15 +126,28 @@ void updateProjectList(std::string pname, META &meta) {
 	// Ensure that it is, in fact an array
 	assert(d.GetType() == rapidjson::kArrayType);
 
-	// Create a new entry for the project name
-	rapidjson::Value project;
-	project.SetString(pname.c_str(), d.GetAllocator());
+	// Check if the project already exists
+	bool found = false;
+	for (rapidjson::Value::ConstValueIterator itr = d.Begin(); itr != d.End(); ++itr) {
+		assert(itr->GetType() == rapidjson::kStringType);
+    		std::string val = itr->GetString();
+		if (!val.compare(pname)) {
+			found = true;
+		}
+	}
 
-	// Insert the project name into the array
-	d.PushBack(project, d.GetAllocator());
-	
-	// Update the metadata with the modified array
-	meta.put(keyHash, toString(&d));
+	// Only add the project if it is not found
+	if (!found) {
+		// Create a new entry for the project name
+		rapidjson::Value project;
+		project.SetString(pname.c_str(), d.GetAllocator());
+
+		// Insert the project name into the array
+		d.PushBack(project, d.GetAllocator());
+		
+		// Update the metadata with the modified array
+		meta.put(keyHash, toString(&d));
+	}
 }
 
 /*
@@ -212,7 +225,6 @@ void execute(Parsing::Query &q, META &meta, INDICES &indices, std::string dataFi
                 break;
             }
         case Parsing::DELETE:
-            // Delete a project or document
             {
 		q.print();
                 break;
@@ -337,6 +349,41 @@ char *selectMatcher(const char *text, int state) {
     return matcher( text , state, list_index , len, Parsing::SelectArgs , LENGTH(Parsing::SelectArgs) );
 }
 
+char *insertMatcher(const char *text, int state) {
+    static unsigned int list_index, len;
+    return matcher( text , state, list_index , len, Parsing::InsertArgs , LENGTH(Parsing::InsertArgs) );
+}
+
+char *insertIntoMatcher(const char *text, int state) {
+    static unsigned int list_index, len;
+    return matcher( text , state, list_index , len, Parsing::InsertIntoArgs , LENGTH(Parsing::InsertIntoArgs) );
+}
+
+char *showMatcher(const char *text, int state) {
+    static unsigned int list_index, len;
+    return matcher( text , state, list_index , len, Parsing::ShowArgs , LENGTH(Parsing::ShowArgs) );
+}
+
+char *deleteMatcher(const char *text, int state) {
+    static unsigned int list_index, len;
+    return matcher( text , state, list_index , len, Parsing::DeleteArgs , LENGTH(Parsing::DeleteArgs) );
+}
+
+char *deleteFromMatcher(const char *text, int state) {
+    static unsigned int list_index, len;
+    return matcher( text , state, list_index , len, Parsing::DeleteFromArgs , LENGTH(Parsing::DeleteFromArgs) );
+}
+
+char *updateMatcher(const char *text, int state) {
+    static unsigned int list_index, len;
+    return matcher( text , state, list_index , len, Parsing::UpdateArgs , LENGTH(Parsing::UpdateArgs) );
+}
+
+char *updateWithMatcher(const char *text, int state) {
+    static unsigned int list_index, len;
+    return matcher( text , state, list_index , len, Parsing::UpdateWithArgs , LENGTH(Parsing::UpdateWithArgs) );
+}
+
 std::vector<std::string> split(const char *str, char c = ' ') {
     std::vector<std::string> result;
     do {
@@ -356,7 +403,6 @@ static char **myAutoComplete(const char * text, int start, int UNUSED(end)) {
     if (start == 0) {
         matches = rl_completion_matches((char *)text, &cmdMatcher);
     } else {
-
         // TODO: Make this more robust...
 
         char *copy = (char *)malloc(strlen(rl_line_buffer) + 1);
@@ -365,10 +411,35 @@ static char **myAutoComplete(const char * text, int start, int UNUSED(end)) {
         std::vector<std::string> tokens = split((const char *)copy);
 
         if (!strcasecmp(tokens[0].c_str(), "create")) {
-                matches = rl_completion_matches((char *)tokens.back().c_str(), &createMatcher);
+		if (tokens.size() == 2) {
+                	matches = rl_completion_matches((char *)tokens.back().c_str(), &createMatcher);
+		}
         } else if (!strcasecmp(tokens[0].c_str(), "select")) {
-                matches = rl_completion_matches((char *)tokens.back().c_str(), &selectMatcher);
-        }
+		if (tokens.size() == 2) {	
+                	matches = rl_completion_matches((char *)tokens.back().c_str(), &selectMatcher);
+		} else if (tokens.size() == 4) {
+                	matches = rl_completion_matches((char *)tokens.back().c_str(), &selectFromMatcher);
+		}
+        } else if (!strcasecmp(tokens[0].c_str(), "insert")) {
+		if (tokens.size() == 2) {
+                	matches = rl_completion_matches((char *)tokens.back().c_str(), &insertMatcher);
+		} else if (tokens.size() == 4) {
+                	matches = rl_completion_matches((char *)tokens.back().c_str(), &insertIntoMatcher);
+		}
+	} else if (!strcasecmp(tokens[0].c_str(), "delete")) {
+		if (tokens.size() == 2) {
+                	matches = rl_completion_matches((char *)tokens.back().c_str(), &deleteMatcher);
+		} else if (tokens.size() == 4) {
+                	matches = rl_completion_matches((char *)tokens.back().c_str(), &deleteFromMatcher);
+		}
+	} else if (!strcasecmp(tokens[0].c_str(), "update")) {
+		if (tokens.size() == 2) {
+                	matches = rl_completion_matches((char *)tokens.back().c_str(), &updateMatcher);
+		} else if (tokens.size() == 4) {
+                	matches = rl_completion_matches((char *)tokens.back().c_str(), &updateWithMatcher);
+		}
+	}
+
         free(copy);
     }
 

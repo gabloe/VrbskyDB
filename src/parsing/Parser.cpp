@@ -65,7 +65,24 @@ bool Parsing::Parser::create(Parsing::Query &q) {
 	std::string on = toLower(Parsing::Parser::sc.nextToken());
 	if (!index.compare("index") && !on.compare("on")) {
 		q.fields = new rapidjson::Document();
-		std::string arr = Parsing::Parser::sc.nextJSON();
+		char c = Parsing::Parser::sc.nextChar();
+		std::string arr; 
+		if (c == '[') {
+			Parsing::Parser::sc.push_back(1);
+			arr = Parsing::Parser::sc.nextJSON();
+		} else {
+			arr += '[';
+			Parsing::Parser::sc.push_back(1);
+			std::string field = Parsing::Parser::sc.nextToken();
+			if (field.find("\"") != 0) {
+				arr += '"';
+			}
+			arr += field; 
+			if (field.find("\"") != field.size() - 1) {
+				arr += '"';
+			}
+			arr += ']';
+		}
 		q.fields->Parse(arr.c_str());
 		if (q.fields->HasParseError()) {
 			std::cout << "PARSING ERROR: Invalid JSON." << std::endl;
