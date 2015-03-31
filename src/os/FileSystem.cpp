@@ -607,6 +607,9 @@ namespace os {
         return f;
     }
 
+    bool FileSystem::unlink( File f ) {
+    }
+
     //
     bool FileSystem::unlink( const std::string filename ) {
         File file = open(filename);
