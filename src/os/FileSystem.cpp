@@ -24,7 +24,7 @@ bool fileExists(const std::string& filename)
 
 
 // Given a block and a start and end we remove all the bytes inbetween
-void compact( Block &b, uint64_t start , uint64_t end ) {
+void compact( os::Block &b, uint64_t start , uint64_t end ) {
     if( start >= end || start >= b.length ) return;
 
     // Remove trailing data
@@ -33,11 +33,12 @@ void compact( Block &b, uint64_t start , uint64_t end ) {
         return;
     }
 
-    uint64_t len = end - start;
+
+    uint64_t length = end - start;
     for( int i = 0 ; i < length; ++i ) {
         b.data[start + i] = b.data[end + i];
     }
-    b.length -= len;
+    b.length -= length;
 }
 
 
@@ -393,7 +394,7 @@ namespace os {
     //      If the buffer is NULL we write the NULL character.
     //
     //  @return -   How much data we wrote
-    uint64_t FileSystem::write( uint64_t start , uint64_t offset , uint64_t length , const char* buffer ) {
+    uint64_t FileSystem::write( File &f , uint64_t length , const char* buffer ) {
         Block b = locate( start , offset );
         if( b.block == 0 ) return 0;
 
@@ -440,12 +441,18 @@ namespace os {
     //      If the buffer is NULL we write the null character
     //
     //  @return -   The number of bytes written
-    uint64_t FileSystem::insert( uint64_t start , uint64_t offset , uint64_t length , const char* buffer ) {
-        Block b = locate( start , offset );
-        if( b.block == 0 ) return 0;
+    uint64_t FileSystem::insert( File &f , uint64_t length , const char* buffer ) {
+        // TODO: Handle growing files better?
+        if( f.position > f.size ) {
+            Block last = allocate( f.position - f.size , NULL );
+            f.last = last.block;
+            f.size += f.position + f.size;
+            f.current = f.last;
+        }
+        Block b = locate( f.current , f.position );
 
         // We might have to split
-        split( b , offset % BlockSize );
+        split( b , f.position % BlockSize );
 
         // Now append to here
         Block next = allocate( length , buffer );
@@ -478,32 +485,45 @@ namespace os {
     //  @return -   How many bytes actually removed
     //
     uint64_t FileSystem::remove( File &file ,uint64_t length ) {
+        uint64_t requested = length;
+        length = std::min( length , file.size - file.position );
 
-        length = std::min( length , file.numBytes - file.byteOffset );
-        if( length == 0 ) return 0;
+        // Make sure can remove bytes
+        if( length > 0 && (file.size > file.position) ) {
 
-        // Load blocks
-        Block first = load( file.currentBlock );
+            // Load first block we have to modify
+            Block first = locate( file.start , file.position );
 
-        uint64_t removeFromFirst = std::min( length , first.length - file.blockOffset );
-        uint64_t removeFromRemaining = length - removeFromFirst;
+            // Calculate how much to remove from first
+            uint64_t removeFromFirst = std::min( length , first.length - file.position );
+            // and how many bytes to skip to get to new spot
+            uint64_t removeFromRemaining = length - removeFromFirst;
 
-        Block last = locate( first.next , removeFromRemaining );
-        last = load( last.block );
+            // Load final block
+            Block last = locate( first.next , removeFromRemaining );
+            last = load( last.block );
 
-        // Compact blocks
-        compact( first , file.blockOffset , removeFromFirst );
-        compact( last , 0 , removeFromRemaining );
+            // Compact blocks
+            compact( first , file.blockOffset , removeFromFirst );
+            compact( last , 0 , removeFromRemaining );
 
-        if( first.next != last.block ) {
-            releaseBlock( first.next );
+            // Need to reconnect
+            if( first.next != last.block ) {
+                releaseBlock( first.next );
+                first.next = last.block;
+                last.prev = first.block;
+            }
+
+            // Update file
+            file.size -= requested - removeFromRemaining;
+            file.current = last.block;
+            file.position = 0;
+
+            // Write to disk
+            flush( first );
+            flush( last );
         }
-
-        first.next = last.block;
-        last.prev = first.block;
-
-        flush( first );
-        flush( last );
+        return requested - removeFromRemaining;
 
     }
 

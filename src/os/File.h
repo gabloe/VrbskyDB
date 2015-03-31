@@ -21,10 +21,10 @@ namespace os {
                 uint64_t size;
 
                 // Position information
-                uint64_t first;    // First block
-                uint64_t last;    // First block
-                uint64_t block;     // Current block
-                uint64_t position;  // Current position in the block
+                uint64_t start;     // First block
+                uint64_t end;       // First block
+                uint64_t current;   // Current block
+                uint64_t position;  // Position from first element in current block
 
                 File() {} 
             public:
@@ -32,36 +32,29 @@ namespace os {
 
                     fs = other.fs;
 
-                    name = other.name;
-                    status = other.status;
-                    size = other.size;
+                    name    = other.name;
+                    status  = other.status;
+                    size    = other.size;
 
-                    first = other.first;
-                    last = other.last;
-                    block = other.block;
-                    position = other.position;
+                    start       = other.start;
+                    end         = other.end;
+                    current     = other.current;
+                    position    = other.position;
                 }
 
-
+                // Return the current filename seen by this file descriptor
                 std::string getFilename() const {
                     return name;
                 }
 
-                uint64_t read( uint64_t length , char* buffer );
-                uint64_t write( uint64_t length , const char* buffer );
-                uint64_t insert( uint64_t length , const char* buffer );
-                uint64_t remove( uint64_t length );
-
-                uint64_t read( uint64_t start , uint64_t length , char* buffer );
-                uint64_t write( uint64_t start , uint64_t length , const char* buffer );
-                uint64_t insert( uint64_t start , uint64_t length , const char* buffer );
-                uint64_t remove( uint64_t start , uint64_t length );
-
+                // Removes the file from the filesystem
                 bool unlink();
-                bool rename( const std::string newName );
-                FileStatus getStatus() const;
 
-                void close();
+                // Rename the file
+                bool rename( const std::string newName );
+
+                // Get the current status
+                FileStatus getStatus() const;
 
                 friend class FileSystem;
         };

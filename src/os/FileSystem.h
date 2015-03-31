@@ -79,10 +79,10 @@ namespace os {
 
         void closing( File* );
 
-        uint64_t read( uint64_t start , uint64_t offset , uint64_t length , char *buffer ); 
-        uint64_t write( uint64_t start , uint64_t offset , uint64_t length , const char *buffer ); 
-        uint64_t insert( uint64_t start , uint64_t offset , uint64_t length , const char *buffer ); 
-        uint64_t remove( uint64_t start , uint64_t offset , uint64_t length ); 
+        uint64_t read( File &f , uint64_t length , char *buffer ); 
+        uint64_t write( File &f , uint64_t length , const char *buffer ); 
+        uint64_t insert( File &f , uint64_t length , const char *buffer ); 
+        uint64_t remove( File &f, uint64_t length ); 
 
         bool unlink( File );
         bool rename( File& , const std::string );
