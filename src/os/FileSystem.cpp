@@ -4,6 +4,8 @@
 #include <algorithm>
 #include <cstring>
 
+#include <cstdio>
+
 // std::min
 #include <cmath>
 
@@ -629,7 +631,11 @@ namespace os {
 
         fileSystemLocation = filename;
         //  Open the file
-        stream.open( filename , std::fstream::in |  std::fstream::out |  std::fstream::trunc );
+        stream.open( filename , std::fstream::in |  std::fstream::out | std::fstream::binary | std::fstream::app );
+        if( stream.fail() ) {
+            std::cout << "Could not open or create file" << std::endl;
+            std::exit( -1 );
+        }
 
         if( create ) {
             totalBytes = 0;
@@ -638,7 +644,7 @@ namespace os {
             numFreeBlocks = 0;
             numFiles = 0;
 
-            stream.write( HeaderSignature , sizeof( SignatureSize ) );
+            stream.write( HeaderSignature , SignatureSize );
             stream.write( reinterpret_cast<char*>(&totalBytes) , sizeof( totalBytes ) );
             stream.write( reinterpret_cast<char*>(&freeList) , sizeof( freeList ) );
             stream.write( reinterpret_cast<char*>(&numBlocks) , sizeof( numBlocks) );
@@ -646,10 +652,18 @@ namespace os {
             stream.write( reinterpret_cast<char*>(&numFiles) , sizeof( numFiles ) );
             stream.flush();
 
+            std::cout << "Creating file" << std::endl;
+
         }else {
             //  Read the header
             char buff[SignatureSize];
             stream.read( buff , SignatureSize );
+            for( int i = 0 ; i < SignatureSize ; ++i ) {
+                printf( "%x\n" , buff[i] );
+                if( buff[i] != HeaderSignature[i] ) {
+                    std::cout << "Wrong at position " << (int)i << std::endl;
+                }
+            }
             if( std::strncmp( buff , HeaderSignature , SignatureSize ) != 0 ) {
                 std::cout << "Invalid header signature found" << std::endl;
                 std::exit( -1 );

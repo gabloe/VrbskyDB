@@ -20,4 +20,4 @@ test: all
 	$(CMP) $(FLAGS) FileWriter.o FileSystemTest.cpp FileSystem.o File.o -o FSTest
 
 clean:
-	rm -f *.o FSTest
+	rm -f *.o FSTest test.dat
