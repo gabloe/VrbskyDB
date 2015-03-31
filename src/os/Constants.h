@@ -6,6 +6,7 @@
 
 namespace os {
 
+    enum FilePosition { BEG , CUR , END };
     enum FileStatus { OPEN , CLOSED , DELETED };
     enum LockType { READ , WRITE };
 

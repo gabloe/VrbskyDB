@@ -332,7 +332,7 @@ namespace os {
     //                  has the data corresponding to that offset.
     //
     //  start       -   The starting block
-    //  offset      -   How many bytes from the starting block
+    //  offset      -   How many bytes from the starting block, this is updated
     //
     //  @return     -   The block which holds the data pointed at by the offset
     //
@@ -358,30 +358,37 @@ namespace os {
     //  buffer  -   Where to store the data
     //
     //  @return -   Number of bytes read
-    uint64_t FileSystem::read( uint64_t start , uint64_t offset , uint64_t length , char* buffer ) {
-        if( buffer == 0 ) return 0;
-        Block b = locate( start , offset );
-        if( b.block == 0 ) return 0;
+    uint64_t FileSystem::read( File &file , uint64_t length , char* buffer ) {
+        uint64_t requested = length;
+        length = std::min( length , file.size - file.position );
 
-        // Read data
-        b = load( b.block );
-        char *to = buffer;
-        do {
-            uint64_t len = std::min( b.length - offset , length );
-            std::copy( b.data + offset , b.data + len , buffer );
+        if( length > 0 && buffer != 0 && file.position < file.size ) {
+            Block current = locate( file.current , file.position );
+            uint64_t next = current.block;
 
-            offset = 0;
-            buffer += len;
-            length -= len;
+            do {
+                // Go to next
+                current = load( next );
 
-            if( b.next == 0 ) { // Last block, TODO: Fatal, throw exception?
-                break;
-            }
-            b = load( b.next );
-        }while( length > 0 );
+                // Copy to buffer
+                uint64_t len = std::min( current.length - file.position , length );
+                std::copy( current.data + file.position , current.data + len , buffer );
 
+                // Update variables
+                file.position = 0;
+                buffer += len;
+                length -= len;
+
+                next = current.next;
+
+            }while( length > 0 );
+
+            file.current = current.block;
+            file.position = length;
+
+        }
         // How much we read
-        return to - buffer;
+        return requested - length;
     }
 
     //  write   -   Given some data write it at an offset from a starting block
@@ -394,40 +401,51 @@ namespace os {
     //      If the buffer is NULL we write the NULL character.
     //
     //  @return -   How much data we wrote
-    uint64_t FileSystem::write( File &f , uint64_t length , const char* buffer ) {
-        Block b = locate( start , offset );
-        if( b.block == 0 ) return 0;
+    uint64_t FileSystem::write( File &file , uint64_t length , const char* buffer ) {
+        uint64_t requested = length;
+        length = std::min( length , file.size - file.position );
 
-        const char *to = buffer;
-        do {
+        if( length > 0 && buffer != 0 && file.position < file.size ) {
+            Block current = locate( file.current , file.position );
+            uint64_t next = current.block;
 
-            uint64_t len = std::min( BlockSize , length );
-            std::copy( buffer , buffer + len , b.data + offset );
-            b.status = FULL;
-            offset = 0;
+            do {
+                // Go to next
+                current = load( next );
 
-            // Update and flush to disk
-            b.length = len;
-            flush( b );
+                // Copy from buffer to file
+                uint64_t len = std::min( current.length - file.position , length );
+                std::copy( buffer , buffer + len , current.data + file.position );
 
-            // Next
-            buffer += len;
-            length -= len;
+                // Update variables
+                file.position = 0;
+                buffer += len;
+                length -= len;
 
-            if( b.next == 0 ) { // Last block
-                Block next = allocate( length , buffer );
-                next.prev = b.block;
-                b.next = next.block;
-                flush( next );
-                flush( b );
-                break;
-            }else {
-                b = lazyLoad( start );
+                flush( current );
+
+                next = current.next;
+
+            }while( length > 0 );
+
+            // Grow the file
+            if( requested > length ) {
+                Block remaining = allocate( length , buffer );
+                length = 0;
+                current.next = remaining.block;
+                file.end = remaining.prev;
+                remaining.prev = current.block;
+                
+                flush( remaining );
+                flush( current );
             }
 
-        }while( length > 0 );
-        // How much we wrote
-        return to - buffer;
+            file.current = current.block;
+            file.position = length;
+
+        }
+        // How much we read
+        return requested - length;
     }
 
     //  insert  -   We insert data at a given offset in the file.  We do not write
@@ -441,30 +459,47 @@ namespace os {
     //      If the buffer is NULL we write the null character
     //
     //  @return -   The number of bytes written
-    uint64_t FileSystem::insert( File &f , uint64_t length , const char* buffer ) {
-        // TODO: Handle growing files better?
-        if( f.position > f.size ) {
-            Block last = allocate( f.position - f.size , NULL );
-            f.last = last.block;
-            f.size += f.position + f.size;
-            f.current = f.last;
+    uint64_t FileSystem::insert( File &file , uint64_t length , const char* buffer ) {
+        if( length > 0 ) {
+            // Grow file if neccessary 
+            if( file.position > file.size ) {
+                // Actually allocate
+                Block remaining = allocate( file.position - file.size , NULL );
+                
+                // Grab the current end of file block
+                Block oldEnd = lazyLoad( file.end );
+
+                // Update file
+                file.end = remaining.prev;
+                file.size += file.position - file.size;
+                file.current = file.end;
+
+                // Merge blocks together
+                remaining.prev = oldEnd.block;
+                oldEnd.next = remaining.block;
+
+                flush( remaining );
+                flush( oldEnd );
+            }
+
+            Block b = locate( file.current , file.position );
+
+            // We might have to split
+            split( b , file.position % BlockSize );
+
+            // Now append to here
+            Block next = allocate( length , buffer );
+            Block end = lazyLoad( next.prev );
+            end.next = b.next;
+            next.prev = b.block;
+            b.next = next.block;
+
+            flush( next );
+            flush( end );
+            flush( b );
+
+            // file.flush();
         }
-        Block b = locate( f.current , f.position );
-
-        // We might have to split
-        split( b , f.position % BlockSize );
-
-        // Now append to here
-        Block next = allocate( length , buffer );
-        Block end = lazyLoad( next.prev );
-        end.next = b.next;
-        next.prev = b.block;
-        b.next = next.block;
-
-        flush( next );
-        flush( end );
-        flush( b );
-
         return length;
     }
 
@@ -485,27 +520,26 @@ namespace os {
     //  @return -   How many bytes actually removed
     //
     uint64_t FileSystem::remove( File &file ,uint64_t length ) {
-        uint64_t requested = length;
-        length = std::min( length , file.size - file.position );
+        uint64_t remaining = std::min( length , file.size - file.position );
 
         // Make sure can remove bytes
-        if( length > 0 && (file.size > file.position) ) {
+        if( remaining > 0 && (file.size > file.position) ) {
 
             // Load first block we have to modify
             Block first = locate( file.start , file.position );
 
             // Calculate how much to remove from first
-            uint64_t removeFromFirst = std::min( length , first.length - file.position );
+            uint64_t removeFromFirst = std::min( remaining , first.length - file.position );
             // and how many bytes to skip to get to new spot
-            uint64_t removeFromRemaining = length - removeFromFirst;
+            remaining -= removeFromFirst;
 
             // Load final block
-            Block last = locate( first.next , removeFromRemaining );
+            Block last = locate( first.next , remaining );
             last = load( last.block );
 
             // Compact blocks
-            compact( first , file.blockOffset , removeFromFirst );
-            compact( last , 0 , removeFromRemaining );
+            compact( first , file.current , removeFromFirst );
+            compact( last , 0 , remaining );
 
             // Need to reconnect
             if( first.next != last.block ) {
@@ -515,15 +549,17 @@ namespace os {
             }
 
             // Update file
-            file.size -= requested - removeFromRemaining;
+            file.size -= length - remaining;
             file.current = last.block;
             file.position = 0;
 
             // Write to disk
             flush( first );
             flush( last );
+
+            // file.flush();
         }
-        return requested - removeFromRemaining;
+        return length - remaining;
 
     }
 
@@ -532,7 +568,7 @@ namespace os {
 
     void FileSystem::shutdown() {
         for( auto file = openFiles.begin() ; file != openFiles.end() ; ) {
-            (*file).close();
+            //(*file).close();
             openFiles.erase(file);
         }
     }

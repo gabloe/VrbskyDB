@@ -11,7 +11,7 @@ namespace os {
 
         class File {
 
-            private:
+            protected:
 
                 FileSystem *fs;
 
@@ -57,6 +57,8 @@ namespace os {
                 FileStatus getStatus() const;
 
                 friend class FileSystem;
+                friend class FileReader;
+                friend class FileWriter;
         };
 }
 

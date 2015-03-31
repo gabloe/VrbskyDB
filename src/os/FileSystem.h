@@ -111,7 +111,9 @@ namespace os {
 
         void shutdown();
 
-        friend File;
+        friend class File;
+        friend class FileReader;
+        friend class FileWriter;
 
     };
 }
