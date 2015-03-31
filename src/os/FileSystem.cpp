@@ -649,7 +649,7 @@ namespace os {
         }else {
             //  Read the header
             char buff[SignatureSize];
-            stream.read( buff , HeaderSize );
+            stream.read( buff , SignatureSize );
             if( std::strncmp( buff , HeaderSignature , SignatureSize ) != 0 ) {
                 std::cout << "Invalid header signature found" << std::endl;
                 std::exit( -1 );
