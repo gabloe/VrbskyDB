@@ -4,7 +4,6 @@
 #define OS_FILESYSTEM_H_
 
 #include "Constants.h"
-#include "File.h"
 
 #include <ios>
 #include <fstream>
@@ -31,7 +30,12 @@
 
 namespace os {
 
+    class File;
+
     enum BlockStatus { FULL , LAZY };
+
+    static const uint64_t SignatureSize = 8;
+    static const char HeaderSignature[SignatureSize] = { 0xD , 0xE , 0xA , 0xD , 0xB , 0xE , 0xE , 0xF  };
 
     static const uint64_t TotalBlockSize = KB;
     static const uint64_t HeaderSize = TotalBlockSize;
@@ -66,20 +70,22 @@ namespace os {
 
         void split( Block& , uint64_t );
         void flush( Block& );
-        Block grow( uint64_t , char*  );
-        Block allocate( uint64_t , char* );
+        Block grow( uint64_t , const char*  );
+        Block allocate( uint64_t , const char* );
         Block lazyLoad( uint64_t );
         Block load( uint64_t );
         Block locate( uint64_t , uint64_t& );
-        Block reuse( uint64_t& , char*& );
+        Block reuse( uint64_t& , const char*& );
+
+        void closing( File* );
 
         uint64_t read( uint64_t start , uint64_t offset , uint64_t length , char *buffer ); 
-        uint64_t write( uint64_t start , uint64_t offset , uint64_t length , char *buffer ); 
-        uint64_t insert( uint64_t start , uint64_t offset , uint64_t length , char *buffer ); 
+        uint64_t write( uint64_t start , uint64_t offset , uint64_t length , const char *buffer ); 
+        uint64_t insert( uint64_t start , uint64_t offset , uint64_t length , const char *buffer ); 
         uint64_t remove( uint64_t start , uint64_t offset , uint64_t length ); 
 
         bool unlink( File );
-        bool rename( File , const std::string );
+        bool rename( File& , const std::string );
 
         public:
 
@@ -102,6 +108,8 @@ namespace os {
         bool unlink( const std::string );
 
         bool rename( const std::string oldName , const std::string newName );
+
+        void shutdown();
 
         friend File;
 

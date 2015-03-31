@@ -1,11 +1,14 @@
 // std::copy
+#include <iostream>
 #include <sys/stat.h>
 #include <algorithm>
+#include <cstring>
 
 // std::min
 #include <cmath>
 
 #include "FileSystem.h"
+#include "File.h"
 
 bool fileExists(const std::string& filename)
 {
@@ -18,6 +21,24 @@ bool fileExists(const std::string& filename)
 }
 
 // implementation details
+
+
+// Given a block and a start and end we remove all the bytes inbetween
+void compact( Block &b, uint64_t start , uint64_t end ) {
+    if( start >= end || start >= b.length ) return;
+
+    // Remove trailing data
+    if( end >= b.length ) {
+        b.length = start;
+        return;
+    }
+
+    uint64_t len = end - start;
+    for( int i = 0 ; i < length; ++i ) {
+        b.data[start + i] = b.data[end + i];
+    }
+    b.length -= len;
+}
 
 
 // namespace implementation
@@ -54,6 +75,18 @@ namespace os {
      *  Low level filesystem functions
      */
 
+    bool FileSystem::rename( File &toRename , const std::string newName ) {
+        for( auto file = openFiles.begin() ; file != openFiles.end() ; ++file ) {
+            File &f = *file;
+            if( f.getFilename() == toRename.getFilename() ) {
+                f.name = newName;
+                toRename.name = newName;
+                return true;
+            }
+        }
+        return false;
+    }
+    
 
     void FileSystem::split( Block &b , uint64_t offset ) {
         if( offset == b.length ) return;
@@ -81,7 +114,7 @@ namespace os {
     //
     //  @return -   The first block of the new space
     //
-    Block FileSystem::grow( uint64_t bytes , char *buffer ) {
+    Block FileSystem::grow( uint64_t bytes , const char *buffer ) {
 
         uint64_t blocksToWrite, blockId;
 
@@ -106,7 +139,9 @@ namespace os {
         b.length = std::min( bytes , BlockSize );
         b.prev = blockId + blocksToWrite - 1;
         b.next = blockId + blocksToWrite - 1;
-        std::copy( b.data , b.data + BlockSize , buffer );
+        for( int i = 0 ; i < b.length ; ++i ) {
+            b.data[i] = buffer[i];
+        }
 
         uint64_t previous = b.prev;
         // Begin our writing
@@ -117,7 +152,7 @@ namespace os {
             secondary.write( reinterpret_cast<char*>( previous ) , sizeof(uint64_t) ); // Prev 
             secondary.write( reinterpret_cast<char*>( blockId + 1 ) , sizeof(uint64_t) ); // Next 
             secondary.write( reinterpret_cast<char*>( BlockSize ) , sizeof(uint64_t) ); // Length
-            secondary.write( reinterpret_cast<char*>( buffer ) , BlockSize ); // Data 
+            secondary.write( reinterpret_cast<const char*>( buffer ) , BlockSize ); // Data 
             buffer += BlockSize;
             previous = blockId;
             ++blockId;
@@ -126,7 +161,7 @@ namespace os {
         secondary.write( reinterpret_cast<char*>( previous ) , sizeof(uint64_t) ); // Prev 
         secondary.write( reinterpret_cast<char*>( 0 ) , sizeof(uint64_t) ); // Next 
         secondary.write( reinterpret_cast<char*>( bytes % BlockSize ) , sizeof(uint64_t) ); // Length
-        secondary.write( reinterpret_cast<char*>( buffer ) , bytes % BlockSize ); // Data 
+        secondary.write( reinterpret_cast<const char*>( buffer ) , bytes % BlockSize ); // Data 
 
         return b;
     }
@@ -208,7 +243,7 @@ namespace os {
     //  buffer  -   data
     //
     //  @return -   The first block in the freelist
-    Block FileSystem::reuse( uint64_t &length , char* &buffer ) {
+    Block FileSystem::reuse( uint64_t &length , const char* &buffer ) {
         Block head;
 
         if( numFreeBlocks > 0 ) {
@@ -262,7 +297,7 @@ namespace os {
     //
     //  @return     -   The first block which holds our data
     //
-    Block FileSystem::allocate( uint64_t length , char* buffer ) {
+    Block FileSystem::allocate( uint64_t length , const char* buffer ) {
         Block head;
         if( length == 0 ) {
             return head;
@@ -358,11 +393,11 @@ namespace os {
     //      If the buffer is NULL we write the NULL character.
     //
     //  @return -   How much data we wrote
-    uint64_t FileSystem::write( uint64_t start , uint64_t offset , uint64_t length , char* buffer ) {
+    uint64_t FileSystem::write( uint64_t start , uint64_t offset , uint64_t length , const char* buffer ) {
         Block b = locate( start , offset );
         if( b.block == 0 ) return 0;
 
-        char *to = buffer;
+        const char *to = buffer;
         do {
 
             uint64_t len = std::min( BlockSize , length );
@@ -405,7 +440,7 @@ namespace os {
     //      If the buffer is NULL we write the null character
     //
     //  @return -   The number of bytes written
-    uint64_t FileSystem::insert( uint64_t start , uint64_t offset , uint64_t length , char* buffer ) {
+    uint64_t FileSystem::insert( uint64_t start , uint64_t offset , uint64_t length , const char* buffer ) {
         Block b = locate( start , offset );
         if( b.block == 0 ) return 0;
 
@@ -426,8 +461,61 @@ namespace os {
         return length;
     }
 
+    //
+    //  releaseBlock    -   Adds a block to the freelist for later use
+    //
+    //  block           -   The block we are freeing
+    //
+    void releaseBlock( uint64_t block ) {
+    }
+
+    //
+    //  remove  -   Remove bytes from a file
+    //
+    //  file    -   The file we want to remove bytes from
+    //  length  -   How many bytes to remove
+    //
+    //  @return -   How many bytes actually removed
+    //
+    uint64_t FileSystem::remove( File &file ,uint64_t length ) {
+
+        length = std::min( length , file.numBytes - file.byteOffset );
+        if( length == 0 ) return 0;
+
+        // Load blocks
+        Block first = load( file.currentBlock );
+
+        uint64_t removeFromFirst = std::min( length , first.length - file.blockOffset );
+        uint64_t removeFromRemaining = length - removeFromFirst;
+
+        Block last = locate( first.next , removeFromRemaining );
+        last = load( last.block );
+
+        // Compact blocks
+        compact( first , file.blockOffset , removeFromFirst );
+        compact( last , 0 , removeFromRemaining );
+
+        if( first.next != last.block ) {
+            releaseBlock( first.next );
+        }
+
+        first.next = last.block;
+        last.prev = first.block;
+
+        flush( first );
+        flush( last );
+
+    }
+
 
     // Public Methods/Functions
+
+    void FileSystem::shutdown() {
+        for( auto file = openFiles.begin() ; file != openFiles.end() ; ) {
+            (*file).close();
+            openFiles.erase(file);
+        }
+    }
 
     std::list<File*> FileSystem::getFiles() {
         std::list<File*> ret;
@@ -482,16 +570,49 @@ namespace os {
         stream.open( filename );
 
         if( !fileExists( filename ) ) {
+            totalBytes = 0;
+            freeList = 0;
+            numBlocks = 0;
+            numFreeBlocks = 0;
+            numFiles = 0;
 
-            stream.write( HeaderSignature , sizeof( HeaderSignature ) );
-            stream.write( totalBytes , sizeof( totalBytes ) );
+            stream.write( HeaderSignature , sizeof( SignatureSize ) );
+            stream.write( reinterpret_cast<char*>(&totalBytes) , sizeof( totalBytes ) );
+            stream.write( reinterpret_cast<char*>(&freeList) , sizeof( freeList ) );
+            stream.write( reinterpret_cast<char*>(&numBlocks) , sizeof( numBlocks) );
+            stream.write( reinterpret_cast<char*>(&numFreeBlocks) , sizeof( numFreeBlocks ) );
+            stream.write( reinterpret_cast<char*>(&numFiles) , sizeof( numFiles ) );
+
         }else {
-        //  Read the header
-
-        //  Read the filenames
+            //  Read the header
+            char buff[SignatureSize];
+            stream.read( buff , HeaderSize );
+            if( std::strncmp( buff , HeaderSignature , SignatureSize ) != 0 ) {
+                std::cout << "Invalid header signature found" << std::endl;
+                std::exit( -1 );
+            }
+            stream.read( reinterpret_cast<char*>(&totalBytes) , sizeof( totalBytes ) );
+            stream.read( reinterpret_cast<char*>(&freeList) , sizeof( freeList ) );
+            stream.read( reinterpret_cast<char*>(&numBlocks) , sizeof( numBlocks) );
+            stream.read( reinterpret_cast<char*>(&numFreeBlocks) , sizeof( numFreeBlocks ) );
+            stream.read( reinterpret_cast<char*>(&numFiles) , sizeof( numFiles ) );
+            //  Read the filenames
 
         }
 
+    }
+
+    void FileSystem::closing( File *fp ) {
+        for( auto file = openFiles.begin(); file != openFiles.end(); ++file ) {
+            if( (*file).getFilename() == (*fp).getFilename() ) {
+                openFiles.erase(file);
+                return;
+            }
+        }
+    }
+
+    FileSystem::~FileSystem() {
+        shutdown();
     }
 
 };
