@@ -68,6 +68,11 @@ namespace os {
         void lock( LockType );
         void unlock( LockType );
 
+
+        /* File management functions */
+        File createNewFile( std::string );
+
+        /* Data management functions*/
         void split( Block& , uint64_t );
         void flush( Block& );
         Block grow( uint64_t , const char*  );

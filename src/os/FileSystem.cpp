@@ -54,6 +54,20 @@ namespace os {
      *  Locking Functions
      */
 
+
+    File FileSystem::createNewFile( std::string name ) {
+        uint64_t lastFileBlock = 0;
+        Block b = load( lastFileBlock );
+
+        
+        // Length of filename , and block position
+        uint64_t numBytes = sizeof( uint64_t ) + name.size() + sizeof( uint64_t );
+        char buffer[1024];
+
+        return File();
+        
+    }
+
     // Lock the file for writing
     void FileSystem::lock( LockType type ){
         switch( type ) {
@@ -603,10 +617,14 @@ namespace os {
         File f;
         for( auto file = allFiles.begin() ; file != allFiles.end() ; ++file ) {
             if( (*file).getFilename() == name ) {
-                return *file;
+                f = *file;
+                goto theend;
             }
         } 
-        // Create a new file
+        // This file does not exist, we need to create
+        // it and save it to disk.
+        //f = createNewFile( name );
+theend:
         return f;
     }
 
