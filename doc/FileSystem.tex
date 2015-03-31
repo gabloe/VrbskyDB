@@ -1,0 +1,34 @@
+
+
+\documentclass{article}
+
+\usepackage{fullpage}
+
+\begin{document}
+
+\section*{Introduction}
+
+In order to support multiple updates to a file at any point in a file we
+developed a file system which will work with the operating systems filesystem.
+Our filesystem supports chunking of data to enable anywhere inserts.
+This is different from a write which is descructive.
+An insert is when we want to place some data between two points without losing any of the current data.
+In current file systems this happens by taking the current data and moving it down and then writing the new data in the open spot.
+By using chunking this minimizes the amount of work to do but has some overhead on seeking to a point in a file.
+
+Our current plans are to support creating and deleting files.
+We are going to support basic file operations such as read and write.
+Additionally we will support remove and insert which take advantage of chunking.
+
+
+\section*{Layout}
+
+Our file system will be stored to a single file.
+Later we might work on how to split this into multiple files.
+In our current file layout we have a single header which contains informatiom about the file system.
+This includes things such as how many files, the first block which is free, and so on.
+After the header comes the first block which is assigned to the data structure used to manage the files.
+This will contain information pertaining to files stored, such as the name and first block they are stored in.
+
+
+\end{document}
