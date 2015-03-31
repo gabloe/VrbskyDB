@@ -606,6 +606,7 @@ namespace os {
                 return *file;
             }
         } 
+        // Create a new file
         return f;
     }
 
