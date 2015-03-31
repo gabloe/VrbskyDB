@@ -65,7 +65,24 @@ bool Parsing::Parser::create(Parsing::Query &q) {
 	std::string on = toLower(Parsing::Parser::sc.nextToken());
 	if (!index.compare("index") && !on.compare("on")) {
 		q.fields = new rapidjson::Document();
-		std::string arr = Parsing::Parser::sc.nextJSON();
+		char c = Parsing::Parser::sc.nextChar();
+		std::string arr; 
+		if (c == '[') {
+			Parsing::Parser::sc.push_back(1);
+			arr = Parsing::Parser::sc.nextJSON();
+		} else {
+			arr += '[';
+			Parsing::Parser::sc.push_back(1);
+			std::string field = Parsing::Parser::sc.nextToken();
+			if (field.find("\"") != 0) {
+				arr += '"';
+			}
+			arr += field; 
+			if (field.find("\"") != field.size() - 1) {
+				arr += '"';
+			}
+			arr += ']';
+		}
 		q.fields->Parse(arr.c_str());
 		if (q.fields->HasParseError()) {
 			std::cout << "PARSING ERROR: Invalid JSON." << std::endl;
@@ -249,17 +266,26 @@ bool Parsing::Parser::aggregate(rapidjson::Document *doc) {
 		return false;
 	}
 
+	std::string aggregate;
+
+	int numAggregates = sizeof(Aggregates) / sizeof(std::string);
+	for (int i=0; i<numAggregates; ++i) {
+		if (!toLower(funct).compare(toLower(Aggregates[i]))) {
+			aggregate = Aggregates[i];
+		}
+	}
+
 	rapidjson::Value obj;
 	obj.SetObject();
 
 	rapidjson::Value functVal;
-	functVal.SetString(funct.c_str(), doc->GetAllocator());
+	functVal.SetString(aggregate.c_str(), doc->GetAllocator());
 	
 	rapidjson::Value fieldVal;
 	fieldVal.SetString(field.c_str(), doc->GetAllocator());
 
-	obj.AddMember("Function", functVal, doc->GetAllocator());
-	obj.AddMember("Field", fieldVal, doc->GetAllocator());
+	obj.AddMember("function", functVal, doc->GetAllocator());
+	obj.AddMember("field", fieldVal, doc->GetAllocator());
 
 	doc->PushBack(obj, doc->GetAllocator());
 	return true;

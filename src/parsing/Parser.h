@@ -9,11 +9,17 @@
 namespace Parsing {
 	const std::string Aggregates[] = {"AVG", "MIN", "MAX", "SUM", "STDEV" /*, TODO: Others. */};
 	const std::string Commands[] = {"CREATE", "INSERT", "SELECT", "DELETE", "UPDATE", "SHOW" /*, TODO: Others. */};
-	const std::string CreateArgs[] = {"INDEX"};
+	const std::string CreateArgs[] = {"INDEX ON"};
 	const std::string SelectArgs[] = {"FROM"};
-	const std::string InsertArgs[] = {"WITH"};
+	const std::string InsertArgs[] = {"INTO"};
+	const std::string DeleteArgs[] = {"FROM"};
+	const std::string DeleteFromArgs[] = {"WHERE", "LIMIT"};
+	const std::string InsertIntoArgs[] = {"WITH"};
 	const std::string SelectFromArgs[] = {"WHERE", "GROUP BY", "LIMIT"};
-	const std::string UpdateArgs[] = {"WITH", "WHERE", "LIMIT"};
+	const std::string UpdateArgs[] = {"WITH"};
+	const std::string UpdateWithArgs[] = {"WHERE", "LIMIT"};
+	const std::string ShowArgs[] = {"PROJECTS", "INDEXES"};
+
 	enum Command {
 		CREATE = 0,
 		INSERT = 1,

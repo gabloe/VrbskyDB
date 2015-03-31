@@ -13,6 +13,12 @@
 #include <pretty.h>
 #include <UUID.h>
 
+/*
+ *	createRow ---
+ *	
+ *	Given a document and a key, create a new document containing the key/value pair, the field ID and the document ID.
+ */
+
 std::string createRow(const rapidjson::Value &doc, const std::string key, std::string docUUID, std::string fieldUUID) {
 	rapidjson::Document d;
 	d.SetObject();
@@ -31,45 +37,169 @@ std::string createRow(const rapidjson::Value &doc, const std::string key, std::s
 	return toString(&d);
 }
 
-void insertDocument(const rapidjson::Value &doc, std::string docUUID, std::string projUUID, INDICES &indices, META &meta) {
+/*
+ *	appendDocToProject ---
+ *	
+ *	Retrieve the array of documents for the specified project from the metadata.
+ *	Insert the new document ID into the array.
+ *	Replace the array in the metadata with the modified array.
+ *
+ */
+
+void appendDocToProject(uint64_t projectHash, std::string doc, META &meta) {
+	if (meta.contains(projectHash)) {
+		// Get the previous array of docs
+		std::string data;
+		meta.get(projectHash, data);
+
+		// Parse the array and insert new document ID
+		rapidjson::Document d;
+		d.Parse(data.c_str());
+		assert(d.GetType() == rapidjson::kArrayType);
+		rapidjson::Value v;
+		v.SetString(doc.c_str(), d.GetAllocator());
+		d.PushBack(v, d.GetAllocator());
+
+		// Save the new array in meta
+		std::string newData = toString(&d);
+		meta.put(projectHash, newData);
+	}
+}
+
+/*
+ *	insertDocument ---
+ *	
+ *	1.)
+ *	Assign the document a UUID
+ *	
+ *	2.)
+ *	Iterate over each field of the document and create a row containing the document ID and a field ID
+ *	Insert the row into the database.
+ *
+ *	TODO: Inserting the data into the DB
+ *
+ */
+
+void insertDocument(const rapidjson::Value &doc, uint64_t projHash, INDICES &indices, META &meta) {
 	assert(doc.GetType() == rapidjson::kObjectType);
 	rapidjson::Document d;
 	d.SetObject();
+	std::string docUUID = newUUID();
 	for (rapidjson::Value::ConstMemberIterator itr = doc.MemberBegin(); itr < doc.MemberEnd(); ++itr) {
 		// Create a serialized row of data with some metadata fields
 		std::string fieldUUID = newUUID();
 		std::string row = createRow(doc, itr->name.GetString(), docUUID, fieldUUID);
 		// Insert this row into the DB
-		//TODO: Filesystem stuff
+		//TODO:
+		// ------------------------
+		// Filesystem stuff here
+		// ------------------------
+
+		// TODO: For debugging purposes only.  Remove this once the filesystem stuff is done.
 		std::cout << toPrettyString(row) << std::endl;
+	}
+	appendDocToProject(projHash, docUUID, meta);
+}
+
+/*
+ *	updateProjectList ---
+ *
+ *	Insert the project name into the metadata array of project names.
+ *
+ */
+
+void updateProjectList(std::string pname, META &meta) {
+	std::string key("__PROJECTS__");
+	uint64_t keyHash = hash(key, key.size());
+	if (!meta.contains(keyHash)) {
+		meta.put(keyHash, "[]");
+	}
+
+	// Get the array of project names
+	std::string arr;
+	meta.get(keyHash, arr);
+	
+	// Parse the array into a JSON object
+	rapidjson::Document d;
+	d.Parse(arr.c_str());
+	
+	// Ensure that it is, in fact an array
+	assert(d.GetType() == rapidjson::kArrayType);
+
+	// Check if the project already exists
+	bool found = false;
+	for (rapidjson::Value::ConstValueIterator itr = d.Begin(); itr != d.End(); ++itr) {
+		assert(itr->GetType() == rapidjson::kStringType);
+    		std::string val = itr->GetString();
+		if (!val.compare(pname)) {
+			found = true;
+		}
+	}
+
+	// Only add the project if it is not found
+	if (!found) {
+		// Create a new entry for the project name
+		rapidjson::Value project;
+		project.SetString(pname.c_str(), d.GetAllocator());
+
+		// Insert the project name into the array
+		d.PushBack(project, d.GetAllocator());
+		
+		// Update the metadata with the modified array
+		meta.put(keyHash, toString(&d));
 	}
 }
 
+/*
+ *	insertDocuments ---
+ *
+ *	1.)
+ *	Create a project if 'pname' does not exist in the metadata.  This project consists of a name mapped 
+ *	to a UUID and a UUID mapped to an array of document ID's.
+ *	
+ *	2.)
+ *	If the JSON object passed in is an array, iterate over the array and insert each document into the DB.
+ *	If the JSON object is a single object, insert the document into the DB.
+ */
+
 void insertDocuments(rapidjson::Document &docs, std::string pname, INDICES &indices, META &meta) {
 	uint64_t projectHash = hash(pname, pname.size());
+	uint64_t uuidHash;
 	if (!meta.contains(projectHash)) {
 		// project doesn't exist.  Create a UUID for it.
 		std::string proj_uuid = newUUID();
 		meta.put(projectHash, proj_uuid);
 		
-		uint64_t uuidHash = hash(proj_uuid, proj_uuid.size());
+		// Insert an empty array.  This array will eventuall contain document uuid's
+		uuidHash = hash(proj_uuid, proj_uuid.size());
 		std::string emptyArray("[]");
 		meta.put(uuidHash, emptyArray);
+	} else {
+		std::string proj_uuid;
+		meta.get(projectHash, proj_uuid);
+		uuidHash = hash(proj_uuid, proj_uuid.size());
 	}
 
-	std::string projectUUID;
-	meta.get(projectHash, projectUUID);
+	updateProjectList(pname, meta);
 
 	// If it't an array of documents.  Iterate over them and insert each document.
 	if (docs.GetType() == rapidjson::kArrayType) {
 		for (rapidjson::SizeType i = 0; i < docs.Size(); ++i) {
-			insertDocument(docs[i], newUUID(), projectUUID, indices, meta);
+			insertDocument(docs[i], uuidHash, indices, meta);
 		}
 	} else if (docs.GetType() == rapidjson::kObjectType) {
-		insertDocument(docs, newUUID(), projectUUID, indices, meta);
+		insertDocument(docs, uuidHash, indices, meta);
 	}
 	
 }
+
+/*
+ *	execute ---
+ *	
+ *	Given a parsed query, execute this query and perform the appropriate CRUD operation.
+ *	Display the results.
+ *
+ */
 
 void execute(Parsing::Query &q, META &meta, INDICES &indices, std::string dataFile) {
     clock_t start, end;
@@ -95,14 +225,25 @@ void execute(Parsing::Query &q, META &meta, INDICES &indices, std::string dataFi
                 break;
             }
         case Parsing::DELETE:
-            // Delete a project or document
             {
 		q.print();
                 break;
             }
         case Parsing::SHOW:
             {
-		q.print();
+		std::string key("__PROJECTS__");
+		uint64_t keyHash = hash(key, key.size());
+		if (meta.contains(keyHash)) {
+			std::string arr;
+			meta.get(keyHash, arr);
+			if (!arr.compare("[]")) {
+				std::cout << "No projects found!" << std::endl;
+			} else {
+				std::cout << toPrettyString(arr) << std::endl;
+			}
+		} else {
+			std::cout << "No projects found!" << std::endl;
+		}
                 break;
             }
         case Parsing::UPDATE:
@@ -117,6 +258,13 @@ void execute(Parsing::Query &q, META &meta, INDICES &indices, std::string dataFi
     std::cout << "Done!  Took " << 1000 * (float)(end - start) / CLOCKS_PER_SEC << " milliseconds." << std::endl;
 }
 
+/*
+ *	file_exists ---
+ *
+ *	Return true if the supplied filename exists.  False, otherwise.
+ *
+ */
+
 inline bool file_exists (const std::string& name) {
     if (FILE *file = fopen(name.c_str(), "r")) {
         fclose(file);
@@ -125,6 +273,10 @@ inline bool file_exists (const std::string& name) {
         return false;
     }
 }
+
+/*
+ *	Begin autocompletion methods for Readline library.
+ */
 
 int myNewline(int UNUSED(count), int UNUSED(key)) {
     if (rl_line_buffer[strlen(rl_line_buffer)-1] == ';' ||
@@ -197,6 +349,41 @@ char *selectMatcher(const char *text, int state) {
     return matcher( text , state, list_index , len, Parsing::SelectArgs , LENGTH(Parsing::SelectArgs) );
 }
 
+char *insertMatcher(const char *text, int state) {
+    static unsigned int list_index, len;
+    return matcher( text , state, list_index , len, Parsing::InsertArgs , LENGTH(Parsing::InsertArgs) );
+}
+
+char *insertIntoMatcher(const char *text, int state) {
+    static unsigned int list_index, len;
+    return matcher( text , state, list_index , len, Parsing::InsertIntoArgs , LENGTH(Parsing::InsertIntoArgs) );
+}
+
+char *showMatcher(const char *text, int state) {
+    static unsigned int list_index, len;
+    return matcher( text , state, list_index , len, Parsing::ShowArgs , LENGTH(Parsing::ShowArgs) );
+}
+
+char *deleteMatcher(const char *text, int state) {
+    static unsigned int list_index, len;
+    return matcher( text , state, list_index , len, Parsing::DeleteArgs , LENGTH(Parsing::DeleteArgs) );
+}
+
+char *deleteFromMatcher(const char *text, int state) {
+    static unsigned int list_index, len;
+    return matcher( text , state, list_index , len, Parsing::DeleteFromArgs , LENGTH(Parsing::DeleteFromArgs) );
+}
+
+char *updateMatcher(const char *text, int state) {
+    static unsigned int list_index, len;
+    return matcher( text , state, list_index , len, Parsing::UpdateArgs , LENGTH(Parsing::UpdateArgs) );
+}
+
+char *updateWithMatcher(const char *text, int state) {
+    static unsigned int list_index, len;
+    return matcher( text , state, list_index , len, Parsing::UpdateWithArgs , LENGTH(Parsing::UpdateWithArgs) );
+}
+
 std::vector<std::string> split(const char *str, char c = ' ') {
     std::vector<std::string> result;
     do {
@@ -216,7 +403,6 @@ static char **myAutoComplete(const char * text, int start, int UNUSED(end)) {
     if (start == 0) {
         matches = rl_completion_matches((char *)text, &cmdMatcher);
     } else {
-
         // TODO: Make this more robust...
 
         char *copy = (char *)malloc(strlen(rl_line_buffer) + 1);
@@ -225,10 +411,35 @@ static char **myAutoComplete(const char * text, int start, int UNUSED(end)) {
         std::vector<std::string> tokens = split((const char *)copy);
 
         if (!strcasecmp(tokens[0].c_str(), "create")) {
-                matches = rl_completion_matches((char *)tokens.back().c_str(), &createMatcher);
+		if (tokens.size() == 2) {
+                	matches = rl_completion_matches((char *)tokens.back().c_str(), &createMatcher);
+		}
         } else if (!strcasecmp(tokens[0].c_str(), "select")) {
-                matches = rl_completion_matches((char *)tokens.back().c_str(), &selectMatcher);
-        }
+		if (tokens.size() == 2) {	
+                	matches = rl_completion_matches((char *)tokens.back().c_str(), &selectMatcher);
+		} else if (tokens.size() == 4) {
+                	matches = rl_completion_matches((char *)tokens.back().c_str(), &selectFromMatcher);
+		}
+        } else if (!strcasecmp(tokens[0].c_str(), "insert")) {
+		if (tokens.size() == 2) {
+                	matches = rl_completion_matches((char *)tokens.back().c_str(), &insertMatcher);
+		} else if (tokens.size() == 4) {
+                	matches = rl_completion_matches((char *)tokens.back().c_str(), &insertIntoMatcher);
+		}
+	} else if (!strcasecmp(tokens[0].c_str(), "delete")) {
+		if (tokens.size() == 2) {
+                	matches = rl_completion_matches((char *)tokens.back().c_str(), &deleteMatcher);
+		} else if (tokens.size() == 4) {
+                	matches = rl_completion_matches((char *)tokens.back().c_str(), &deleteFromMatcher);
+		}
+	} else if (!strcasecmp(tokens[0].c_str(), "update")) {
+		if (tokens.size() == 2) {
+                	matches = rl_completion_matches((char *)tokens.back().c_str(), &updateMatcher);
+		} else if (tokens.size() == 4) {
+                	matches = rl_completion_matches((char *)tokens.back().c_str(), &updateWithMatcher);
+		}
+	}
+
         free(copy);
     }
 
