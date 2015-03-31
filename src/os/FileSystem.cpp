@@ -624,11 +624,14 @@ namespace os {
 
     FileSystem::FileSystem( const std::string filename) {
 
+
+        bool create = !fileExists( filename );
+
         fileSystemLocation = filename;
         //  Open the file
-        stream.open( filename );
+        stream.open( filename , std::fstream::in |  std::fstream::out |  std::fstream::trunc );
 
-        if( !fileExists( filename ) ) {
+        if( create ) {
             totalBytes = 0;
             freeList = 0;
             numBlocks = 0;
@@ -641,6 +644,7 @@ namespace os {
             stream.write( reinterpret_cast<char*>(&numBlocks) , sizeof( numBlocks) );
             stream.write( reinterpret_cast<char*>(&numFreeBlocks) , sizeof( numFreeBlocks ) );
             stream.write( reinterpret_cast<char*>(&numFiles) , sizeof( numFiles ) );
+            stream.flush();
 
         }else {
             //  Read the header
