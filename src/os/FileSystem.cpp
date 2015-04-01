@@ -13,18 +13,16 @@
 #include "FileSystem.h"
 #include "File.h"
 
-// Helper functions
 
-bool fileExists(const std::string& filename)
-{
-    struct stat buf;
-    if (stat(filename.c_str(), &buf) != -1)
-    {
-        return true;
-    }
-    return false;
+void printFile( os::File &file ) {
+    std::cout << "File Properties" << std::endl;
+    std::cout << "\tFile Name: " << file.name << std::endl;
+    std::cout << "\tFile Start: " << file.start << std::endl;
+    std::cout << "\tFile Current: " << file.current << std::endl;
+    std::cout << "\tFile End: " << file.end << std::endl;
+    std::cout << "\tFile Size: " << file.size << std::endl;
+    std::cout << "\tFile Position: " << file.position << std::endl << std::endl;
 }
-
 
 // Given a block and a start and end we remove all the bytes inbetween
 void compact( os::Block &b, uint64_t start , uint64_t end ) {
@@ -51,26 +49,65 @@ namespace os {
 
     // Private functions
 
+    File FileSystem::createNewFile( std::string name ) {
+        std::cout << "Creating a new file with the name " << name << std::endl;
+
+        uint64_t lastFileBlock = 1;
+
+        // Create file meta-data 
+        uint64_t lengthName = name.size();
+        uint64_t numBytes = sizeof( uint64_t ) + lengthName + sizeof( uint64_t );
+        char buffer[1024];
+
+        char *t = reinterpret_cast<char*>( &lengthName );
+        std::copy( t , t + sizeof(uint64_t) , buffer );
+        std::copy( name.begin() , name.end() , buffer + sizeof(uint64_t) );
+        t = reinterpret_cast<char*>( &lastFileBlock );
+        std::copy( t , t + sizeof(uint64_t) , buffer + sizeof(uint64_t) + lengthName );
+
+        File f = File();
+        f.name = "MetaData";
+        f.size = metadataSize;
+        f.start = 1;
+        f.current = 1;
+        f.end = lastFileBlock;
+        f.position = metadataSize;
+
+        // Write new file information 
+        write( f , numBytes , buffer );
+
+        // Update header
+        metadataSize += numBytes;
+        ++numFiles;
+        saveHeader();
+
+        // Return new file
+        f.name = name;
+        f.size = 0;
+        f.start = 0;
+        f.end = 0;
+        f.position = 0;
+
+        return f;
+    }
+
+    void FileSystem::saveHeader() {
+        stream.seekp( SignatureSize , std::ios_base::beg );
+
+        // Write header
+        stream.write( reinterpret_cast<char*>(&totalBytes) , sizeof( totalBytes ) );
+        stream.write( reinterpret_cast<char*>(&freeList) , sizeof( freeList ) );
+        stream.write( reinterpret_cast<char*>(&numBlocks) , sizeof( numBlocks) );
+        stream.write( reinterpret_cast<char*>(&numFreeBlocks) , sizeof( numFreeBlocks ) );
+        stream.write( reinterpret_cast<char*>(&numFiles) , sizeof( numFiles ) );
+        stream.write( reinterpret_cast<char*>(&metadataSize) , sizeof( metadataSize ) );
+        stream.flush();
+
+    }
+
     /*
      *  Locking Functions
      */
-
-    File FileSystem::createNewFile( std::string name ) {
-        uint64_t lastFileBlock = 0;
-        Block b = load( lastFileBlock );
-
-
-        // Length of filename , and block position
-        uint64_t numBytes = sizeof( uint64_t ) + name.size() + sizeof( uint64_t );
-        char buffer[1024];
-
-        File f = File();
-
-        std::cout << "File size A: " << f.size << std::endl;
-
-        return File();
-
-    }
 
     // Lock the file for writing
     void FileSystem::lock( LockType type ){
@@ -338,6 +375,8 @@ namespace os {
             return head;
         }
 
+        assert( numFreeBlocks == 0 );
+
         if( numFreeBlocks > 0 ){
             Block head = reuse( length , buffer );
             if( length > 0 ) {
@@ -371,7 +410,6 @@ namespace os {
     //  @return     -   The block which holds the data pointed at by the offset
     //
     Block FileSystem::locate( uint64_t start , uint64_t &offset ) {
-        std::cout << "Start: " << start << std::endl;
         Block b = lazyLoad( start );
         while( offset >= b.length ) {
             offset -= b.length;
@@ -438,50 +476,79 @@ namespace os {
     //  @return -   How much data we wrote
     uint64_t FileSystem::write( File &file , uint64_t length , const char* buffer ) {
         uint64_t requested = length;
-        length = std::min( length , file.size - file.position );
 
-        std::cout << "Attempting to write:\n" << buffer << std::endl;
-        std::cout << "Position: " << file.position << std::endl;
-        std::cout << "Size: " << file.size << std::endl;
+        printFile( file );
 
-        if( length > 0 && buffer != 0 && file.position < file.size ) {
-            Block current = locate( file.current , file.position );
-            uint64_t next = current.block;
+        assert( length > 0 );
+        assert( buffer !=  0);
 
-            do {
-                // Go to next
-                current = load( next );
-
-                // Copy from buffer to file
-                uint64_t len = std::min( current.length - file.position , length );
-                std::copy( buffer , buffer + len , current.data + file.position );
-
-                // Update variables
-                file.position = 0;
-                buffer += len;
-                length -= len;
-
-                flush( current );
-
-                next = current.next;
-
-            } while( length > 0 );
-
-            // Grow the file
-            if( requested > length ) {
-                Block remaining = allocate( length , buffer );
-                length = 0;
-                current.next = remaining.block;
+        // If we are about to write somewhere that does not exist
+        // create enough space for it
+        if( file.current >= file.end ) {
+            Block remaining  = allocate( length , buffer );
+            if( file.start == 0 ) {
+                file.start = remaining.block;
                 file.end = remaining.prev;
-                remaining.prev = current.block;
-
+                file.current = remaining.block;
+                file.position = length % BlockSize;
                 flush( remaining );
-                flush( current );
+                //file.flush();
+            }else {
+                Block last = lazyLoad( file.end );
+                file.end = remaining.prev;
+                file.current = file.end;
+
+                last.next = remaining.block;
+                remaining.prev = last.block;
+
+                flush( last );
+                flush( remaining );
+                //file.flush();
             }
+        }else {
+            if( length > 0 && buffer != 0 ) {
+                Block current = locate( file.current , file.position );
+                assert( current.block != 0 );
+                uint64_t next = current.block;
 
-            file.current = current.block;
-            file.position = length;
+                do {
+                    // Go to next
+                    current = load( next );
 
+                    // Copy from buffer to file
+                    uint64_t len = std::min( current.length - file.position , length );
+                    std::copy( buffer , buffer + len , current.data + file.position );
+                    assert( current.block != 0 );
+
+                    // Update variables
+                    file.position = 0;
+                    buffer += len;
+                    length -= len;
+
+                    flush( current );
+
+                    next = current.next;
+
+                } while( length > 0 );
+
+                // Grow the file
+                if( requested > length ) {
+                    Block remaining = allocate( length , buffer );
+                    length = 0;
+                    current.next = remaining.block;
+                    file.end = remaining.prev;
+                    remaining.prev = current.block;
+
+                    flush( remaining );
+                    flush( current );
+                }
+
+                file.current = current.block;
+                file.position = length;
+
+            }else {
+                assert( false );
+            }
         }
         // How much we read
         return requested - length;
@@ -642,6 +709,7 @@ namespace os {
         for( auto file = allFiles.begin() ; file != allFiles.end() ; ++file ) {
             if( (*file).getFilename() == name ) {
                 f = *file;
+                printFile( f );
                 goto theend;
             }
         } 
@@ -669,28 +737,26 @@ theend:
 
     FileSystem::FileSystem( const std::string filename) {
 
-        bool create = !fileExists( filename );
-
         fileSystemLocation = filename;
+
         //  Open the file
-        stream.open( filename , std::fstream::in |  std::fstream::out | std::fstream::binary | std::fstream::app );
-        if( stream.fail() ) {
-            std::cout << "Could not open or create file" << std::endl;
-            std::exit( -1 );
-        }
+        stream.open( filename , std::fstream::in |  std::fstream::out | std::fstream::binary );
 
-        stream.seekg(0);
+        if( !stream ) {
+            stream.open( filename , std::fstream::binary | std::fstream::trunc | std::fstream::out );
+            stream.close();
+            stream.open( filename , std::fstream::in |  std::fstream::out | std::fstream::binary );
 
-        if( create ) {
             std::cout << "The file does not exist, so we are creating it" << std::endl;
             totalBytes = 0;
             freeList = 0;
             numBlocks = 0;
             numFreeBlocks = 0;
             numFiles = 0;
+            metadataSize = 0;
 
             // Allocate the iniial space
-            grow( TotalBlockSize * 2 , NULL );
+            //grow( TotalBlockSize * 2 , NULL );
 
             // Now we go to the beginning
             stream.seekp( 0 , std::ios_base::beg );
@@ -702,13 +768,17 @@ theend:
             stream.write( reinterpret_cast<char*>(&numBlocks) , sizeof( numBlocks) );
             stream.write( reinterpret_cast<char*>(&numFreeBlocks) , sizeof( numFreeBlocks ) );
             stream.write( reinterpret_cast<char*>(&numFiles) , sizeof( numFiles ) );
+            stream.write( reinterpret_cast<char*>(&metadataSize) , sizeof( metadataSize ) );
             assert( TotalBlockSize == 1024 );
             stream.seekp( TotalBlockSize , std::ios_base::beg );
 
             // Write file "data-strcture"
             stream.write( reinterpret_cast<char*>(&totalBytes) , sizeof(totalBytes) ); // Prev
             stream.write( reinterpret_cast<char*>(&totalBytes) , sizeof(totalBytes) );  // Next
+            stream.seekp( TotalBlockSize * 2 - 1 );
+            stream.write( reinterpret_cast<char*>(&totalBytes) , sizeof( totalBytes ));
 
+            assert( numFreeBlocks == 0 );
             stream.flush();
 
         }else {
@@ -726,6 +796,15 @@ theend:
             stream.read( reinterpret_cast<char*>(&numBlocks) , sizeof( numBlocks) );
             stream.read( reinterpret_cast<char*>(&numFreeBlocks) , sizeof( numFreeBlocks ) );
             stream.read( reinterpret_cast<char*>(&numFiles) , sizeof( numFiles ) );
+            stream.read( reinterpret_cast<char*>(&metadataSize) , sizeof( metadataSize ) );
+
+
+            std::cout << "Total number of bytes stored: "           << totalBytes << std::endl;
+            std::cout << "First block of the free list: "           << freeList << std::endl;
+            std::cout << "Number of blocks used for file data: "    << numBlocks << std::endl;
+            std::cout << "Number of free blocks: "                  << numFreeBlocks << std::endl;
+            std::cout << "Number of files created: "                << numFiles << std::endl;
+            std::cout << "Amount of data used for meta-data: "      << metadataSize << std::endl;
 
             //  Read the filenames
             Block b = load( 1 );
@@ -748,6 +827,8 @@ theend:
             }
 
         }
+        std::cout << "Derping" << std::endl;
+        assert( numFreeBlocks == 0 );
 
     }
 

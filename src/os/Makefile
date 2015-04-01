@@ -28,11 +28,11 @@ EndianTest.o:	EndianTest.cpp
 	$(CMP)	$(FLAGS) -c EndianTest.cpp
 
 test: $(OBJECTS) $(T_OBJECTS)
-	rm -f test.dat
+	rm -f test.dat EndianTest FSTest FSMTest
 	$(CMP) $(FLAGS) FileWriter.o FileSystemTest.o FileReader.o FileSystem.o File.o -o FSTest
 	$(CMP) $(FLAGS) FileWriter.o FileSystemCreateTest.o FileReader.o FileSystem.o File.o -o FSMTest
 	$(CMP) $(FLAGS) EndianTest.o -o EndianTest
 
 
 clean:
-	rm -f *.o FSMTest FSTest test.dat
+	rm -f *.o FSMTest FSTest test.dat EndianTest

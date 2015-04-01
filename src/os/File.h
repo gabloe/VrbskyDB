@@ -11,8 +11,8 @@ namespace os {
 
         class File {
 
-            protected:
 
+            public:
                 FileSystem *fs;
 
                 // Properties of file/data
@@ -27,7 +27,7 @@ namespace os {
                 uint64_t position;  // Position from first element in current block
 
                 File(): size(0), position(0), start(0), end(0), current(0) {} 
-            public:
+
                 File( const File &other ) {
 
                     fs = other.fs;

@@ -46,79 +46,85 @@ namespace os {
         BlockStatus status;
         uint64_t block,prev,next,length;
         char data[BlockSize];
+        Block() {
+            status = LAZY;
+            block = prev = next = length = 0;
+        }
     };
 
     class FileSystem {
 
         private:
 
-        std::fstream stream;
+            std::fstream stream;
 
-        std::string fileSystemLocation;
-        uint64_t totalBytes;
-        uint64_t freeList;
-        uint64_t numBlocks;
-        uint64_t numFreeBlocks;
-        uint64_t numFiles;
+            std::string fileSystemLocation;
+            uint64_t totalBytes;
+            uint64_t freeList;
+            uint64_t numBlocks;
+            uint64_t numFreeBlocks;
+            uint64_t numFiles;
+            uint64_t metadataSize;
 
-        // Pointers to open files
-        std::list<File> openFiles;
-        std::list<File> allFiles;
+            // Pointers to open files
+            std::list<File> openFiles;
+            std::list<File> allFiles;
 
-        void lock( LockType );
-        void unlock( LockType );
+            void lock( LockType );
+            void unlock( LockType );
 
 
-        /* File management functions */
-        File createNewFile( std::string );
+            /* File management functions */
+            File createNewFile( std::string );
 
-        /* Data management functions*/
-        void split( Block& , uint64_t );
-        void flush( Block& );
-        Block grow( uint64_t , const char*  );
-        Block allocate( uint64_t , const char* );
-        Block lazyLoad( uint64_t );
-        Block load( uint64_t );
-        Block locate( uint64_t , uint64_t& );
-        Block reuse( uint64_t& , const char*& );
+            /* Data management functions*/
+            void saveHeader();
+            void split( Block& , uint64_t );
+            void flush( Block& );
+            Block grow( uint64_t , const char*  );
+            Block allocate( uint64_t , const char* );
+            Block lazyLoad( uint64_t );
+            Block load( uint64_t );
+            Block locate( uint64_t , uint64_t& );
+            Block reuse( uint64_t& , const char*& );
 
-        void closing( File* );
+            void closing( File* );
 
-        uint64_t read( File &f , uint64_t length , char *buffer ); 
-        uint64_t write( File &f , uint64_t length , const char *buffer ); 
-        uint64_t insert( File &f , uint64_t length , const char *buffer ); 
-        uint64_t remove( File &f, uint64_t length ); 
+            uint64_t read( File &f , uint64_t length , char *buffer ); 
+            uint64_t write( File &f , uint64_t length , const char *buffer ); 
+            uint64_t insert( File &f , uint64_t length , const char *buffer ); 
+            uint64_t remove( File &f, uint64_t length ); 
 
-        bool unlink( File );
-        bool rename( File& , const std::string );
+            bool unlink( File );
+            bool rename( File& , const std::string );
 
         public:
 
-        FileSystem( const std::string location );
-        ~FileSystem();
+            FileSystem( const std::string location );
+            ~FileSystem();
 
-        bool moveFileSystem( const std::string newLocation );
+            bool moveFileSystem( const std::string newLocation );
 
-        std::list<File*> getFiles();
-        std::list<File*> getOpenFiles();
-        std::list<std::string> getFilenames();
+            std::list<File*> getFiles();
+            std::list<File*> getOpenFiles();
+            std::list<std::string> getFilenames();
 
-        // Open a file for reading or modifiying.  If the file does not exist it is created.
-        File open( const std::string );
+            // Open a file for reading or modifiying.  If the file does not exist it is created.
+            File open( const std::string );
 
-        // Checks to see if a file exists
-        bool exists( const std::string ); 
+            // Checks to see if a file exists
+            bool exists( const std::string ); 
 
-        // Delete a file by name
-        bool unlink( const std::string );
+            // Delete a file by name
+            bool unlink( const std::string );
 
-        bool rename( const std::string oldName , const std::string newName );
+            bool rename( const std::string oldName , const std::string newName );
 
-        void shutdown();
+            void shutdown();
 
-        friend class File;
-        friend class FileReader;
-        friend class FileWriter;
+            friend class File;
+            friend class FileReader;
+            friend class FileWriter;
 
     };
 }
