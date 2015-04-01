@@ -157,12 +157,20 @@ namespace os {
         b.prev = blockId + blocksToWrite - 1;
         b.next = blockId + blocksToWrite - 1;
         for( int i = 0 ; i < b.length ; ++i ) {
-            b.data[i] = buffer[i];
+            if( buffer != NULL ) {
+                b.data[i] = buffer[i];
+            }else {
+                b.data[i] = 0;
+            }
         }
 
         uint64_t previous = b.prev;
         // Begin our writing
+<<<<<<< HEAD
         std::fstream secondary( fileSystemLocation, std::fstream::in | std::fstream::out | std::fstream::binary );
+=======
+        std::fstream secondary( fileSystemLocation , std::fstream::in | std::fstream::out | std::fstream::binary );
+>>>>>>> bb97a7eebad172f919826bb4ba9fadc72d408764
 
         secondary.seekp( HeaderSize + TotalBlockSize * blockId , std::ios_base::beg );
         for( int i = 0 ; i < blocksToWrite - 1; ++i) {
