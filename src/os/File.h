@@ -26,7 +26,7 @@ namespace os {
                 uint64_t current;   // Current block
                 uint64_t position;  // Position from first element in current block
 
-                File() {} 
+                File(): size(0), position(0), start(0), end(0), current(0) {} 
             public:
                 File( const File &other ) {
 

@@ -64,6 +64,10 @@ namespace os {
         uint64_t numBytes = sizeof( uint64_t ) + name.size() + sizeof( uint64_t );
         char buffer[1024];
 
+	File f = File();
+
+	std::cout << "File size A: " << f.size << std::endl;
+
         return File();
 
     }
@@ -367,6 +371,7 @@ namespace os {
     //  @return     -   The block which holds the data pointed at by the offset
     //
     Block FileSystem::locate( uint64_t start , uint64_t &offset ) {
+	std::cout << "Start: " << start << std::endl;
         Block b = lazyLoad( start );
         while( offset >= b.length ) {
             offset -= b.length;
@@ -435,11 +440,17 @@ namespace os {
         uint64_t requested = length;
         length = std::min( length , file.size - file.position );
 
+<<<<<<< HEAD
+	std::cout << "Attempting to write:\n" << buffer << std::endl;
+	std::cout << "Position: " << file.position << std::endl;
+	std::cout << "Size: " << file.size << std::endl;
+=======
         std::cout << "Attempting to write:\n" << buffer << std::endl;
         std::cout << "Length: " << length << std::endl;
         std::cout << "Buffer: " << buffer << std::endl;
         std::cout << "Position: " << file.position << std::endl;
         std::cout << "Size: " << file.size << std::endl;
+>>>>>>> de873fd0c06d56062153c6de11d3aa160749c185
 
         if( length > 0 && buffer != 0 && file.position < file.size ) {
             Block current = locate( file.current , file.position );

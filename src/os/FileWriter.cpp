@@ -9,7 +9,7 @@ namespace os {
         /* Blank on purpose */
     }
 
-    uint64_t FileWriter::write( uint64_t length , const char* const buffer ) {
+    uint64_t FileWriter::write( uint64_t length , const char* buffer ) {
         return file.fs->write( file , length , buffer );
     }
 
