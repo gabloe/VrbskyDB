@@ -12,6 +12,8 @@
 #include "FileSystem.h"
 #include "File.h"
 
+// Helper functions
+
 bool fileExists(const std::string& filename)
 {
     struct stat buf;
@@ -21,8 +23,6 @@ bool fileExists(const std::string& filename)
     }
     return false;
 }
-
-// implementation details
 
 
 // Given a block and a start and end we remove all the bytes inbetween
@@ -53,7 +53,6 @@ namespace os {
     /*
      *  Locking Functions
      */
-
 
     File FileSystem::createNewFile( std::string name ) {
         uint64_t lastFileBlock = 0;
@@ -623,7 +622,7 @@ namespace os {
         } 
         // This file does not exist, we need to create
         // it and save it to disk.
-        //f = createNewFile( name );
+        f = createNewFile( name );
 theend:
         return f;
     }
@@ -663,12 +662,15 @@ theend:
             numFreeBlocks = 0;
             numFiles = 0;
 
+            grow( TotalBlockSize * 2 );
+
             stream.write( HeaderSignature , SignatureSize );
             stream.write( reinterpret_cast<char*>(&totalBytes) , sizeof( totalBytes ) );
             stream.write( reinterpret_cast<char*>(&freeList) , sizeof( freeList ) );
             stream.write( reinterpret_cast<char*>(&numBlocks) , sizeof( numBlocks) );
             stream.write( reinterpret_cast<char*>(&numFreeBlocks) , sizeof( numFreeBlocks ) );
             stream.write( reinterpret_cast<char*>(&numFiles) , sizeof( numFiles ) );
+            writeBlock( 1 );
             stream.flush();
 
             std::cout << "Creating file" << std::endl;
@@ -690,7 +692,9 @@ theend:
             stream.read( reinterpret_cast<char*>(&numBlocks) , sizeof( numBlocks) );
             stream.read( reinterpret_cast<char*>(&numFreeBlocks) , sizeof( numFreeBlocks ) );
             stream.read( reinterpret_cast<char*>(&numFiles) , sizeof( numFiles ) );
+
             //  Read the filenames
+            Block b = load( 1 );
 
         }
 
