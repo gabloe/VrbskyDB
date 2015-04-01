@@ -98,9 +98,13 @@ namespace os {
             bool unlink( File );
             bool rename( File& , const std::string );
 
+            FileSystem() = delete;
+
         public:
 
             FileSystem( const std::string location );
+            FileSystem( const FileSystem &other ) = delete;
+            FileSystem( FileSystem &other ) = delete;
             ~FileSystem();
 
             bool moveFileSystem( const std::string newLocation );
