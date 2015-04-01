@@ -178,14 +178,18 @@ namespace os {
             }else {
                 stream.seekp( BlockSize , std::ios_base::beg );
             }
-            buffer += BlockSize;
+            if( buffer != NULL ) {
+                buffer += BlockSize;
+            }
             previous = blockId;
             ++blockId;
         }
 
-        secondary.write( reinterpret_cast<char*>( previous ) , sizeof(uint64_t) ); // Prev 
-        secondary.write( reinterpret_cast<char*>( 0 ) , sizeof(uint64_t) ); // Next 
-        secondary.write( reinterpret_cast<char*>( bytes % BlockSize ) , sizeof(uint64_t) ); // Length
+        uint64_t zero = 0;
+        bytes = bytes % BlockSize;
+        secondary.write( reinterpret_cast<char*>( &previous ) , sizeof(uint64_t) ); // Prev 
+        secondary.write( reinterpret_cast<char*>( &zero ) , sizeof(uint64_t) ); // Next 
+        secondary.write( reinterpret_cast<char*>( &bytes ) , sizeof(uint64_t) ); // Length
         if( buffer != NULL ) {
             secondary.write( reinterpret_cast<const char*>( buffer ) , bytes % BlockSize ); // Data 
         }
