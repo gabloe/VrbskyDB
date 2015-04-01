@@ -17,7 +17,7 @@ FileSystem.o:
 	$(CMP) $(FLAGS) -c FileSystem.cpp
 
 test: all
-	$(CMP) $(FLAGS) FileWriter.o FileSystemTest.cpp FileSystem.o File.o -o FSTest
+	$(CMP) $(FLAGS) FileWriter.o FileSystemTest.cpp FileReader.o FileSystem.o File.o -o FSTest
 
 clean:
 	rm -f *.o FSTest test.dat

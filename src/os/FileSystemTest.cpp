@@ -1,4 +1,4 @@
-
+#include <iostream>
 
 #include "FileSystem.h"
 #include "File.h"
@@ -13,6 +13,7 @@ int main( void ) {
     os::FileWriter writer( file );
     writer.write( sizeof( MyData ) , MyData );
     writer.close();
+
     fs.shutdown();
     
     return 0;

@@ -645,7 +645,6 @@ theend:
 
     FileSystem::FileSystem( const std::string filename) {
 
-
         bool create = !fileExists( filename );
 
         fileSystemLocation = filename;
@@ -655,6 +654,8 @@ theend:
             std::cout << "Could not open or create file" << std::endl;
             std::exit( -1 );
         }
+
+	stream.seekg(0);
 
         if( create ) {
             totalBytes = 0;
@@ -670,19 +671,12 @@ theend:
             stream.write( reinterpret_cast<char*>(&numFreeBlocks) , sizeof( numFreeBlocks ) );
             stream.write( reinterpret_cast<char*>(&numFiles) , sizeof( numFiles ) );
             stream.flush();
-
-            std::cout << "Creating file" << std::endl;
-
         }else {
+
             //  Read the header
             char buff[SignatureSize];
             stream.read( buff , SignatureSize );
-            for( int i = 0 ; i < SignatureSize ; ++i ) {
-                printf( "%x\n" , buff[i] );
-                if( buff[i] != HeaderSignature[i] ) {
-                    std::cout << "Wrong at position " << (int)i << std::endl;
-                }
-            }
+
             if( std::strncmp( buff , HeaderSignature , SignatureSize ) != 0 ) {
                 std::cout << "Invalid header signature found" << std::endl;
                 std::exit( -1 );
