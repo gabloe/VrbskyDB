@@ -19,6 +19,7 @@ FileSystem.o:
 test: all
 	$(CMP) $(FLAGS) FileWriter.o FileSystemTest.cpp FileReader.o FileSystem.o File.o -o FSTest
 	$(CMP) $(FLAGS) FileWriter.o FileSystemCreateTest.cpp FileReader.o FileSystem.o File.o -o FSMTest
+	$(CMP) $(FLAGS) EndianTest.cpp -o EndianTest
 
 
 clean:

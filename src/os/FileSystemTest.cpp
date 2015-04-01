@@ -6,7 +6,7 @@
 #include "FileWriter.h"
 
 int main( void ) {
-    const char MyData[] = "Hello World";
+    const char MyData[] = "Jello World";
     const std::string FileName = "test.dat";
     os::FileSystem fs( FileName );
     os::File file = fs.open( "Test" );

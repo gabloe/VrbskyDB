@@ -231,6 +231,7 @@ namespace os {
         Block b;
         b.block = block;
         b.status = LAZY;
+	std::cout << "Block: " << block << std::endl;
         lock( READ );
         {
             stream.seekg( HeaderSize + block * TotalBlockSize , std::ios_base::beg );
