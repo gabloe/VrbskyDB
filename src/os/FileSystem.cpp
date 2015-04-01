@@ -679,6 +679,7 @@ theend:
         stream.seekg(0);
 
         if( create ) {
+            std::cout << "The file does not exist, so we are creating it" << std::endl;
             totalBytes = 0;
             freeList = 0;
             numBlocks = 0;

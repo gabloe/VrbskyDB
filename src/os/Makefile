@@ -1,6 +1,8 @@
 
 CMP=g++
 FLAGS=--std=c++11 -g
+OBJECTS=FileWriter.o FileReader.o File.o FileSystem.o
+T_OBJECTS=FileSystemTest.o FileSystemCreateTest.o EndianTest.o
 
 all:	FileReader.o FileWriter.o File.o FileSystem.o
 
@@ -25,7 +27,8 @@ FileSystemCreateTest.o:	FileSystemCreateTest.cpp
 EndianTest.o:	EndianTest.cpp
 	$(CMP)	$(FLAGS) -c EndianTest.cpp
 
-test: all FileSystemTest.o FileSystemCreateTest.o EndianTest.o
+test: $(OBJECTS) $(T_OBJECTS)
+	rm -f test.dat
 	$(CMP) $(FLAGS) FileWriter.o FileSystemTest.o FileReader.o FileSystem.o File.o -o FSTest
 	$(CMP) $(FLAGS) FileWriter.o FileSystemCreateTest.o FileReader.o FileSystem.o File.o -o FSMTest
 	$(CMP) $(FLAGS) EndianTest.o -o EndianTest
