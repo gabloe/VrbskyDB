@@ -168,7 +168,11 @@ namespace os {
             secondary.write( reinterpret_cast<char*>( previous ) , sizeof(uint64_t) ); // Prev 
             secondary.write( reinterpret_cast<char*>( blockId + 1 ) , sizeof(uint64_t) ); // Next 
             secondary.write( reinterpret_cast<char*>( BlockSize ) , sizeof(uint64_t) ); // Length
-            secondary.write( reinterpret_cast<const char*>( buffer ) , BlockSize ); // Data 
+            if( buffer != NULL ) {
+                secondary.write( reinterpret_cast<const char*>( buffer ) , BlockSize ); // Data 
+            }else {
+                stream.seekp( BlockSize , std::ios_base::beg );
+            }
             buffer += BlockSize;
             previous = blockId;
             ++blockId;
@@ -177,8 +181,9 @@ namespace os {
         secondary.write( reinterpret_cast<char*>( previous ) , sizeof(uint64_t) ); // Prev 
         secondary.write( reinterpret_cast<char*>( 0 ) , sizeof(uint64_t) ); // Next 
         secondary.write( reinterpret_cast<char*>( bytes % BlockSize ) , sizeof(uint64_t) ); // Length
-        secondary.write( reinterpret_cast<const char*>( buffer ) , bytes % BlockSize ); // Data 
-
+        if( buffer != NULL ) {
+            secondary.write( reinterpret_cast<const char*>( buffer ) , bytes % BlockSize ); // Data 
+        }
         return b;
     }
 
@@ -663,20 +668,28 @@ theend:
             numFreeBlocks = 0;
             numFiles = 0;
 
-            grow( TotalBlockSize * 2 );
+            // Allocate the iniial space
+            grow( TotalBlockSize * 2 , NULL );
+            stream.seekp( 0 , std::ios_base::beg );
 
+            // Write header
             stream.write( HeaderSignature , SignatureSize );
             stream.write( reinterpret_cast<char*>(&totalBytes) , sizeof( totalBytes ) );
             stream.write( reinterpret_cast<char*>(&freeList) , sizeof( freeList ) );
             stream.write( reinterpret_cast<char*>(&numBlocks) , sizeof( numBlocks) );
             stream.write( reinterpret_cast<char*>(&numFreeBlocks) , sizeof( numFreeBlocks ) );
             stream.write( reinterpret_cast<char*>(&numFiles) , sizeof( numFiles ) );
-            writeBlock( 1 );
+            stream.seekp( BlockSize , std::ios_base::beg );
+
+            // Write file "data-strcture"
+            stream.write( reinterpret_cast<char*>(&totalBytes) , sizeof(totalBytes) ); // Prev
+            stream.write( reinterpret_cast<char*>(&totalBytes) , sizeof(totalBytes) );  // Next
+            
             stream.flush();
         }else {
 
             //  Read the header
-            char buff[SignatureSize];
+            char buff[BlockSize];
             stream.read( buff , SignatureSize );
 
             if( std::strncmp( buff , HeaderSignature , SignatureSize ) != 0 ) {
@@ -691,6 +704,23 @@ theend:
 
             //  Read the filenames
             Block b = load( 1 );
+            for( int i = 0 ; i < numFiles; ++i) {
+                File f;
+
+               // First is the length of the filename
+               uint64_t str_len = 0;
+               stream.read( reinterpret_cast<char*>(&str_len) , sizeof(str_len) );
+
+               // Read the filename
+               stream.read( buff , str_len );
+               f.name = std::string( buff , str_len );
+               
+               // Read the block
+               stream.read( reinterpret_cast<char*>(&str_len) , sizeof(str_len) );
+
+               // Save the file
+               allFiles.push_back( f );
+            }
 
         }
 
