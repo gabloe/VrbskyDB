@@ -679,10 +679,8 @@ theend:
             stream.read( buff , SignatureSize );
             for( int i = 0 ; i < SignatureSize ; ++i ) {
                 printf( "%x\n" , buff[i] );
-                if( buff[i] != HeaderSignature[i] ) {
-                    std::cout << "Wrong at position " << (int)i << std::endl;
-                }
             }
+
             if( std::strncmp( buff , HeaderSignature , SignatureSize ) != 0 ) {
                 std::cout << "Invalid header signature found" << std::endl;
                 std::exit( -1 );
