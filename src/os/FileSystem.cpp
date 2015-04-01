@@ -3,6 +3,7 @@
 #include <sys/stat.h>
 #include <algorithm>
 #include <cstring>
+#include <assert.h>
 
 #include <cstdio>
 
@@ -161,13 +162,13 @@ namespace os {
 
         uint64_t previous = b.prev;
         // Begin our writing
-        std::fstream secondary( fileSystemLocation );
+        std::fstream secondary( fileSystemLocation, std::fstream::in | std::fstream::out | std::fstream::binary );
 
         secondary.seekp( HeaderSize + TotalBlockSize * blockId , std::ios_base::beg );
         for( int i = 0 ; i < blocksToWrite - 1; ++i) {
-            secondary.write( reinterpret_cast<char*>( previous ) , sizeof(uint64_t) ); // Prev 
-            secondary.write( reinterpret_cast<char*>( blockId + 1 ) , sizeof(uint64_t) ); // Next 
-            secondary.write( reinterpret_cast<char*>( BlockSize ) , sizeof(uint64_t) ); // Length
+            secondary.write( reinterpret_cast<char*>( &previous ) , sizeof(uint64_t) ); // Prev 
+            secondary.write( reinterpret_cast<char*>( &blockId ) , sizeof(uint64_t) ); // Next 
+            secondary.write( reinterpret_cast<const char*>( &BlockSize ) , sizeof(uint64_t) ); // Length
             if( buffer != NULL ) {
                 secondary.write( reinterpret_cast<const char*>( buffer ) , BlockSize ); // Data 
             }else {
