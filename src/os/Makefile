@@ -2,7 +2,7 @@
 CMP=g++
 FLAGS=--std=c++11 -g
 OBJECTS=FileWriter.o FileReader.o File.o FileSystem.o
-T_OBJECTS=FileSystemTest.o FileSystemCreateTest.o EndianTest.o
+T_OBJECTS=CreateTest.o EndianTest.o WriteTest.o ReadTest.o
 
 all:	FileReader.o FileWriter.o File.o FileSystem.o
 
@@ -18,21 +18,25 @@ File.o:			File.cpp File.h
 FileSystem.o:	FileSystem.cpp FileSystem.h
 	$(CMP) $(FLAGS) -c FileSystem.cpp
 
-FileSystemTest.o:	FileSystemTest.cpp
-	$(CMP)	$(FLAGS) -c FileSystemTest.cpp
+CreateTest.o:	CreateTest.cpp
+	$(CMP)	$(FLAGS) -c CreateTest.cpp
 
-FileSystemCreateTest.o:	FileSystemCreateTest.cpp
-	$(CMP)	$(FLAGS) -c FileSystemCreateTest.cpp
+WriteTest.o:	WriteTest.cpp
+	$(CMP) $(FLAGS) -c WriteTest.cpp
 
 EndianTest.o:	EndianTest.cpp
-	$(CMP)	$(FLAGS) -c EndianTest.cpp
+	$(CMP) $(FLAGS) -c EndianTest.cpp
+
+ReadTest.o:	ReadTest.cpp
+	$(CMP) $(FLAGS) -c ReadTest.cpp
 
 test: $(OBJECTS) $(T_OBJECTS)
-	rm -f test.dat EndianTest FSTest FSMTest
-	$(CMP) $(FLAGS) FileWriter.o FileSystemTest.o FileReader.o FileSystem.o File.o -o FSTest
-	$(CMP) $(FLAGS) FileWriter.o FileSystemCreateTest.o FileReader.o FileSystem.o File.o -o FSMTest
+	rm -f test.dat EndianTest CTest WTest RTest
+	$(CMP) $(FLAGS) CreateTest.o FileSystem.o File.o -o CTest
+	$(CMP) $(FLAGS) WriteTest.o FileWriter.o FileSystem.o File.o -o WTest
+	$(CMP) $(FLAGS) ReadTest.o FileReader.o FileSystem.o File.o -o RTest
 	$(CMP) $(FLAGS) EndianTest.o -o EndianTest
 
 
 clean:
-	rm -f *.o FSMTest FSTest test.dat EndianTest
+	rm -f *.o test.dat EndianTest CTest WTest RTest

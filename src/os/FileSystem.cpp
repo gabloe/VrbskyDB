@@ -87,6 +87,7 @@ namespace os {
         f.start = 0;
         f.end = 0;
         f.position = 0;
+        f.fs = this;
 
         return f;
     }
@@ -94,14 +95,21 @@ namespace os {
     void FileSystem::saveHeader() {
         stream.seekp( SignatureSize , std::ios_base::beg );
 
+
+        std::cout << "here?" << std::endl;
+        uint64_t NFB = getNumFreeBlocks();
+
         // Write header
         stream.write( reinterpret_cast<char*>(&totalBytes) , sizeof( totalBytes ) );
         stream.write( reinterpret_cast<char*>(&freeList) , sizeof( freeList ) );
         stream.write( reinterpret_cast<char*>(&numBlocks) , sizeof( numBlocks) );
-        stream.write( reinterpret_cast<char*>(&numFreeBlocks) , sizeof( numFreeBlocks ) );
+        stream.write( reinterpret_cast<char*>(&NFB) , sizeof( NFB ) );
         stream.write( reinterpret_cast<char*>(&numFiles) , sizeof( numFiles ) );
         stream.write( reinterpret_cast<char*>(&metadataSize) , sizeof( metadataSize ) );
         stream.flush();
+
+
+        assert( numFreeBlocks == 0 );
 
     }
 
@@ -318,7 +326,10 @@ namespace os {
     Block FileSystem::reuse( uint64_t &length , const char* &buffer ) {
         Block head;
 
-        if( numFreeBlocks > 0 ) {
+        uint64_t NFB = getNumFreeBlocks();
+        assert( NFB == 0 );
+
+        if( NFB > 0 ) {
             uint64_t prevBlock = 0,currBlock = freeList;
             Block current;
 
@@ -327,7 +338,8 @@ namespace os {
             do {
                 // Update free list
                 freeList = current.next;
-                --numFreeBlocks;
+                --NFB;
+                setNumFreeBlocks( NFB );
 
                 // Currently we treat the freeList as a special file, so just use it as such
                 current = lazyLoad( currBlock );
@@ -351,7 +363,7 @@ namespace os {
                 prevBlock = currBlock;
                 currBlock = freeList;
 
-            } while ( numFreeBlocks > 0 && length > 0 );
+            } while ( NFB > 0 && length > 0 );
 
             current.next = 0;
             head.prev = prevBlock;
@@ -375,9 +387,9 @@ namespace os {
             return head;
         }
 
-        assert( numFreeBlocks == 0 );
+        uint64_t NFB = getNumFreeBlocks();
 
-        if( numFreeBlocks > 0 ){
+        if( NFB > 0 ){
             Block head = reuse( length , buffer );
             if( length > 0 ) {
                 Block grown = grow( length , buffer );
@@ -479,6 +491,7 @@ namespace os {
 
         printFile( file );
 
+        assert( numFreeBlocks == 0 );
         assert( length > 0 );
         assert( buffer !=  0);
 
@@ -506,6 +519,7 @@ namespace os {
                 //file.flush();
             }
         }else {
+            assert( numFreeBlocks == 0 );
             if( length > 0 && buffer != 0 ) {
                 Block current = locate( file.current , file.position );
                 assert( current.block != 0 );
@@ -566,6 +580,7 @@ namespace os {
     //
     //  @return -   The number of bytes written
     uint64_t FileSystem::insert( File &file , uint64_t length , const char* buffer ) {
+        assert( numFreeBlocks == 0 );
         if( length > 0 ) {
             // Grow file if neccessary 
             if( file.position > file.size ) {
@@ -626,6 +641,7 @@ namespace os {
     //  @return -   How many bytes actually removed
     //
     uint64_t FileSystem::remove( File &file ,uint64_t length ) {
+        assert( numFreeBlocks == 0 );
         uint64_t remaining = std::min( length , file.size - file.position );
 
         // Make sure can remove bytes
@@ -751,7 +767,8 @@ theend:
             totalBytes = 0;
             freeList = 0;
             numBlocks = 0;
-            numFreeBlocks = 0;
+            setNumFreeBlocks( 0 );
+            uint64_t NFB = 0;
             numFiles = 0;
             metadataSize = 0;
 
@@ -766,7 +783,7 @@ theend:
             stream.write( reinterpret_cast<char*>(&totalBytes) , sizeof( totalBytes ) );
             stream.write( reinterpret_cast<char*>(&freeList) , sizeof( freeList ) );
             stream.write( reinterpret_cast<char*>(&numBlocks) , sizeof( numBlocks) );
-            stream.write( reinterpret_cast<char*>(&numFreeBlocks) , sizeof( numFreeBlocks ) );
+            stream.write( reinterpret_cast<char*>(&NFB) , sizeof( NFB ) );
             stream.write( reinterpret_cast<char*>(&numFiles) , sizeof( numFiles ) );
             stream.write( reinterpret_cast<char*>(&metadataSize) , sizeof( metadataSize ) );
             assert( TotalBlockSize == 1024 );
@@ -778,7 +795,6 @@ theend:
             stream.seekp( TotalBlockSize * 2 - 1 );
             stream.write( reinterpret_cast<char*>(&totalBytes) , sizeof( totalBytes ));
 
-            assert( numFreeBlocks == 0 );
             stream.flush();
 
         }else {
@@ -791,18 +807,23 @@ theend:
                 std::cout << "Invalid header signature found" << std::endl;
                 std::exit( -1 );
             }
+
+            uint64_t NFB = 0;
+
             stream.read( reinterpret_cast<char*>(&totalBytes) , sizeof( totalBytes ) );
             stream.read( reinterpret_cast<char*>(&freeList) , sizeof( freeList ) );
             stream.read( reinterpret_cast<char*>(&numBlocks) , sizeof( numBlocks) );
-            stream.read( reinterpret_cast<char*>(&numFreeBlocks) , sizeof( numFreeBlocks ) );
+            stream.read( reinterpret_cast<char*>(&NFB) , sizeof( NFB) );
             stream.read( reinterpret_cast<char*>(&numFiles) , sizeof( numFiles ) );
             stream.read( reinterpret_cast<char*>(&metadataSize) , sizeof( metadataSize ) );
+
+            setNumFreeBlocks( NFB );
 
 
             std::cout << "Total number of bytes stored: "           << totalBytes << std::endl;
             std::cout << "First block of the free list: "           << freeList << std::endl;
             std::cout << "Number of blocks used for file data: "    << numBlocks << std::endl;
-            std::cout << "Number of free blocks: "                  << numFreeBlocks << std::endl;
+            std::cout << "Number of free blocks: "                  << NFB << std::endl;
             std::cout << "Number of files created: "                << numFiles << std::endl;
             std::cout << "Amount of data used for meta-data: "      << metadataSize << std::endl;
 
@@ -828,8 +849,6 @@ theend:
 
         }
         std::cout << "Derping" << std::endl;
-        assert( numFreeBlocks == 0 );
-
     }
 
     void FileSystem::closing( File *fp ) {

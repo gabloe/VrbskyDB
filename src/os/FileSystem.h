@@ -5,6 +5,8 @@
 
 #include "Constants.h"
 
+#include <iostream>
+
 #include <ios>
 #include <fstream>
 #include <string>
@@ -40,6 +42,7 @@ namespace os {
     static const uint64_t TotalBlockSize = KB;
     static const uint64_t HeaderSize = TotalBlockSize;
     static const uint64_t LengthOffset = sizeof(uint64_t) * 10;
+    // TotalBlockSize - sizeof(prev) - sizeof(next) - sizeof(length)
     static const uint64_t BlockSize = TotalBlockSize - 3 * sizeof(uint64_t);
 
     struct Block {
@@ -72,6 +75,16 @@ namespace os {
 
             void lock( LockType );
             void unlock( LockType );
+
+            uint64_t getNumFreeBlocks() {
+                std::cout << "Someone is requesting: " << numFreeBlocks << std::endl;
+                return numFreeBlocks;
+            }
+            
+            void setNumFreeBlocks( uint64_t NFB ) {
+                std::cout << "Someone is setting: " << NFB << std::endl;
+                numFreeBlocks = NFB;
+            }
 
 
             /* File management functions */
