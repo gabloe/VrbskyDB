@@ -685,7 +685,7 @@ theend:
             stream.write( reinterpret_cast<char*>(&numBlocks) , sizeof( numBlocks) );
             stream.write( reinterpret_cast<char*>(&numFreeBlocks) , sizeof( numFreeBlocks ) );
             stream.write( reinterpret_cast<char*>(&numFiles) , sizeof( numFiles ) );
-            stream.seekp( BlockSize , std::ios_base::beg );
+            stream.seekp( TotalBlockSize , std::ios_base::beg );
 
             // Write file "data-strcture"
             stream.write( reinterpret_cast<char*>(&totalBytes) , sizeof(totalBytes) ); // Prev
