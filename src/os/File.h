@@ -22,7 +22,7 @@ namespace os {
 
                 // Position information
                 uint64_t start;     // First block
-                uint64_t end;       // First block
+                uint64_t end;       // Last block
                 uint64_t current;   // Current block
                 uint64_t position;  // Position from first element in current block
 

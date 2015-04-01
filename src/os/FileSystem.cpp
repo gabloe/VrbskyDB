@@ -442,7 +442,6 @@ namespace os {
                 // Copy from buffer to file
                 uint64_t len = std::min( current.length - file.position , length );
                 std::copy( buffer , buffer + len , current.data + file.position );
-		std::cout << "Wrote:\n" << current.data << std::endl;
 
                 // Update variables
                 file.position = 0;
