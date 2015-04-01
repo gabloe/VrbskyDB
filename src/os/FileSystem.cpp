@@ -59,13 +59,13 @@ namespace os {
         uint64_t lastFileBlock = 0;
         Block b = load( lastFileBlock );
 
-        
+
         // Length of filename , and block position
         uint64_t numBytes = sizeof( uint64_t ) + name.size() + sizeof( uint64_t );
         char buffer[1024];
 
         return File();
-        
+
     }
 
     // Lock the file for writing
@@ -103,7 +103,7 @@ namespace os {
         }
         return false;
     }
-    
+
 
     void FileSystem::split( Block &b , uint64_t offset ) {
         if( offset == b.length ) return;
@@ -231,7 +231,7 @@ namespace os {
         Block b;
         b.block = block;
         b.status = LAZY;
-	std::cout << "Block: " << block << std::endl;
+        std::cout << "Block: " << block << std::endl;
         lock( READ );
         {
             stream.seekg( HeaderSize + block * TotalBlockSize , std::ios_base::beg );
@@ -435,11 +435,11 @@ namespace os {
         uint64_t requested = length;
         length = std::min( length , file.size - file.position );
 
-	std::cout << "Attempting to write:\n" << buffer << std::endl;
-	std::cout << "Length: " << length << std::endl;
-	std::cout << "Buffer: " << buffer << std::endl;
-	std::cout << "Position: " << file.position << std::endl;
-	std::cout << "Size: " << file.size << std::endl;
+        std::cout << "Attempting to write:\n" << buffer << std::endl;
+        std::cout << "Length: " << length << std::endl;
+        std::cout << "Buffer: " << buffer << std::endl;
+        std::cout << "Position: " << file.position << std::endl;
+        std::cout << "Size: " << file.size << std::endl;
 
         if( length > 0 && buffer != 0 && file.position < file.size ) {
             Block current = locate( file.current , file.position );
@@ -471,7 +471,7 @@ namespace os {
                 current.next = remaining.block;
                 file.end = remaining.prev;
                 remaining.prev = current.block;
-                
+
                 flush( remaining );
                 flush( current );
             }
@@ -501,7 +501,7 @@ namespace os {
             if( file.position > file.size ) {
                 // Actually allocate
                 Block remaining = allocate( file.position - file.size , NULL );
-                
+
                 // Grab the current end of file block
                 Block oldEnd = lazyLoad( file.end );
 
@@ -607,6 +607,7 @@ namespace os {
             //(*file).close();
             openFiles.erase(file);
         }
+        stream.close();
     }
 
     std::list<File*> FileSystem::getFiles() {
@@ -675,7 +676,7 @@ theend:
             std::exit( -1 );
         }
 
-	stream.seekg(0);
+        stream.seekg(0);
 
         if( create ) {
             totalBytes = 0;
@@ -700,8 +701,9 @@ theend:
             // Write file "data-strcture"
             stream.write( reinterpret_cast<char*>(&totalBytes) , sizeof(totalBytes) ); // Prev
             stream.write( reinterpret_cast<char*>(&totalBytes) , sizeof(totalBytes) );  // Next
-            
+
             stream.flush();
+
         }else {
 
             //  Read the header
@@ -723,19 +725,19 @@ theend:
             for( int i = 0 ; i < numFiles; ++i) {
                 File f;
 
-               // First is the length of the filename
-               uint64_t str_len = 0;
-               stream.read( reinterpret_cast<char*>(&str_len) , sizeof(str_len) );
+                // First is the length of the filename
+                uint64_t str_len = 0;
+                stream.read( reinterpret_cast<char*>(&str_len) , sizeof(str_len) );
 
-               // Read the filename
-               stream.read( buff , str_len );
-               f.name = std::string( buff , str_len );
-               
-               // Read the block
-               stream.read( reinterpret_cast<char*>(&str_len) , sizeof(str_len) );
+                // Read the filename
+                stream.read( buff , str_len );
+                f.name = std::string( buff , str_len );
 
-               // Save the file
-               allFiles.push_back( f );
+                // Read the block
+                stream.read( reinterpret_cast<char*>(&str_len) , sizeof(str_len) );
+
+                // Save the file
+                allFiles.push_back( f );
             }
 
         }
