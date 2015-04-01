@@ -9,7 +9,7 @@
 int main(void) {
 #ifdef BIG
 std::cout << "Big Endian" << std::endl;
-#else
+#elif defined(LITTLE)
 std::cout << "Little Endian" << std::endl;
 #endif	
 	return 0;
