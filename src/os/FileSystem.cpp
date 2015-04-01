@@ -425,6 +425,12 @@ namespace os {
         uint64_t requested = length;
         length = std::min( length , file.size - file.position );
 
+	std::cout << "Attempting to write:\n" << buffer << std::endl;
+	std::cout << "Length: " << length << std::endl;
+	std::cout << "Buffer: " << buffer << std::endl;
+	std::cout << "Position: " << file.position << std::endl;
+	std::cout << "Size: " << file.size << std::endl;
+
         if( length > 0 && buffer != 0 && file.position < file.size ) {
             Block current = locate( file.current , file.position );
             uint64_t next = current.block;
@@ -436,6 +442,7 @@ namespace os {
                 // Copy from buffer to file
                 uint64_t len = std::min( current.length - file.position , length );
                 std::copy( buffer , buffer + len , current.data + file.position );
+		std::cout << "Wrote:\n" << current.data << std::endl;
 
                 // Update variables
                 file.position = 0;
@@ -446,7 +453,7 @@ namespace os {
 
                 next = current.next;
 
-            }while( length > 0 );
+            } while( length > 0 );
 
             // Grow the file
             if( requested > length ) {
