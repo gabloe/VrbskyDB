@@ -687,6 +687,8 @@ theend:
 
             // Allocate the iniial space
             grow( TotalBlockSize * 2 , NULL );
+
+            // Now we go to the beginning
             stream.seekp( 0 , std::ios_base::beg );
 
             // Write header
@@ -696,6 +698,7 @@ theend:
             stream.write( reinterpret_cast<char*>(&numBlocks) , sizeof( numBlocks) );
             stream.write( reinterpret_cast<char*>(&numFreeBlocks) , sizeof( numFreeBlocks ) );
             stream.write( reinterpret_cast<char*>(&numFiles) , sizeof( numFiles ) );
+            assert( TotalBlockSize == 1024 );
             stream.seekp( TotalBlockSize , std::ios_base::beg );
 
             // Write file "data-strcture"
