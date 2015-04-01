@@ -64,6 +64,10 @@ namespace os {
         uint64_t numBytes = sizeof( uint64_t ) + name.size() + sizeof( uint64_t );
         char buffer[1024];
 
+	File f = File();
+
+	std::cout << "File size A: " << f.size << std::endl;
+
         return File();
         
     }
@@ -367,6 +371,7 @@ namespace os {
     //  @return     -   The block which holds the data pointed at by the offset
     //
     Block FileSystem::locate( uint64_t start , uint64_t &offset ) {
+	std::cout << "Start: " << start << std::endl;
         Block b = lazyLoad( start );
         while( offset >= b.length ) {
             offset -= b.length;
@@ -436,8 +441,6 @@ namespace os {
         length = std::min( length , file.size - file.position );
 
 	std::cout << "Attempting to write:\n" << buffer << std::endl;
-	std::cout << "Length: " << length << std::endl;
-	std::cout << "Buffer: " << buffer << std::endl;
 	std::cout << "Position: " << file.position << std::endl;
 	std::cout << "Size: " << file.size << std::endl;
 
