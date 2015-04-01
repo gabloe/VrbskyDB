@@ -19,7 +19,7 @@ FileSystem.o:	FileSystem.cpp FileSystem.h
 	$(CMP) $(FLAGS) -c FileSystem.cpp
 
 CreateTest.o:	CreateTest.cpp
-	$(CMP)	$(FLAGS) -c CreateTest.cpp
+	$(CMP) $(FLAGS) -c CreateTest.cpp
 
 WriteTest.o:	WriteTest.cpp
 	$(CMP) $(FLAGS) -c WriteTest.cpp
