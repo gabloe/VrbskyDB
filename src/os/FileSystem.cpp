@@ -93,23 +93,23 @@ namespace os {
     }
 
     void FileSystem::saveHeader() {
+        assert( stream.is_open() );
+        assert( stream.fail() == false );
         stream.seekp( SignatureSize , std::ios_base::beg );
 
-
-        std::cout << "here?" << std::endl;
-        uint64_t NFB = getNumFreeBlocks();
-
+        std::cout << "Saving header" << std::endl;
+        std::cout << "SignatureSize: " << SignatureSize << std::endl;
+        std::cout << "Number of files: " << numFiles << std::endl;
+        std::cout << "Writing to offset: " << stream.tellp() << std::endl;
         // Write header
+        
         stream.write( reinterpret_cast<char*>(&totalBytes) , sizeof( totalBytes ) );
         stream.write( reinterpret_cast<char*>(&freeList) , sizeof( freeList ) );
         stream.write( reinterpret_cast<char*>(&numBlocks) , sizeof( numBlocks) );
-        stream.write( reinterpret_cast<char*>(&NFB) , sizeof( NFB ) );
+        stream.write( reinterpret_cast<char*>(&numFreeBlocks) , sizeof( numFreeBlocks ) );
         stream.write( reinterpret_cast<char*>(&numFiles) , sizeof( numFiles ) );
         stream.write( reinterpret_cast<char*>(&metadataSize) , sizeof( metadataSize ) );
         stream.flush();
-
-
-        assert( numFreeBlocks == 0 );
 
     }
 
@@ -253,6 +253,12 @@ namespace os {
     //  @return     -   Loaded block
     //
     Block FileSystem::load( uint64_t block ) {
+        assert( stream.bad() == false );
+        assert( stream.fail() == false );
+        assert( block < 100000 );
+
+        std::cout << "Loading block: " << block << std::endl;
+        
         Block b;
         b.block = block;
         b.status = FULL;
@@ -265,6 +271,9 @@ namespace os {
             stream.read( reinterpret_cast<char*>(b.data) , BlockSize );
         }
         unlock( READ );
+
+        assert( stream.bad() == false );
+        assert( stream.fail() == false );
         return b;
     }
 
@@ -808,22 +817,18 @@ theend:
                 std::exit( -1 );
             }
 
-            uint64_t NFB = 0;
-
-            stream.read( reinterpret_cast<char*>(&totalBytes) , sizeof( totalBytes ) );
-            stream.read( reinterpret_cast<char*>(&freeList) , sizeof( freeList ) );
-            stream.read( reinterpret_cast<char*>(&numBlocks) , sizeof( numBlocks) );
-            stream.read( reinterpret_cast<char*>(&NFB) , sizeof( NFB) );
-            stream.read( reinterpret_cast<char*>(&numFiles) , sizeof( numFiles ) );
-            stream.read( reinterpret_cast<char*>(&metadataSize) , sizeof( metadataSize ) );
-
-            setNumFreeBlocks( NFB );
+            stream.read( reinterpret_cast<char*>(&totalBytes) , sizeof(totalBytes) );
+            stream.read( reinterpret_cast<char*>(&freeList) , sizeof(freeList ) );
+            stream.read( reinterpret_cast<char*>(&numBlocks) , sizeof(numBlocks) );
+            stream.read( reinterpret_cast<char*>(&numFreeBlocks) , sizeof(numFreeBlocks) );
+            stream.read( reinterpret_cast<char*>(&numFiles) , sizeof(numFiles) );
+            stream.read( reinterpret_cast<char*>(&metadataSize) , sizeof(metadataSize) );
 
 
             std::cout << "Total number of bytes stored: "           << totalBytes << std::endl;
             std::cout << "First block of the free list: "           << freeList << std::endl;
             std::cout << "Number of blocks used for file data: "    << numBlocks << std::endl;
-            std::cout << "Number of free blocks: "                  << NFB << std::endl;
+            std::cout << "Number of free blocks: "                  << numFreeBlocks << std::endl;
             std::cout << "Number of files created: "                << numFiles << std::endl;
             std::cout << "Amount of data used for meta-data: "      << metadataSize << std::endl;
 
@@ -845,10 +850,14 @@ theend:
 
                 // Save the file
                 allFiles.push_back( f );
-            }
 
+                std::cout << "Loading File:" << std::endl;
+                printFile( f );
+            }
         }
-        std::cout << "Derping" << std::endl;
+        assert( stream.is_open() );
+        assert( stream.fail() == false );
+        assert( stream.bad() == false );
     }
 
     void FileSystem::closing( File *fp ) {
