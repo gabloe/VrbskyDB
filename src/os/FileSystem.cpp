@@ -49,6 +49,7 @@ void log( K key , V value , bool req = false ) {
 }
 
 #define assertStream(stream) {              \
+    assert( stream );                       \
     assert( stream.is_open() );             \
     assert( stream.fail() == false );       \
     assert( stream.bad() == false );        \
@@ -710,7 +711,7 @@ namespace os {
 
                 write( *metadata , sizeof(file.start) , reinterpret_cast<char*>(&(file.start)));
                 write( *metadata , sizeof(file.end) , reinterpret_cast<char*>(&(file.end)));
-                write( *metadata , sizeo(file.size) , reinterpret_cast<char*>(&(file.size)));
+                write( *metadata , sizeof(file.size) , reinterpret_cast<char*>(&(file.size)));
 
                 //file.flush();
             }else {
