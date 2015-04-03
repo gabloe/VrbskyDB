@@ -635,6 +635,14 @@ namespace os {
                 file.current = remaining.block;
                 file.position = length % BlockSize;
                 flush( remaining );
+
+                metadata->position = file.metadata + sizeof(uint64_t) + file.name.size();
+                metadata->current = 0;
+
+                write( *metadata , file.start , reinterpret_cast<char*>(&(file.start)));
+                write( *metadata , file.end , reinterpret_cast<char*>(&(file.end)));
+                write( *metadata , file.size , reinterpret_cast<char*>(&(file.size)));
+
                 //file.flush();
             }else {
                 Block last = lazyLoad( file.end );
@@ -649,6 +657,7 @@ namespace os {
                 //file.flush();
             }
         }else {
+            assert( false );
             assert( numFreeBlocks == 0 );
             if( length > 0 && buffer != 0 ) {
                 Block current = locate( file.current , file.position );
@@ -882,6 +891,7 @@ theend:
 
 
     FileSystem::FileSystem( const std::string filename) {
+        std::array<char,1024> buff;
 
         fileSystemLocation = filename;
 
@@ -929,7 +939,6 @@ theend:
         }else {
 
             //  Read the header
-            std::array<char,1024> buff;
             stream.read( buff.data() , SignatureSize );
 
             if( std::strncmp( buff.data() , HeaderSignature.data() , SignatureSize ) != 0 ) {
@@ -945,35 +954,6 @@ theend:
             stream.read( reinterpret_cast<char*>(&metadataSize)     , sizeof(metadataSize) );
             stream.read( reinterpret_cast<char*>(&lastFileBlock)     , sizeof(lastFileBlock) );
 
-            //  Read the filenames
-            std::cout << "Loading File Meta-data (" << numFiles << " files)" << std::endl;
-
-            File metadata;
-            metadata.name = "Metadata";
-            metadata.start = 1;
-            metadata.current = 1;
-            metadata.end = lastFileBlock;
-            metadata.size = metadataSize;
-            metadata.position = 0;
-
-            printFile( metadata );
-            for( int i = 0 ; i < numFiles; ++i) {
-                File f;
-
-                uint64_t str_len; 
-                read( metadata , sizeof(uint64_t) , reinterpret_cast<char*>(&str_len) );
-                std::cout << "Name length is " << str_len << std::endl;
-                read( metadata , str_len , buff.data() );
-                f.name = std::string( buff.data() , str_len );
-                read( metadata , sizeof(uint64_t) , reinterpret_cast<char*>(&(f.start)) );
-                read( metadata , sizeof(uint64_t) , reinterpret_cast<char*>(&(f.end)) );
-                read( metadata , sizeof(uint64_t) , reinterpret_cast<char*>(&(f.size)) );
-
-                allFiles.push_back( f );
-
-            }
-
-            std::cout << "Finished reading Meta-data" << std::endl;
         }
 
         std::cout << "Total number of bytes stored: "           << totalBytes << std::endl;
@@ -982,6 +962,37 @@ theend:
         std::cout << "Number of free blocks: "                  << numFreeBlocks << std::endl;
         std::cout << "Number of files created: "                << numFiles << std::endl;
         std::cout << "Amount of data used for meta-data: "      << metadataSize << std::endl;
+
+        //  Read the filenames
+        std::cout << "Loading File Meta-data (" << numFiles << " files)" << std::endl;
+
+        metadata = new File();
+
+        metadata->name = "Metadata";
+        metadata->start = 1;
+        metadata->current = 1;
+        metadata->end = lastFileBlock;
+        metadata->size = metadataSize;
+        metadata->position = 0;
+
+        printFile( *metadata );
+        for( int i = 0 ; i < numFiles; ++i) {
+            File f;
+            f.metadata = metadata->position;
+            uint64_t str_len; 
+            read( *metadata , sizeof(uint64_t) , reinterpret_cast<char*>(&str_len) );
+            std::cout << "Name length is " << str_len << std::endl;
+            read( *metadata , str_len , buff.data() );
+            f.name = std::string( buff.data() , str_len );
+            read( *metadata , sizeof(uint64_t) , reinterpret_cast<char*>(&(f.start)) );
+            read( *metadata , sizeof(uint64_t) , reinterpret_cast<char*>(&(f.end)) );
+            read( *metadata , sizeof(uint64_t) , reinterpret_cast<char*>(&(f.size)) );
+
+            allFiles.push_back( f );
+
+        }
+
+        std::cout << "Finished reading Meta-data" << std::endl;
 
         assertStream( stream );
     }
@@ -997,6 +1008,7 @@ theend:
 
     FileSystem::~FileSystem() {
         shutdown();
+        delete metadata;
     }
 
 };

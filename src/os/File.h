@@ -25,6 +25,7 @@ namespace os {
                 uint64_t end;       // Last block
                 uint64_t current;   // Current block
                 uint64_t position;  // Position from first element in current block
+                uint64_t metadata;  // Position of metadata (byte offset)
 
                 File(): size(0), position(0), start(0), end(0), current(0) {} 
 
@@ -40,6 +41,7 @@ namespace os {
                     end         = other.end;
                     current     = other.current;
                     position    = other.position;
+                    metadata    = other.metadata;
                 }
 
                 // Return the current filename seen by this file descriptor

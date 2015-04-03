@@ -75,6 +75,8 @@ namespace os {
             std::list<File> openFiles;
             std::list<File> allFiles;
 
+            File *metadata;
+
             void lock( LockType );
             void unlock( LockType );
 
