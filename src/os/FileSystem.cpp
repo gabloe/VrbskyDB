@@ -708,9 +708,9 @@ namespace os {
                 metadata->position = file.metadata + sizeof(uint64_t) + file.name.size();
                 metadata->current = 1;
 
-                write( *metadata , file.start , reinterpret_cast<char*>(&(file.start)));
-                write( *metadata , file.end , reinterpret_cast<char*>(&(file.end)));
-                write( *metadata , file.size , reinterpret_cast<char*>(&(file.size)));
+                write( *metadata , sizeof(file.start) , reinterpret_cast<char*>(&(file.start)));
+                write( *metadata , sizeof(file.end) , reinterpret_cast<char*>(&(file.end)));
+                write( *metadata , sizeo(file.size) , reinterpret_cast<char*>(&(file.size)));
 
                 //file.flush();
             }else {
