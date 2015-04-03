@@ -738,381 +738,381 @@ namespace os {
             assert( length > 0 );
             assert( buffer != 0 );
             //if( length > 0 && buffer != 0 ) {
-                Block current = locate( file.current , file.position );
+            Block current = locate( file.current , file.position );
+            assert( current.block != 0 );
+            uint64_t next = current.block;
+
+            do {
+                // Go to next
+                current = load( next );
+
+                // Copy from buffer to file
+                uint64_t len = std::min( current.length - file.position , length );
+                std::copy( buffer , buffer + len , current.data.begin() + file.position );
                 assert( current.block != 0 );
-                uint64_t next = current.block;
 
-                do {
-                    // Go to next
-                    current = load( next );
+                // Update variables
+                file.position = 0;
+                buffer += len;
+                length -= len;
 
-                    // Copy from buffer to file
-                    uint64_t len = std::min( current.length - file.position , length );
-                    std::copy( buffer , buffer + len , current.data.begin() + file.position );
-                    assert( current.block != 0 );
+                flush( current );
 
-                    // Update variables
-                    file.position = 0;
-                    buffer += len;
-                    length -= len;
+                next = current.next;
 
-                    flush( current );
+            } while( length > 0 );
 
-                    next = current.next;
+            // Grow the file
+            if( requested > length ) {
+                Block remaining = allocate( length , buffer );
+                length = 0;
+                current.next = remaining.block;
+                file.end = remaining.prev;
+                remaining.prev = current.block;
 
-                } while( length > 0 );
-
-                // Grow the file
-                if( requested > length ) {
-                    Block remaining = allocate( length , buffer );
-                    length = 0;
-                    current.next = remaining.block;
-                    file.end = remaining.prev;
-                    remaining.prev = current.block;
-
-                    flush( remaining );
-                    flush( current );
-                }
-
-                file.current = current.block;
-                file.position = length;
-
+                flush( remaining );
+                flush( current );
             }
+
+            file.current = current.block;
+            file.position = length;
+
         }
         // How much we read
         leave( "WRITE" );
         return requested - length;
-    }
+        }
 
-    //  insert  -   We insert data at a given offset in the file.  We do not write
-    //              over any data.
-    //
-    //  start   - Starting block to begin search from
-    //  offset  -   How many bytes to skip over
-    //  length  -   The amount of data to insert
-    //  buffer  -   The data to insert
-    //
-    //      If the buffer is NULL we write the null character
-    //
-    //  @return -   The number of bytes written
-    uint64_t FileSystem::insert( File &file , uint64_t length , const char* buffer ) {
-        enter( "INSERT" );
-        assert( numFreeBlocks == 0 );
-        if( length > 0 ) {
-            // Grow file if neccessary 
-            if( file.position > file.size ) {
-                // Actually allocate
-                Block remaining = allocate( file.position - file.size , NULL );
+        //  insert  -   We insert data at a given offset in the file.  We do not write
+        //              over any data.
+        //
+        //  start   - Starting block to begin search from
+        //  offset  -   How many bytes to skip over
+        //  length  -   The amount of data to insert
+        //  buffer  -   The data to insert
+        //
+        //      If the buffer is NULL we write the null character
+        //
+        //  @return -   The number of bytes written
+        uint64_t FileSystem::insert( File &file , uint64_t length , const char* buffer ) {
+            enter( "INSERT" );
+            assert( numFreeBlocks == 0 );
+            if( length > 0 ) {
+                // Grow file if neccessary 
+                if( file.position > file.size ) {
+                    // Actually allocate
+                    Block remaining = allocate( file.position - file.size , NULL );
 
-                // Grab the current end of file block
-                Block oldEnd = lazyLoad( file.end );
+                    // Grab the current end of file block
+                    Block oldEnd = lazyLoad( file.end );
+
+                    // Update file
+                    file.end = remaining.prev;
+                    file.size += file.position - file.size;
+                    file.current = file.end;
+
+                    // Merge blocks together
+                    remaining.prev = oldEnd.block;
+                    oldEnd.next = remaining.block;
+
+                    flush( remaining );
+                    flush( oldEnd );
+                }
+
+                Block b = locate( file.current , file.position );
+
+                // We might have to split
+                split( b , file.position % BlockSize );
+
+                // Now append to here
+                Block next = allocate( length , buffer );
+                Block end = lazyLoad( next.prev );
+                end.next = b.next;
+                next.prev = b.block;
+                b.next = next.block;
+
+                flush( next );
+                flush( end );
+                flush( b );
+
+                // file.flush();
+            }
+            leave( "INSERT" );
+            return length;
+        }
+
+        //
+        //  releaseBlock    -   Adds a block to the freelist for later use
+        //
+        //  block           -   The block we are freeing
+        //
+        void releaseBlock( uint64_t block ) {
+        }
+
+        //
+        //  remove  -   Remove bytes from a file
+        //
+        //  file    -   The file we want to remove bytes from
+        //  length  -   How many bytes to remove
+        //
+        //  @return -   How many bytes actually removed
+        //
+        uint64_t FileSystem::remove( File &file ,uint64_t length ) {
+            enter( "REMOVE" );
+            assert( numFreeBlocks == 0 );
+            uint64_t remaining = std::min( length , file.size - file.position );
+
+            // Make sure can remove bytes
+            if( remaining > 0 && (file.size > file.position) ) {
+
+                // Load first block we have to modify
+                Block first = locate( file.start , file.position );
+
+                // Calculate how much to remove from first
+                uint64_t removeFromFirst = std::min( remaining , first.length - file.position );
+                // and how many bytes to skip to get to new spot
+                remaining -= removeFromFirst;
+
+                // Load final block
+                Block last = locate( first.next , remaining );
+                last = load( last.block );
+
+                // Compact blocks
+                compact( first , file.current , removeFromFirst );
+                compact( last , 0 , remaining );
+
+                // Need to reconnect
+                if( first.next != last.block ) {
+                    releaseBlock( first.next );
+                    first.next = last.block;
+                    last.prev = first.block;
+                }
 
                 // Update file
-                file.end = remaining.prev;
-                file.size += file.position - file.size;
-                file.current = file.end;
+                file.size -= length - remaining;
+                file.current = last.block;
+                file.position = 0;
 
-                // Merge blocks together
-                remaining.prev = oldEnd.block;
-                oldEnd.next = remaining.block;
+                // Write to disk
+                flush( first );
+                flush( last );
 
-                flush( remaining );
-                flush( oldEnd );
+                // file.flush();
             }
+            leave( "REMOVE" );
+            return length - remaining;
 
-            Block b = locate( file.current , file.position );
-
-            // We might have to split
-            split( b , file.position % BlockSize );
-
-            // Now append to here
-            Block next = allocate( length , buffer );
-            Block end = lazyLoad( next.prev );
-            end.next = b.next;
-            next.prev = b.block;
-            b.next = next.block;
-
-            flush( next );
-            flush( end );
-            flush( b );
-
-            // file.flush();
         }
-        leave( "INSERT" );
-        return length;
-    }
 
-    //
-    //  releaseBlock    -   Adds a block to the freelist for later use
-    //
-    //  block           -   The block we are freeing
-    //
-    void releaseBlock( uint64_t block ) {
-    }
 
-    //
-    //  remove  -   Remove bytes from a file
-    //
-    //  file    -   The file we want to remove bytes from
-    //  length  -   How many bytes to remove
-    //
-    //  @return -   How many bytes actually removed
-    //
-    uint64_t FileSystem::remove( File &file ,uint64_t length ) {
-        enter( "REMOVE" );
-        assert( numFreeBlocks == 0 );
-        uint64_t remaining = std::min( length , file.size - file.position );
+        // Public Methods/Functions
 
-        // Make sure can remove bytes
-        if( remaining > 0 && (file.size > file.position) ) {
-
-            // Load first block we have to modify
-            Block first = locate( file.start , file.position );
-
-            // Calculate how much to remove from first
-            uint64_t removeFromFirst = std::min( remaining , first.length - file.position );
-            // and how many bytes to skip to get to new spot
-            remaining -= removeFromFirst;
-
-            // Load final block
-            Block last = locate( first.next , remaining );
-            last = load( last.block );
-
-            // Compact blocks
-            compact( first , file.current , removeFromFirst );
-            compact( last , 0 , remaining );
-
-            // Need to reconnect
-            if( first.next != last.block ) {
-                releaseBlock( first.next );
-                first.next = last.block;
-                last.prev = first.block;
+        void FileSystem::shutdown() {
+            enter( "SHUTDOWN" );
+            for( auto file = openFiles.begin() ; file != openFiles.end() ; ) {
+                //(*file).close();
+                openFiles.erase(file);
             }
-
-            // Update file
-            file.size -= length - remaining;
-            file.current = last.block;
-            file.position = 0;
-
-            // Write to disk
-            flush( first );
-            flush( last );
-
-            // file.flush();
-        }
-        leave( "REMOVE" );
-        return length - remaining;
-
-    }
-
-
-    // Public Methods/Functions
-
-    void FileSystem::shutdown() {
-        enter( "SHUTDOWN" );
-        for( auto file = openFiles.begin() ; file != openFiles.end() ; ) {
-            //(*file).close();
-            openFiles.erase(file);
-        }
-        leave( "SHUTDOWN" );
-        stream.close();
-    }
-
-    std::list<File*> FileSystem::getFiles() {
-        enter( "GETFILES" );
-        std::list<File*> ret;
-        for( auto file = allFiles.begin() ; file != allFiles.end() ; ++file ) {
-            ret.push_back( &(*file));
-        }
-        leave( "GETFILES" );
-        return ret;
-    }
-
-    std::list<File*> FileSystem::getOpenFiles() {
-        enter( "GETOPENFILES" );
-        std::list<File*> ret;
-        for( auto file = openFiles.begin() ; file != openFiles.end() ; ++file ) {
-            ret.push_back( &(*file));
-        }
-        return ret;
-        leave( "GETOPENFILES" );
-    }
-
-    std::list<std::string> FileSystem::getFilenames() {
-        enter( "GETFILENAMES" );
-        std::list<std::string> names;
-        for( auto file = allFiles.begin() ; file != allFiles.end() ; ++file ) {
-            names.push_back( (*file).getFilename() );
-        } 
-        leave( "GETFILENAMES" );
-        return names;
-    }
-
-    File FileSystem::open( const std::string name) {
-        enter( "OPEN" );
-        File f;
-        for( auto file = allFiles.begin() ; file != allFiles.end() ; ++file ) {
-            if( (*file).getFilename() == name ) {
-                f = *file;
-                printFile( f );
-                goto theend;
-            }
-        } 
-
-        // Create new file
-        f = createNewFile( name );
-theend:
-        leave( "OPEN" );
-        return f;
-    }
-
-    bool FileSystem::unlink( File f ) {
-        enter( "UNLINK:1" );
-        leave( "UNLINK:1" );
-    }
-
-    //
-    bool FileSystem::unlink( const std::string filename ) {
-        enter( "UNLINK:2" );
-        File file = open(filename);
-        leave( "UNLINK:2" );
-        return file.unlink();
-    }
-
-    bool FileSystem::exists( const std::string filename ) {
-        enter( "EXISTS" );
-        File file = open(filename);
-        leave( "EXISTS" );
-        return file.getStatus() == OPEN;
-    }
-
-
-    FileSystem::FileSystem( const std::string filename) {
-        enter( "FILESYSTEM" );
-        std::array<char,1024> buff;
-
-        fileSystemLocation = filename;
-
-        //  Open the file
-        stream.open( filename , std::fstream::in |  std::fstream::out | std::fstream::binary );
-
-        if( !stream ) {
-            stream.open( filename , std::fstream::binary | std::fstream::trunc | std::fstream::out );
+            leave( "SHUTDOWN" );
             stream.close();
+        }
+
+        std::list<File*> FileSystem::getFiles() {
+            enter( "GETFILES" );
+            std::list<File*> ret;
+            for( auto file = allFiles.begin() ; file != allFiles.end() ; ++file ) {
+                ret.push_back( &(*file));
+            }
+            leave( "GETFILES" );
+            return ret;
+        }
+
+        std::list<File*> FileSystem::getOpenFiles() {
+            enter( "GETOPENFILES" );
+            std::list<File*> ret;
+            for( auto file = openFiles.begin() ; file != openFiles.end() ; ++file ) {
+                ret.push_back( &(*file));
+            }
+            return ret;
+            leave( "GETOPENFILES" );
+        }
+
+        std::list<std::string> FileSystem::getFilenames() {
+            enter( "GETFILENAMES" );
+            std::list<std::string> names;
+            for( auto file = allFiles.begin() ; file != allFiles.end() ; ++file ) {
+                names.push_back( (*file).getFilename() );
+            } 
+            leave( "GETFILENAMES" );
+            return names;
+        }
+
+        File FileSystem::open( const std::string name) {
+            enter( "OPEN" );
+            File f;
+            for( auto file = allFiles.begin() ; file != allFiles.end() ; ++file ) {
+                if( (*file).getFilename() == name ) {
+                    f = *file;
+                    printFile( f );
+                    goto theend;
+                }
+            } 
+
+            // Create new file
+            f = createNewFile( name );
+theend:
+            leave( "OPEN" );
+            return f;
+        }
+
+        bool FileSystem::unlink( File f ) {
+            enter( "UNLINK:1" );
+            leave( "UNLINK:1" );
+        }
+
+        //
+        bool FileSystem::unlink( const std::string filename ) {
+            enter( "UNLINK:2" );
+            File file = open(filename);
+            leave( "UNLINK:2" );
+            return file.unlink();
+        }
+
+        bool FileSystem::exists( const std::string filename ) {
+            enter( "EXISTS" );
+            File file = open(filename);
+            leave( "EXISTS" );
+            return file.getStatus() == OPEN;
+        }
+
+
+        FileSystem::FileSystem( const std::string filename) {
+            enter( "FILESYSTEM" );
+            std::array<char,1024> buff;
+
+            fileSystemLocation = filename;
+
+            //  Open the file
             stream.open( filename , std::fstream::in |  std::fstream::out | std::fstream::binary );
 
-            log( "The file does not exist, so we are creating it" );
-            totalBytes = 0;
-            freeList = 0;
-            numBlocks = 2;
-            numFreeBlocks = 0;
-            numFiles = 0;
-            metadataSize = 0;
-            lastFileBlock = 1;
+            if( !stream ) {
+                stream.open( filename , std::fstream::binary | std::fstream::trunc | std::fstream::out );
+                stream.close();
+                stream.open( filename , std::fstream::in |  std::fstream::out | std::fstream::binary );
 
-            // Now we go to the beginning
-            stream.seekp( 0 , std::ios_base::beg );
+                log( "The file does not exist, so we are creating it" );
+                totalBytes = 0;
+                freeList = 0;
+                numBlocks = 2;
+                numFreeBlocks = 0;
+                numFiles = 0;
+                metadataSize = 0;
+                lastFileBlock = 1;
 
-            // Write header
-            stream.write( HeaderSignature.data() , SignatureSize );
-            stream.write( reinterpret_cast<char*>(&totalBytes) , sizeof(totalBytes) );
-            stream.write( reinterpret_cast<char*>(&freeList) , sizeof(freeList) );
-            stream.write( reinterpret_cast<char*>(&numBlocks) , sizeof(numBlocks) );
-            stream.write( reinterpret_cast<char*>(&numFreeBlocks) , sizeof(numFreeBlocks) );
-            stream.write( reinterpret_cast<char*>(&numFiles) , sizeof(numFiles) );
-            stream.write( reinterpret_cast<char*>(&metadataSize) , sizeof(metadataSize) );
-            stream.write( reinterpret_cast<char*>(&lastFileBlock) , sizeof(lastFileBlock) );
+                // Now we go to the beginning
+                stream.seekp( 0 , std::ios_base::beg );
 
-            assert( TotalBlockSize == 1024 );
-            stream.seekp( TotalBlockSize , std::ios_base::beg );
+                // Write header
+                stream.write( HeaderSignature.data() , SignatureSize );
+                stream.write( reinterpret_cast<char*>(&totalBytes) , sizeof(totalBytes) );
+                stream.write( reinterpret_cast<char*>(&freeList) , sizeof(freeList) );
+                stream.write( reinterpret_cast<char*>(&numBlocks) , sizeof(numBlocks) );
+                stream.write( reinterpret_cast<char*>(&numFreeBlocks) , sizeof(numFreeBlocks) );
+                stream.write( reinterpret_cast<char*>(&numFiles) , sizeof(numFiles) );
+                stream.write( reinterpret_cast<char*>(&metadataSize) , sizeof(metadataSize) );
+                stream.write( reinterpret_cast<char*>(&lastFileBlock) , sizeof(lastFileBlock) );
 
-            // Write file "data-strcture"
-            stream.write( reinterpret_cast<char*>(&totalBytes) , sizeof(totalBytes) ); // Prev
-            stream.write( reinterpret_cast<char*>(&totalBytes) , sizeof(totalBytes) );  // Next
-            stream.seekp( TotalBlockSize * 2 - 1 );
-            stream.write( reinterpret_cast<char*>(&totalBytes) , sizeof( totalBytes ));
+                assert( TotalBlockSize == 1024 );
+                stream.seekp( TotalBlockSize , std::ios_base::beg );
 
-            stream.flush();
+                // Write file "data-strcture"
+                stream.write( reinterpret_cast<char*>(&totalBytes) , sizeof(totalBytes) ); // Prev
+                stream.write( reinterpret_cast<char*>(&totalBytes) , sizeof(totalBytes) );  // Next
+                stream.seekp( TotalBlockSize * 2 - 1 );
+                stream.write( reinterpret_cast<char*>(&totalBytes) , sizeof( totalBytes ));
 
-        }else {
+                stream.flush();
 
-            //  Read the header
-            stream.read( buff.data() , SignatureSize );
+            }else {
 
-            if( std::strncmp( buff.data() , HeaderSignature.data() , SignatureSize ) != 0 ) {
-                std::cout << "Invalid header signature found" << std::endl;
-                std::exit( -1 );
+                //  Read the header
+                stream.read( buff.data() , SignatureSize );
+
+                if( std::strncmp( buff.data() , HeaderSignature.data() , SignatureSize ) != 0 ) {
+                    std::cout << "Invalid header signature found" << std::endl;
+                    std::exit( -1 );
+                }
+
+                stream.read( reinterpret_cast<char*>(&totalBytes)       , sizeof(totalBytes) );
+                stream.read( reinterpret_cast<char*>(&freeList)         , sizeof(freeList) );
+                stream.read( reinterpret_cast<char*>(&numBlocks)        , sizeof(numBlocks) );
+                stream.read( reinterpret_cast<char*>(&numFreeBlocks)    , sizeof(numFreeBlocks) );
+                stream.read( reinterpret_cast<char*>(&numFiles)         , sizeof(numFiles) );
+                stream.read( reinterpret_cast<char*>(&metadataSize)     , sizeof(metadataSize) );
+                stream.read( reinterpret_cast<char*>(&lastFileBlock)     , sizeof(lastFileBlock) );
+
             }
 
-            stream.read( reinterpret_cast<char*>(&totalBytes)       , sizeof(totalBytes) );
-            stream.read( reinterpret_cast<char*>(&freeList)         , sizeof(freeList) );
-            stream.read( reinterpret_cast<char*>(&numBlocks)        , sizeof(numBlocks) );
-            stream.read( reinterpret_cast<char*>(&numFreeBlocks)    , sizeof(numFreeBlocks) );
-            stream.read( reinterpret_cast<char*>(&numFiles)         , sizeof(numFiles) );
-            stream.read( reinterpret_cast<char*>(&metadataSize)     , sizeof(metadataSize) );
-            stream.read( reinterpret_cast<char*>(&lastFileBlock)     , sizeof(lastFileBlock) );
+            log( "Total number of bytes stored"           , totalBytes );
+            log( "First block of the free list"           , freeList );
+            log( "Number of blocks used for file data"    , numBlocks );
+            log( "Number of free blocks"                  , numFreeBlocks );
+            log( "Number of files created"                , numFiles );
+            log( "Amount of data used for meta-data"      , metadataSize );
 
-        }
+            //  Read the filenames
+            log( "Loading File Meta-data" );
+            log( "Number of files" , numFiles );
 
-        log( "Total number of bytes stored"           , totalBytes );
-        log( "First block of the free list"           , freeList );
-        log( "Number of blocks used for file data"    , numBlocks );
-        log( "Number of free blocks"                  , numFreeBlocks );
-        log( "Number of files created"                , numFiles );
-        log( "Amount of data used for meta-data"      , metadataSize );
+            metadata = new File();
 
-        //  Read the filenames
-        log( "Loading File Meta-data" );
-        log( "Number of files" , numFiles );
+            metadata->name = "Metadata";
+            metadata->start = 1;
+            metadata->current = 1;
+            metadata->end = lastFileBlock;
+            metadata->size = metadataSize;
+            metadata->position = 0;
 
-        metadata = new File();
+            printFile( *metadata , true );
+            for( int i = 0 ; i < numFiles; ++i) {
+                File f;
+                f.fs = this;
+                f.metadata = metadata->position;
+                uint64_t str_len; 
+                read( *metadata , sizeof(uint64_t) , reinterpret_cast<char*>(&str_len) );
+                read( *metadata , str_len , buff.data() );
+                f.name = std::string( buff.data() , str_len );
+                read( *metadata , sizeof(uint64_t) , reinterpret_cast<char*>(&(f.start)) );
+                read( *metadata , sizeof(uint64_t) , reinterpret_cast<char*>(&(f.end)) );
+                read( *metadata , sizeof(uint64_t) , reinterpret_cast<char*>(&(f.size)) );
 
-        metadata->name = "Metadata";
-        metadata->start = 1;
-        metadata->current = 1;
-        metadata->end = lastFileBlock;
-        metadata->size = metadataSize;
-        metadata->position = 0;
+                log( "Position in metadata file" , metadata->position , true );
+                allFiles.push_back( f );
 
-        printFile( *metadata , true );
-        for( int i = 0 ; i < numFiles; ++i) {
-            File f;
-            f.metadata = metadata->position;
-            uint64_t str_len; 
-            read( *metadata , sizeof(uint64_t) , reinterpret_cast<char*>(&str_len) );
-            read( *metadata , str_len , buff.data() );
-            f.name = std::string( buff.data() , str_len );
-            read( *metadata , sizeof(uint64_t) , reinterpret_cast<char*>(&(f.start)) );
-            read( *metadata , sizeof(uint64_t) , reinterpret_cast<char*>(&(f.end)) );
-            read( *metadata , sizeof(uint64_t) , reinterpret_cast<char*>(&(f.size)) );
-
-            log( "Position in metadata file" , metadata->position , true );
-            allFiles.push_back( f );
-
-        }
-
-        log( "Finished reading Meta-data" );
-
-        leave( "FILESYSTEM" );
-        assertStream( stream );
-    }
-
-    void FileSystem::closing( File *fp ) {
-        enter( "CLOSING" );
-        for( auto file = openFiles.begin(); file != openFiles.end(); ++file ) {
-            if( (*file).getFilename() == (*fp).getFilename() ) {
-                openFiles.erase(file);
-                break;
             }
+
+            log( "Finished reading Meta-data" );
+
+            leave( "FILESYSTEM" );
+            assertStream( stream );
         }
-        leave( "CLOSING" );
-    }
 
-    FileSystem::~FileSystem() {
-        enter( "~FILESYSTEM" );
-        shutdown();
-        delete metadata;
-        leave( "~FILESYSTEM" );
-    }
+        void FileSystem::closing( File *fp ) {
+            enter( "CLOSING" );
+            for( auto file = openFiles.begin(); file != openFiles.end(); ++file ) {
+                if( (*file).getFilename() == (*fp).getFilename() ) {
+                    openFiles.erase(file);
+                    break;
+                }
+            }
+            leave( "CLOSING" );
+        }
 
-};
+        FileSystem::~FileSystem() {
+            enter( "~FILESYSTEM" );
+            shutdown();
+            delete metadata;
+            leave( "~FILESYSTEM" );
+        }
+
+    };
