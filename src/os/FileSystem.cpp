@@ -310,7 +310,6 @@ namespace os {
     //
     Block FileSystem::grow( uint64_t bytes , const char *buffer ) {
         uint64_t blocksToWrite = (bytes + BlockSize) / BlockSize;
-        bytes = TotalBlockSize * blocksToWrite;
         uint64_t current = numBlocks;
 
         const char Zero[BlockSize] = {0};
@@ -326,7 +325,7 @@ namespace os {
         lock( WRITE );
         {
             numBlocks += blocksToWrite;
-            totalBytes += BlockSize * blocksToWrite;
+            totalBytes += bytes;
 
             std::cout << "Total Bytes: " << numBlocks * TotalBlockSize << std::endl;
             assert( numBlocks * TotalBlockSize == 3072 );
@@ -353,6 +352,8 @@ namespace os {
             curr.prev = previous;
             curr.block = current; 
             curr.next = current + 1;
+            
+            uint64_t bytesM = std::min( BlockSize , bytes );
             std::copy( buffer , buffer + BlockSize , curr.data.begin() );
             if( buffer != Zero ) buffer += BlockSize;
             writeBlock( curr );
@@ -362,14 +363,16 @@ namespace os {
         }
 
         bytes = bytes % BlockSize;
+        assert( bytes > 0 );
 
         Block curr;
+        curr.status = FULL;
         curr.prev = (previous == current) ? 0 : previous;
         curr.block = current;
         curr.next = 0;
         curr.length = bytes;
         std::copy( buffer , buffer + bytes , curr.data.begin() );
-        std::copy( Zero + bytes , Zero + BlockSize , curr.data.begin() );
+        std::copy( Zero + bytes , Zero + BlockSize , curr.data.begin() + bytes );
 
         std::cout << std::endl << "Final block is " << std::endl;
         printBlock( curr );
