@@ -11,6 +11,7 @@
 #include <fstream>
 #include <string>
 #include <list>
+#include <array>
 
 
 // FileStructure
@@ -37,7 +38,7 @@ namespace os {
     enum BlockStatus { FULL , LAZY };
 
     static const uint64_t SignatureSize = 8;
-    static const char HeaderSignature[SignatureSize] = { 0xD , 0xE , 0xA , 0xD , 0xB , 0xE , 0xE , 0xF  };
+    static const std::array<char,8> HeaderSignature = { 0xD , 0xE , 0xA , 0xD , 0xB , 0xE , 0xE , 0xF  };
 
     static const uint64_t TotalBlockSize = KB;
     static const uint64_t HeaderSize = TotalBlockSize;
@@ -48,7 +49,7 @@ namespace os {
     struct Block {
         BlockStatus status;
         uint64_t block,prev,next,length;
-        char data[BlockSize];
+        std::array<char,BlockSize> data;
         Block() {
             status = LAZY;
             block = prev = next = length = 0;
@@ -92,10 +93,15 @@ namespace os {
 
             /* Data management functions*/
             void saveHeader();
+
+            void gotoBlock( uint64_t );
+            Block readBlock();
+            void writeBlock( Block b );
+
             void split( Block& , uint64_t );
             void flush( Block& );
-            Block grow( uint64_t , const char*  );
-            Block allocate( uint64_t , const char* );
+            Block grow( uint64_t , const char *  );
+            Block allocate( uint64_t , const char * );
             Block lazyLoad( uint64_t );
             Block load( uint64_t );
             Block locate( uint64_t , uint64_t& );
