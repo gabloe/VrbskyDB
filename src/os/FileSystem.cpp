@@ -390,10 +390,9 @@ namespace os {
     Block FileSystem::reuse( uint64_t &length , const char* &buffer ) {
         Block head;
 
-        uint64_t NFB = getNumFreeBlocks();
-        assert( NFB == 0 );
+        assert( numFreeBlocks == 0 );
 
-        if( NFB > 0 ) {
+        if( numFreeBlocks > 0 ) {
             uint64_t prevBlock = 0,currBlock = freeList;
             Block current;
 
@@ -402,8 +401,8 @@ namespace os {
             do {
                 // Update free list
                 freeList = current.next;
-                --NFB;
-                setNumFreeBlocks( NFB );
+                --numFreeBlocks;
+                setNumFreeBlocks( numFreeBlocks );
 
                 // Currently we treat the freeList as a special file, so just use it as such
                 current = lazyLoad( currBlock );
@@ -427,7 +426,7 @@ namespace os {
                 prevBlock = currBlock;
                 currBlock = freeList;
 
-            } while ( NFB > 0 && length > 0 );
+            } while ( numFreeBlocks > 0 && length > 0 );
 
             current.next = 0;
             head.prev = prevBlock;
@@ -451,9 +450,9 @@ namespace os {
             return head;
         }
 
-        uint64_t NFB = getNumFreeBlocks();
+        uint64_t numFreeBlocks = getNumFreeBlocks();
 
-        if( NFB > 0 ){
+        if( numFreeBlocks > 0 ){
             Block head = reuse( length , buffer );
             if( length > 0 ) {
                 Block grown = grow( length , buffer );
@@ -831,13 +830,9 @@ theend:
             totalBytes = 0;
             freeList = 0;
             numBlocks = 0;
-            setNumFreeBlocks( 0 );
-            uint64_t NFB = 0;
+            numFreeBlocks = 0;
             numFiles = 0;
             metadataSize = 0;
-
-            // Allocate the iniial space
-            //grow( TotalBlockSize * 2 , NULL );
 
             // Now we go to the beginning
             stream.seekp( 0 , std::ios_base::beg );
@@ -847,7 +842,7 @@ theend:
             stream.write( reinterpret_cast<char*>(&totalBytes) , sizeof( totalBytes ) );
             stream.write( reinterpret_cast<char*>(&freeList) , sizeof( freeList ) );
             stream.write( reinterpret_cast<char*>(&numBlocks) , sizeof( numBlocks) );
-            stream.write( reinterpret_cast<char*>(&NFB) , sizeof( NFB ) );
+            stream.write( reinterpret_cast<char*>(&numFreeBlocks) , sizeof( numFreeBlocks ) );
             stream.write( reinterpret_cast<char*>(&numFiles) , sizeof( numFiles ) );
             stream.write( reinterpret_cast<char*>(&metadataSize) , sizeof( metadataSize ) );
             assert( TotalBlockSize == 1024 );
@@ -880,12 +875,6 @@ theend:
             stream.read( reinterpret_cast<char*>(&metadataSize) , sizeof(metadataSize) );
 
 
-            std::cout << "Total number of bytes stored: "           << totalBytes << std::endl;
-            std::cout << "First block of the free list: "           << freeList << std::endl;
-            std::cout << "Number of blocks used for file data: "    << numBlocks << std::endl;
-            std::cout << "Number of free blocks: "                  << numFreeBlocks << std::endl;
-            std::cout << "Number of files created: "                << numFiles << std::endl;
-            std::cout << "Amount of data used for meta-data: "      << metadataSize << std::endl;
 
             //  Read the filenames
             Block b = load( 1 );
@@ -910,6 +899,14 @@ theend:
                 printFile( f );
             }
         }
+
+        std::cout << "Total number of bytes stored: "           << totalBytes << std::endl;
+        std::cout << "First block of the free list: "           << freeList << std::endl;
+        std::cout << "Number of blocks used for file data: "    << numBlocks << std::endl;
+        std::cout << "Number of free blocks: "                  << numFreeBlocks << std::endl;
+        std::cout << "Number of files created: "                << numFiles << std::endl;
+        std::cout << "Amount of data used for meta-data: "      << metadataSize << std::endl;
+
         assert( stream.is_open() );
         assert( stream.fail() == false );
         assert( stream.bad() == false );
