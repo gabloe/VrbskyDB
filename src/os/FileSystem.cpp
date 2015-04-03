@@ -5,6 +5,8 @@
 #include <cstring>
 #include <assert.h>
 
+#include <iomanip>
+
 #include <cstdio>
 
 // std::min
@@ -89,12 +91,16 @@ namespace os {
         uint64_t lengthName = name.size();
         uint64_t numBytes = 4 * sizeof( uint64_t ) + lengthName;
 
+
+        std::cout << "New file requires " << numBytes << " bytes of meta-data" << std::endl;
+
         metadataSize += numBytes;
 
         // Create data to write to the filesystem
         
         // Write length of name
         reint = reinterpret_cast<char*>( &lengthName );
+        assert( lengthName == 4 );
         std::copy( reint , reint + sizeof(uint64_t) , buffer.begin() );
 
         // Write name
@@ -110,12 +116,19 @@ namespace os {
         // Write size
         std::copy( reint , reint + sizeof(uint64_t) , buffer.begin() + 3 * sizeof(uint64_t) + name.size() );
 
+
+        std::cout << "Printing buffer:" << std::endl;
+        for( int i = 0 ; i < numBytes; ++i ) {
+            std::cout << std::hex << (int)buffer[i];
+        }
+        std::cout << std::endl << std::endl;
+
         // Write data to blocks
         gotoBlock( lastFileBlock );
         Block b = readBlock();
 
         uint64_t bytesToWrite = std::min( numBytes, (BlockSize - b.length) );
-        std::copy( b.data.begin() , b.data.begin() + bytesToWrite , buffer.begin() );
+        std::copy( buffer.begin() , buffer.begin() + bytesToWrite , b.data.data() );
         b.length += bytesToWrite;
         numBytes -= bytesToWrite;
         if( numBytes > 0 ) {
@@ -174,6 +187,8 @@ namespace os {
     }
 
     void FileSystem::writeBlock( Block &b ) {
+
+        printBlock( b );
 
         assertStream( stream );
 
@@ -447,6 +462,11 @@ namespace os {
     //  @return     -   The first block which holds our data
     //
     Block FileSystem::allocate( uint64_t length , const char *buffer ) {
+
+        std::cout << "In Allocate" << std::endl;
+
+        assertStream( stream );
+
         Block head;
         if( length == 0 ) {
             return head;
@@ -509,6 +529,11 @@ namespace os {
     //
     //  @return -   Number of bytes read
     uint64_t FileSystem::read( File &file , uint64_t length , char* buffer ) {
+
+        std::cout << "Reading " << length << " bytes" << std::endl;
+
+        assertStream( stream );
+
         uint64_t requested = length;
         length = std::min( length , file.size - file.position );
 
@@ -538,6 +563,9 @@ namespace os {
 
         }
         // How much we read
+        
+        assertStream( stream );
+
         return requested - length;
     }
 
@@ -554,9 +582,10 @@ namespace os {
     uint64_t FileSystem::write( File &file , uint64_t length , const char* buffer ) {
         uint64_t requested = length;
 
+        assertStream( stream );
+
         printFile( file );
 
-        assert( numFreeBlocks == 0 );
         assert( length > 0 );
         assert( buffer !=  0);
 
@@ -909,9 +938,7 @@ theend:
         std::cout << "Number of files created: "                << numFiles << std::endl;
         std::cout << "Amount of data used for meta-data: "      << metadataSize << std::endl;
 
-        assert( stream.is_open() );
-        assert( stream.fail() == false );
-        assert( stream.bad() == false );
+        assertStream( stream );
     }
 
     void FileSystem::closing( File *fp ) {
