@@ -75,6 +75,10 @@ namespace os {
 
     File FileSystem::createNewFile( std::string name ) {
 
+        uint64_t junk;
+        std::cout << "Waiting on input...";
+        std::cin >> junk;
+
         std::cout << "Creating a new file with the name " << name << std::endl;
 
         uint64_t lastFileBlock = 1;
@@ -137,6 +141,7 @@ namespace os {
             end.prev = b.block;
             flush( end );
         }
+        std::cout << "About to write this block to disk" << std::endl;
         printBlock( b );
         flush( b );
 
@@ -373,6 +378,7 @@ namespace os {
     Block FileSystem::lazyLoad( uint64_t block ) {
         Block b;
         b.status = LAZY;
+        b.block = block;
         gotoBlock( block );
         lock( READ );
         {
@@ -530,6 +536,7 @@ namespace os {
     //  @return -   Number of bytes read
     uint64_t FileSystem::read( File &file , uint64_t length , char* buffer ) {
 
+        printFile( file );
         std::cout << "Reading " << length << " bytes" << std::endl;
 
         assertStream( stream );
@@ -538,29 +545,27 @@ namespace os {
         length = std::min( length , file.size - file.position );
 
         if( length > 0 && buffer != 0 && file.position < file.size ) {
+            std::cout << "Here I am!" << std::endl;
             Block current = locate( file.current , file.position );
+
+            printBlock( current );
+
             uint64_t next = current.block;
+            current = load( next );
 
-            do {
-                // Go to next
-                current = load( next );
+            printBlock( current );
 
-                // Copy to buffer
-                uint64_t len = std::min( current.length - file.position , length );
-                std::copy( current.data.begin() + file.position , current.data.begin() + len , buffer );
-
-                // Update variables
-                file.position = 0;
-                buffer += len;
-                length -= len;
-
-                next = current.next;
-
-            }while( length > 0 );
-
-            file.current = current.block;
-            file.position = length;
-
+            for( int i = 0 ; i < length ; ++i ) {
+                buffer[i] = current.data[file.position];
+                ++file.position;
+                if( file.position == current.length ) {
+                    current = load( current.next );
+                    file.current = current.block;
+                    file.position = 0;
+                }
+            }
+        }else {
+            assert( false );
         }
         // How much we read
         
@@ -910,16 +915,23 @@ theend:
             stream.read( reinterpret_cast<char*>(&lastFileBlock)     , sizeof(lastFileBlock) );
 
             //  Read the filenames
+            std::cout << "Loading File Meta-data (" << numFiles << " files)" << std::endl;
+
             File metadata;
+            metadata.name = "Metadata";
             metadata.start = 1;
             metadata.current = 1;
             metadata.end = lastFileBlock;
+            metadata.size = metadataSize;
             metadata.position = 0;
+
+            printFile( metadata );
             for( int i = 0 ; i < numFiles; ++i) {
                 File f;
 
                 uint64_t str_len; 
                 read( metadata , sizeof(uint64_t) , reinterpret_cast<char*>(&str_len) );
+                std::cout << "Name length is " << str_len << std::endl;
                 read( metadata , str_len , buff.data() );
                 f.name = std::string( buff.data() , str_len );
                 read( metadata , sizeof(uint64_t) , reinterpret_cast<char*>(&(f.start)) );
@@ -929,6 +941,8 @@ theend:
                 allFiles.push_back( f );
 
             }
+
+            std::cout << "Finished reading Meta-data" << std::endl;
         }
 
         std::cout << "Total number of bytes stored: "           << totalBytes << std::endl;
