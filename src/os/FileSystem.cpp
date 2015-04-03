@@ -64,23 +64,24 @@ void gotoBlock( uint64_t block , uint64_t blockSize , std::fstream &stream ) {
     assertStream( stream );
 }
 
-void printFile( os::File &file ) {
-    log( "File Properties" );
-    log( "\tFile Name: ", file.name );
-    log( "\tFile Start: ", file.start );
-    log( "\tFile Current: ", file.current );
-    log(  "\tFile End: ",  file.end );
-    log(  "\tFile Size: ", file.size );
-    log(  "\tFile Position: ", file.position ); 
+void printFile( os::File &file , bool req = false ) {
+    log( "File Properties" , req );
+    log( "\tFile Name: ", file.name , req );
+    log( "\tFile Start: ", file.start ,req );
+    log( "\tFile Current: ", file.current , req );
+    log(  "\tFile Position: ", file.position , req ); 
+    log(  "\tFile End: ",  file.end , req );
+    log(  "\tFile Size: ", file.size , req );
+    log(  "\tFile metadata position: ", file.metadata , req ); 
 }
 
-void printBlock( os::Block &b ) {
-    log( "Printing Block"  );
-    log( "\tBlock"        , b.block );
-    log( "\tStatus"       , ( (b.status == os::FULL)?"FULL":"LAZY") );
-    log( "\tPrevious"     , b.prev );
-    log( "\tNext"         , b.next );
-    log( "\tLength"       , b.length );
+void printBlock( os::Block &b , bool req = false ) {
+    log( "Printing Block" , req );
+    log( "\tBlock"        , b.block , req );
+    log( "\tStatus"       , ( (b.status == os::FULL)?"FULL":"LAZY") , req );
+    log( "\tPrevious"     , b.prev , req );
+    log( "\tNext"         , b.next , req );
+    log( "\tLength"       , b.length , req );
 }
 
 // Given a block and a start and end we remove all the bytes inbetween
@@ -132,7 +133,9 @@ namespace os {
 
         log( "Growing meta-data size by" , numBytes );
 
+        uint64_t metaPosition = metadata->size;
         metadataSize += numBytes;
+        metadata->size += numBytes;
 
         // Create data to write to the filesystem
 
@@ -159,6 +162,7 @@ namespace os {
         gotoBlock( lastFileBlock );
         Block b = readBlock();
 
+
         uint64_t bytesToWrite = std::min( numBytes, (BlockSize - b.length) );
         std::copy( buffer.begin() , buffer.begin() + bytesToWrite , b.data.data() );
         b.length += bytesToWrite;
@@ -184,6 +188,7 @@ namespace os {
         f.start = 0;
         f.end = 0;
         f.position = 0;
+        f.metadata = metaPosition;
         f.fs = this;
 
         leave( "CREATENEWFILE" );
@@ -370,8 +375,8 @@ namespace os {
         }
 
 
-        log( "Growing filesystem by" , bytes );
-        log( "Blocks to be added" , blocksToWrite );
+        log( "Growing filesystem by" , bytes , true );
+        log( "Blocks to be added" , blocksToWrite , true );
 
         // Just grow first
         lock( WRITE );
@@ -379,7 +384,7 @@ namespace os {
             numBlocks += blocksToWrite;
             totalBytes += bytes;
 
-            log( "Total Bytes" , numBlocks * TotalBlockSize );
+            log( "Total Bytes" , numBlocks * TotalBlockSize , true );
             assertStream( stream );
 
             stream.seekp( numBlocks * TotalBlockSize , std::ios_base::beg );
@@ -645,6 +650,7 @@ namespace os {
 
         if( length > 0 && buffer != 0 && file.position < file.size ) {
             Block current = locate( file.current , file.position );
+            assert( file.position < 1000 );
 
             printBlock( current );
 
@@ -690,14 +696,14 @@ namespace os {
         assertStream( stream );
 
         log( "Bytes to write",  length );
-        printFile( file );
+        printFile( file , true );
 
         assert( length > 0 );
         assert( buffer !=  0);
 
         // If we are about to write somewhere that does not exist
         // create enough space for it
-        if( file.current >= file.end ) {
+        if( file.start == 0 || file.current > file.end ) {
             Block remaining  = allocate( length , buffer );
             if( file.start == 0 ) {
                 file.start = remaining.block;
@@ -708,6 +714,8 @@ namespace os {
 
                 metadata->position = file.metadata + sizeof(uint64_t) + file.name.size();
                 metadata->current = 1;
+
+                printFile( *metadata , true );
 
                 write( *metadata , sizeof(file.start) , reinterpret_cast<char*>(&(file.start)));
                 write( *metadata , sizeof(file.end) , reinterpret_cast<char*>(&(file.end)));
@@ -727,8 +735,9 @@ namespace os {
                 //file.flush();
             }
         }else {
-            assert( numFreeBlocks == 0 );
-            if( length > 0 && buffer != 0 ) {
+            assert( length > 0 );
+            assert( buffer != 0 );
+            //if( length > 0 && buffer != 0 ) {
                 Block current = locate( file.current , file.position );
                 assert( current.block != 0 );
                 uint64_t next = current.block;
@@ -768,8 +777,6 @@ namespace os {
                 file.current = current.block;
                 file.position = length;
 
-            }else {
-                assert( false );
             }
         }
         // How much we read
@@ -1067,7 +1074,7 @@ theend:
         metadata->size = metadataSize;
         metadata->position = 0;
 
-        printFile( *metadata );
+        printFile( *metadata , true );
         for( int i = 0 ; i < numFiles; ++i) {
             File f;
             f.metadata = metadata->position;
@@ -1079,6 +1086,7 @@ theend:
             read( *metadata , sizeof(uint64_t) , reinterpret_cast<char*>(&(f.end)) );
             read( *metadata , sizeof(uint64_t) , reinterpret_cast<char*>(&(f.size)) );
 
+            log( "Position in metadata file" , metadata->position , true );
             allFiles.push_back( f );
 
         }
