@@ -3,7 +3,7 @@
 #include <sys/stat.h>
 #include <algorithm>
 #include <cstring>
-#include <assert.h>
+#include <cassert>
 
 #include <iomanip>
 
@@ -15,10 +15,10 @@
 #include "FileSystem.h"
 #include "File.h"
 
-void assertStream(std::fstream &stream ) {
-    assert( stream.is_open() );
-    assert( stream.fail() == false );
-    assert( stream.bad() == false );
+#define assertStream(stream) {              \
+    assert( stream.is_open() );             \
+    assert( stream.fail() == false );       \
+    assert( stream.bad() == false );        \
 }
 
 void gotoBlock( uint64_t block , uint64_t blockSize , std::fstream &stream ) {
@@ -43,6 +43,7 @@ void printFile( os::File &file ) {
 void printBlock( os::Block &b ) {
     std::cout << "Printing Block:"  << std::endl;
     std::cout << "\tBlock: "        << b.block << std::endl;
+    std::cout << "\tStatus: "        << ( (b.status == os::FULL)?"FULL":"LAZY") << std::endl;
     std::cout << "\tPrevious: "     << b.prev << std::endl;
     std::cout << "\tNext: "         << b.next << std::endl;
     std::cout << "\tLength: "       << b.length << std::endl << std::endl;
@@ -76,8 +77,6 @@ namespace os {
     File FileSystem::createNewFile( std::string name ) {
 
         uint64_t junk;
-        std::cout << "Waiting on input...";
-        std::cin >> junk;
 
         std::cout << "Creating a new file with the name " << name << std::endl;
 
@@ -121,12 +120,6 @@ namespace os {
         std::copy( reint , reint + sizeof(uint64_t) , buffer.begin() + 3 * sizeof(uint64_t) + name.size() );
 
 
-        std::cout << "Printing buffer:" << std::endl;
-        for( int i = 0 ; i < numBytes; ++i ) {
-            std::cout << std::hex << (int)buffer[i];
-        }
-        std::cout << std::endl << std::endl;
-
         // Write data to blocks
         gotoBlock( lastFileBlock );
         Block b = readBlock();
@@ -164,7 +157,8 @@ namespace os {
     void FileSystem::gotoBlock( uint64_t blockId ) {
         uint64_t offset = blockId * TotalBlockSize;
 
-        std::cout << "Moving to " << offset << std::endl;
+        std::cout << "Moving to block " << blockId << " at offset " << offset << std::endl;
+        std::cout << std::endl;
 
         stream.seekp( blockId * TotalBlockSize );
         stream.seekg( blockId * TotalBlockSize );
@@ -172,17 +166,18 @@ namespace os {
 
     Block FileSystem::readBlock( ) {
         Block ret;
+        ret.status = FULL;
+        ret.block = stream.tellp() / TotalBlockSize;
 
+        std::cout << "About to read block " << ret.block << std::endl;
         assertStream( stream );
 
         lock( READ );
         {
-            ret.block = stream.tellp() / TotalBlockSize;
             stream.read( reinterpret_cast<char*>( &ret.prev ) , sizeof( ret.prev ) );
             stream.read( reinterpret_cast<char*>( &ret.next ) , sizeof( ret.next ) );
             stream.read( reinterpret_cast<char*>( &ret.length ) , sizeof( ret.length ) );
             stream.read( ret.data.data() , ret.length );
-            ret.status = FULL;
         }
         unlock( READ );
 
@@ -193,7 +188,11 @@ namespace os {
 
     void FileSystem::writeBlock( Block &b ) {
 
+        std::cout << "Writing Block:" << std::endl;
         printBlock( b );
+
+
+        assert( stream.tellp() == b.block * TotalBlockSize );
 
         assertStream( stream );
 
@@ -216,7 +215,17 @@ namespace os {
 
         assertStream( stream );
 
+        std::cout << "Saving header:" << std::endl;
+        std::cout << "\tTotal number of bytes stored: "           << totalBytes << std::endl;
+        std::cout << "\tFirst block of the free list: "           << freeList << std::endl;
+        std::cout << "\tNumber of blocks used for file data: "    << numBlocks << std::endl;
+        std::cout << "\tNumber of free blocks: "                  << numFreeBlocks << std::endl;
+        std::cout << "\tNumber of files created: "                << numFiles << std::endl;
+        std::cout << "\tAmount of data used for meta-data: "      << metadataSize << std::endl;
+
         stream.seekp( SignatureSize , std::ios_base::beg );
+
+        assert( stream.tellp() == 8 );
 
         // Write header
         stream.write( reinterpret_cast<char*>(&totalBytes) , sizeof(totalBytes) );
@@ -304,21 +313,36 @@ namespace os {
         bytes = TotalBlockSize * blocksToWrite;
         uint64_t current = numBlocks;
 
-        // Just grow first
-        lock( WRITE );
-        {
-            stream.seekp( -bytes + 1 , std::ios_base::end );
-            stream.put( 0 );
-            numBlocks += blocksToWrite;
-            bytes += BlockSize * blocksToWrite;
-            saveHeader();
-        }unlock( WRITE );
-
-        // In case we have no data
         const char Zero[BlockSize] = {0};
         if( buffer == NULL ) {
             buffer = Zero;
         }
+
+
+        std::cout << "Growing filesystem by " << bytes << " bytes" << std::endl;
+        std::cout << "Adding " << blocksToWrite << " block(s)" << std::endl << std::endl;
+
+        // Just grow first
+        lock( WRITE );
+        {
+            numBlocks += blocksToWrite;
+            totalBytes += BlockSize * blocksToWrite;
+
+            std::cout << "Total Bytes: " << numBlocks * TotalBlockSize << std::endl;
+            assert( numBlocks * TotalBlockSize == 3072 );
+            assertStream( stream );
+
+            stream.seekp( numBlocks * TotalBlockSize , std::fstream::beg );
+            stream.write( Zero , 1 );
+            stream.flush();
+
+            saveHeader();
+            assertStream( stream );
+        }unlock( WRITE );
+
+        assertStream( stream );
+
+        // In case we have no data
 
         // Write new data
         std::fstream secondary( fileSystemLocation, std::fstream::out | std::fstream::binary );
@@ -341,14 +365,20 @@ namespace os {
         bytes = bytes % BlockSize;
 
         Block curr;
-        curr.prev = previous;
+        curr.prev = (previous == current) ? 0 : previous;
         curr.block = current;
         curr.next = 0;
+        curr.length = bytes;
         std::copy( buffer , buffer + bytes , curr.data.begin() );
         std::copy( Zero + bytes , Zero + BlockSize , curr.data.begin() );
-        writeBlock( curr );
 
-        return load( numBlocks - blocksToWrite - 1 );
+        std::cout << std::endl << "Final block is " << std::endl;
+        printBlock( curr );
+        flush( curr );
+
+        assert( ( numBlocks - blocksToWrite - 1) < 1000 );
+
+        return load( numBlocks - blocksToWrite );
     }
 
 
@@ -425,7 +455,6 @@ namespace os {
                 // Update free list
                 freeList = current.next;
                 --numFreeBlocks;
-                setNumFreeBlocks( numFreeBlocks );
 
                 // Currently we treat the freeList as a special file, so just use it as such
                 current = lazyLoad( currBlock );
@@ -475,12 +504,12 @@ namespace os {
 
         Block head;
         if( length == 0 ) {
+            assert( false );
             return head;
         }
 
-        uint64_t numFreeBlocks = getNumFreeBlocks();
-
         if( numFreeBlocks > 0 ){
+            assert( false );
             Block head = reuse( length , buffer );
             if( length > 0 ) {
                 Block grown = grow( length , buffer );
@@ -865,7 +894,7 @@ theend:
             std::cout << "The file does not exist, so we are creating it" << std::endl;
             totalBytes = 0;
             freeList = 0;
-            numBlocks = 0;
+            numBlocks = 2;
             numFreeBlocks = 0;
             numFiles = 0;
             metadataSize = 0;

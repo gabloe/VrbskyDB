@@ -78,16 +78,6 @@ namespace os {
             void lock( LockType );
             void unlock( LockType );
 
-            uint64_t getNumFreeBlocks() {
-                std::cout << "Someone is requesting: " << numFreeBlocks << std::endl;
-                return numFreeBlocks;
-            }
-            
-            void setNumFreeBlocks( uint64_t NFB ) {
-                std::cout << "Someone is setting: " << NFB << std::endl;
-                numFreeBlocks = NFB;
-            }
-
 
             /* File management functions */
             File createNewFile( std::string );
