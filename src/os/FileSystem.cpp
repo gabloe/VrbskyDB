@@ -73,6 +73,8 @@ namespace os {
 
     File FileSystem::createNewFile( std::string name ) {
         std::cout << "Creating a new file with the name " << name << std::endl;
+
+
         uint64_t lastFileBlock = 1;
         std::array<char,1024> buffer;
         char *reint;
@@ -87,6 +89,8 @@ namespace os {
         uint64_t lengthName = name.size();
         uint64_t numBytes = 4 * sizeof( uint64_t ) + lengthName;
 
+        metadataSize += numBytes;
+
         // Create data to write to the filesystem
         
         // Write length of name
@@ -94,7 +98,7 @@ namespace os {
         std::copy( reint , reint + sizeof(uint64_t) , buffer.begin() );
 
         // Write name
-        std::copy( name.begin() , name.end() , buffer.begin() + sizeof(uint64_t) );
+        std::copy( name.begin() , name.end()        , buffer.begin() + 1 * sizeof(uint64_t) );
 
         // Write first block
         lengthName = 0; 
@@ -110,10 +114,9 @@ namespace os {
         gotoBlock( lastFileBlock );
         Block b = readBlock( );
 
-        printBlock( b );
+        std::cout << "The file will use up " << numBytes << " bytes of space" << std::endl;
 
         uint64_t bytesToWrite = std::min( numBytes, (BlockSize - b.length) );
-        std::cout << "The file will use up " << bytesToWrite << " bytes of space" << std::endl;
         std::copy( b.data.begin() , b.data.begin() + bytesToWrite , buffer.begin() );
         b.length += bytesToWrite;
         numBytes -= bytesToWrite;
@@ -123,10 +126,10 @@ namespace os {
             end.prev = b.block;
             flush( end );
         }
+        printBlock( b );
         flush( b );
 
         // Update header
-        metadataSize += numBytes;
         ++numFiles;
         saveHeader();
 
@@ -143,6 +146,8 @@ namespace os {
     }
 
     void FileSystem::gotoBlock( uint64_t blockId ) {
+        uint64_t offset = blockId * TotalBlockSize;
+        std::cout << "Moving to " << offset << std::endl;
         stream.seekp( blockId * TotalBlockSize );
         stream.seekg( blockId * TotalBlockSize );
     }
@@ -167,15 +172,23 @@ namespace os {
         return ret;
     }
 
-    void FileSystem::writeBlock( Block b ) {
+    void FileSystem::writeBlock( Block &b ) {
+
+        assertStream( stream );
+
         lock( WRITE );
         {
-            stream.write( reinterpret_cast<char*>( b.prev ) , sizeof( b.prev ) );
-            stream.write( reinterpret_cast<char*>( b.next ) , sizeof( b.next ) );
-            stream.write( reinterpret_cast<char*>( b.length ) , sizeof( b.length ) );
-            stream.write( b.data.data() , b.length );
+            stream.write( reinterpret_cast<char*>( &(b.prev) ) , sizeof( b.prev ) );
+            stream.write( reinterpret_cast<char*>( &(b.next) ) , sizeof( b.next ) );
+            stream.write( reinterpret_cast<char*>( &(b.length) ) , sizeof( b.length ) );
+            if( b.status == FULL ) {
+                stream.write( b.data.data() , b.length );
+            }
         }
         unlock( WRITE );
+
+        assertStream( stream );
+
     }
 
     void FileSystem::saveHeader() {
@@ -382,19 +395,8 @@ namespace os {
     //  
     //
     void FileSystem::flush( Block &b ) {
-
-        lock( WRITE ); 
-        {
-            stream.seekp( HeaderSize + b.block * TotalBlockSize , std::ios_base::beg );
-            stream.write( reinterpret_cast<char*>(&b.prev) , sizeof(b.prev) );
-            stream.write( reinterpret_cast<char*>(&b.next) , sizeof(b.next) );
-            stream.write( reinterpret_cast<char*>(&b.length) , sizeof(b.length) );
-            if( b.status == FULL ) {
-                stream.write( reinterpret_cast<char*>(b.data.begin()) , BlockSize );
-            }
-            stream.flush();
-        }
-        unlock( WRITE );
+        gotoBlock( b.block );
+        writeBlock( b );
     }
 
     //  reuse   -   Given some amount of bytes and data we try to load blocks from free list

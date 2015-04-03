@@ -96,7 +96,7 @@ namespace os {
 
             void gotoBlock( uint64_t );
             Block readBlock();
-            void writeBlock( Block b );
+            void writeBlock( Block &b );
 
             void split( Block& , uint64_t );
             void flush( Block& );
