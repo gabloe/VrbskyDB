@@ -72,8 +72,8 @@ namespace os {
     // Private functions
 
     File FileSystem::createNewFile( std::string name ) {
-        std::cout << "Creating a new file with the name " << name << std::endl;
 
+        std::cout << "Creating a new file with the name " << name << std::endl;
 
         uint64_t lastFileBlock = 1;
         std::array<char,1024> buffer;
@@ -112,7 +112,7 @@ namespace os {
 
         // Write data to blocks
         gotoBlock( lastFileBlock );
-        Block b = readBlock( );
+        Block b = readBlock();
 
         std::cout << "The file will use up " << numBytes << " bytes of space" << std::endl;
 
@@ -164,6 +164,7 @@ namespace os {
             stream.read( reinterpret_cast<char*>( &ret.next ) , sizeof( ret.next ) );
             stream.read( reinterpret_cast<char*>( &ret.length ) , sizeof( ret.length ) );
             stream.read( ret.data.data() , ret.length );
+            ret.status = FULL;
         }
         unlock( READ );
 
@@ -192,16 +193,17 @@ namespace os {
     }
 
     void FileSystem::saveHeader() {
-        assert( stream.is_open() );
-        assert( stream.fail() == false );
+
+        assertStream( stream );
+
         stream.seekp( SignatureSize , std::ios_base::beg );
 
         std::cout << "Saving header" << std::endl;
         std::cout << "SignatureSize: " << SignatureSize << std::endl;
         std::cout << "Number of files: " << numFiles << std::endl;
         std::cout << "Writing to offset: " << stream.tellp() << std::endl;
+
         // Write header
-        
         stream.write( reinterpret_cast<char*>(&totalBytes) , sizeof( totalBytes ) );
         stream.write( reinterpret_cast<char*>(&freeList) , sizeof( freeList ) );
         stream.write( reinterpret_cast<char*>(&numBlocks) , sizeof( numBlocks) );
@@ -209,6 +211,8 @@ namespace os {
         stream.write( reinterpret_cast<char*>(&numFiles) , sizeof( numFiles ) );
         stream.write( reinterpret_cast<char*>(&metadataSize) , sizeof( metadataSize ) );
         stream.flush();
+
+        assertStream( stream );
 
     }
 
@@ -814,8 +818,8 @@ namespace os {
                 goto theend;
             }
         } 
-        // This file does not exist, we need to create
-        // it and save it to disk.
+
+        // Create new file
         f = createNewFile( name );
 theend:
         return f;
