@@ -332,7 +332,7 @@ namespace os {
             assert( numBlocks * TotalBlockSize == 3072 );
             assertStream( stream );
 
-            stream.seekp( numBlocks * TotalBlockSize , std::fstream::beg );
+            stream.seekp( numBlocks * TotalBlockSize , std::ios_base::beg );
             stream.write( Zero , 1 );
             stream.flush();
 
@@ -345,8 +345,7 @@ namespace os {
         // In case we have no data
 
         // Write new data
-        std::fstream secondary( fileSystemLocation, std::fstream::out | std::fstream::binary );
-        secondary.seekp( TotalBlockSize * current , std::ios_base::beg );
+        stream.seekp( TotalBlockSize * current , std::ios_base::beg );
 
         uint64_t previous = numBlocks - 1;
         for( int i = 0 ; i < blocksToWrite - 1; ++i) {
