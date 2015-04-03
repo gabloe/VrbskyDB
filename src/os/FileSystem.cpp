@@ -114,8 +114,6 @@ namespace os {
         gotoBlock( lastFileBlock );
         Block b = readBlock();
 
-        std::cout << "The file will use up " << numBytes << " bytes of space" << std::endl;
-
         uint64_t bytesToWrite = std::min( numBytes, (BlockSize - b.length) );
         std::copy( b.data.begin() , b.data.begin() + bytesToWrite , buffer.begin() );
         b.length += bytesToWrite;
@@ -147,7 +145,9 @@ namespace os {
 
     void FileSystem::gotoBlock( uint64_t blockId ) {
         uint64_t offset = blockId * TotalBlockSize;
+
         std::cout << "Moving to " << offset << std::endl;
+
         stream.seekp( blockId * TotalBlockSize );
         stream.seekg( blockId * TotalBlockSize );
     }
@@ -197,11 +197,6 @@ namespace os {
         assertStream( stream );
 
         stream.seekp( SignatureSize , std::ios_base::beg );
-
-        std::cout << "Saving header" << std::endl;
-        std::cout << "SignatureSize: " << SignatureSize << std::endl;
-        std::cout << "Number of files: " << numFiles << std::endl;
-        std::cout << "Writing to offset: " << stream.tellp() << std::endl;
 
         // Write header
         stream.write( reinterpret_cast<char*>(&totalBytes) , sizeof( totalBytes ) );
@@ -346,27 +341,8 @@ namespace os {
         assert( stream.bad() == false );
         assert( stream.fail() == false );
         assert( block < 100000 );
-
-        std::cout << "Loading block: " << block << std::endl;
-
-        Block b;
-        b.block = block;
-        b.status = FULL;
-        lock( READ );
-        {
-            uint64_t offset = block * TotalBlockSize;
-            std::cout << "Lets look at position " << offset << std::endl;
-            stream.seekg( offset , std::ios_base::beg );
-            stream.read( reinterpret_cast<char*>( &b.prev ) , sizeof(b.prev) );
-            stream.read( reinterpret_cast<char*>( &b.next ) , sizeof(b.next) );
-            stream.read( reinterpret_cast<char*>( &b.length ) , sizeof(b.length) );
-            stream.read( reinterpret_cast<char*>(b.data.begin()) , BlockSize );
-        }
-        unlock( READ );
-
-        assert( stream.bad() == false );
-        assert( stream.fail() == false );
-        return b;
+        gotoBlock( block );
+        return readBlock();
     }
 
     //  lazyLoad   - Given a block id only load meta-data
