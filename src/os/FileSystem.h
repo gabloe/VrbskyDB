@@ -69,6 +69,7 @@ namespace os {
             uint64_t numFreeBlocks;
             uint64_t numFiles;
             uint64_t metadataSize;
+            uint64_t lastFileBlock;
 
             // Pointers to open files
             std::list<File> openFiles;

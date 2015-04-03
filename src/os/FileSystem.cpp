@@ -199,12 +199,13 @@ namespace os {
         stream.seekp( SignatureSize , std::ios_base::beg );
 
         // Write header
-        stream.write( reinterpret_cast<char*>(&totalBytes) , sizeof( totalBytes ) );
-        stream.write( reinterpret_cast<char*>(&freeList) , sizeof( freeList ) );
-        stream.write( reinterpret_cast<char*>(&numBlocks) , sizeof( numBlocks) );
-        stream.write( reinterpret_cast<char*>(&numFreeBlocks) , sizeof( numFreeBlocks ) );
-        stream.write( reinterpret_cast<char*>(&numFiles) , sizeof( numFiles ) );
-        stream.write( reinterpret_cast<char*>(&metadataSize) , sizeof( metadataSize ) );
+        stream.write( reinterpret_cast<char*>(&totalBytes) , sizeof(totalBytes) );
+        stream.write( reinterpret_cast<char*>(&freeList) , sizeof(freeList) );
+        stream.write( reinterpret_cast<char*>(&numBlocks) , sizeof(numBlocks) );
+        stream.write( reinterpret_cast<char*>(&numFreeBlocks) , sizeof(numFreeBlocks) );
+        stream.write( reinterpret_cast<char*>(&numFiles) , sizeof(numFiles) );
+        stream.write( reinterpret_cast<char*>(&metadataSize) , sizeof(metadataSize) );
+        stream.write( reinterpret_cast<char*>(&lastFileBlock) , sizeof(lastFileBlock) );
         stream.flush();
 
         assertStream( stream );
@@ -341,6 +342,7 @@ namespace os {
         assert( stream.bad() == false );
         assert( stream.fail() == false );
         assert( block < 100000 );
+
         gotoBlock( block );
         return readBlock();
     }
@@ -355,12 +357,10 @@ namespace os {
     //
     Block FileSystem::lazyLoad( uint64_t block ) {
         Block b;
-        b.block = block;
         b.status = LAZY;
-        std::cout << "Block: " << block << std::endl;
+        gotoBlock( block );
         lock( READ );
         {
-            stream.seekg( HeaderSize + block * TotalBlockSize , std::ios_base::beg );
             stream.read( reinterpret_cast<char*>( &b.prev ) , sizeof(b.prev) );
             stream.read( reinterpret_cast<char*>( &b.next ) , sizeof(b.next) );
             stream.read( reinterpret_cast<char*>( &b.length ) , sizeof(b.length) );
@@ -392,7 +392,7 @@ namespace os {
     Block FileSystem::reuse( uint64_t &length , const char* &buffer ) {
         Block head;
 
-        assert( numFreeBlocks == 0 );
+        assertStream( stream );
 
         if( numFreeBlocks > 0 ) {
             uint64_t prevBlock = 0,currBlock = freeList;
@@ -835,18 +835,21 @@ theend:
             numFreeBlocks = 0;
             numFiles = 0;
             metadataSize = 0;
+            lastFileBlock = 1;
 
             // Now we go to the beginning
             stream.seekp( 0 , std::ios_base::beg );
 
             // Write header
             stream.write( HeaderSignature.data() , SignatureSize );
-            stream.write( reinterpret_cast<char*>(&totalBytes) , sizeof( totalBytes ) );
-            stream.write( reinterpret_cast<char*>(&freeList) , sizeof( freeList ) );
-            stream.write( reinterpret_cast<char*>(&numBlocks) , sizeof( numBlocks) );
-            stream.write( reinterpret_cast<char*>(&numFreeBlocks) , sizeof( numFreeBlocks ) );
-            stream.write( reinterpret_cast<char*>(&numFiles) , sizeof( numFiles ) );
-            stream.write( reinterpret_cast<char*>(&metadataSize) , sizeof( metadataSize ) );
+            stream.write( reinterpret_cast<char*>(&totalBytes) , sizeof(totalBytes) );
+            stream.write( reinterpret_cast<char*>(&freeList) , sizeof(freeList) );
+            stream.write( reinterpret_cast<char*>(&numBlocks) , sizeof(numBlocks) );
+            stream.write( reinterpret_cast<char*>(&numFreeBlocks) , sizeof(numFreeBlocks) );
+            stream.write( reinterpret_cast<char*>(&numFiles) , sizeof(numFiles) );
+            stream.write( reinterpret_cast<char*>(&metadataSize) , sizeof(metadataSize) );
+            stream.write( reinterpret_cast<char*>(&lastFileBlock) , sizeof(lastFileBlock) );
+
             assert( TotalBlockSize == 1024 );
             stream.seekp( TotalBlockSize , std::ios_base::beg );
 
@@ -861,44 +864,41 @@ theend:
         }else {
 
             //  Read the header
-            char buff[BlockSize];
-            stream.read( buff , SignatureSize );
+            std::array<char,1024> buff;
+            stream.read( buff.data() , SignatureSize );
 
-            if( std::strncmp( buff , HeaderSignature.data() , SignatureSize ) != 0 ) {
+            if( std::strncmp( buff.data() , HeaderSignature.data() , SignatureSize ) != 0 ) {
                 std::cout << "Invalid header signature found" << std::endl;
                 std::exit( -1 );
             }
 
-            stream.read( reinterpret_cast<char*>(&totalBytes) , sizeof(totalBytes) );
-            stream.read( reinterpret_cast<char*>(&freeList) , sizeof(freeList ) );
-            stream.read( reinterpret_cast<char*>(&numBlocks) , sizeof(numBlocks) );
-            stream.read( reinterpret_cast<char*>(&numFreeBlocks) , sizeof(numFreeBlocks) );
-            stream.read( reinterpret_cast<char*>(&numFiles) , sizeof(numFiles) );
-            stream.read( reinterpret_cast<char*>(&metadataSize) , sizeof(metadataSize) );
-
-
+            stream.read( reinterpret_cast<char*>(&totalBytes)       , sizeof(totalBytes) );
+            stream.read( reinterpret_cast<char*>(&freeList)         , sizeof(freeList) );
+            stream.read( reinterpret_cast<char*>(&numBlocks)        , sizeof(numBlocks) );
+            stream.read( reinterpret_cast<char*>(&numFreeBlocks)    , sizeof(numFreeBlocks) );
+            stream.read( reinterpret_cast<char*>(&numFiles)         , sizeof(numFiles) );
+            stream.read( reinterpret_cast<char*>(&metadataSize)     , sizeof(metadataSize) );
+            stream.read( reinterpret_cast<char*>(&lastFileBlock)     , sizeof(lastFileBlock) );
 
             //  Read the filenames
-            Block b = load( 1 );
+            File metadata;
+            metadata.start = 1;
+            metadata.current = 1;
+            metadata.end = lastFileBlock;
+            metadata.position = 0;
             for( int i = 0 ; i < numFiles; ++i) {
                 File f;
 
-                // First is the length of the filename
-                uint64_t str_len = 0;
-                stream.read( reinterpret_cast<char*>(&str_len) , sizeof(str_len) );
+                uint64_t str_len; 
+                read( metadata , sizeof(uint64_t) , reinterpret_cast<char*>(&str_len) );
+                read( metadata , str_len , buff.data() );
+                f.name = std::string( buff.data() , str_len );
+                read( metadata , sizeof(uint64_t) , reinterpret_cast<char*>(&(f.start)) );
+                read( metadata , sizeof(uint64_t) , reinterpret_cast<char*>(&(f.end)) );
+                read( metadata , sizeof(uint64_t) , reinterpret_cast<char*>(&(f.size)) );
 
-                // Read the filename
-                stream.read( buff , str_len );
-                f.name = std::string( buff , str_len );
-
-                // Read the block
-                stream.read( reinterpret_cast<char*>(&str_len) , sizeof(str_len) );
-
-                // Save the file
                 allFiles.push_back( f );
 
-                std::cout << "Loading File:" << std::endl;
-                printFile( f );
             }
         }
 
