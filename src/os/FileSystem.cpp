@@ -38,6 +38,14 @@ void printFile( os::File &file ) {
     std::cout << "\tFile Position: " << file.position << std::endl << std::endl;
 }
 
+void printBlock( os::Block &b ) {
+    std::cout << "Printing Block:"  << std::endl;
+    std::cout << "\tBlock: "        << b.block << std::endl;
+    std::cout << "\tPrevious: "     << b.prev << std::endl;
+    std::cout << "\tNext: "         << b.next << std::endl;
+    std::cout << "\tLength: "       << b.length << std::endl << std::endl;
+}
+
 // Given a block and a start and end we remove all the bytes inbetween
 void compact( os::Block &b, uint64_t start , uint64_t end ) {
     if( start >= end || start >= b.length ) return;
@@ -101,8 +109,13 @@ namespace os {
         // Write data to blocks
         gotoBlock( lastFileBlock );
         Block b = readBlock( );
-        uint64_t bytesToWrite = BlockSize - b.length;
+
+        printBlock( b );
+
+        uint64_t bytesToWrite = std::min( numBytes, (BlockSize - b.length) );
+        std::cout << "The file will use up " << bytesToWrite << " bytes of space" << std::endl;
         std::copy( b.data.begin() , b.data.begin() + bytesToWrite , buffer.begin() );
+        b.length += bytesToWrite;
         numBytes -= bytesToWrite;
         if( numBytes > 0 ) {
             Block end = allocate( numBytes , buffer.begin() + bytesToWrite );
@@ -136,14 +149,21 @@ namespace os {
 
     Block FileSystem::readBlock( ) {
         Block ret;
+
+        assertStream( stream );
+
         lock( READ );
         {
+            ret.block = stream.tellp() / TotalBlockSize;
             stream.read( reinterpret_cast<char*>( &ret.prev ) , sizeof( ret.prev ) );
             stream.read( reinterpret_cast<char*>( &ret.next ) , sizeof( ret.next ) );
             stream.read( reinterpret_cast<char*>( &ret.length ) , sizeof( ret.length ) );
             stream.read( ret.data.data() , ret.length );
         }
         unlock( READ );
+
+        assertStream( stream );
+
         return ret;
     }
 
