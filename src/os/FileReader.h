@@ -8,6 +8,8 @@
 namespace os {
 
     class FileReader {
+        friend class FileSystem;
+
         private:
             File& file;
         public:

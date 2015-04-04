@@ -254,15 +254,19 @@ namespace os {
         if( metadata_files > 0 ) {
 
             metaReader->seek( 0 , BEG );
+            assert( metadata->position == 0 );
+            assert( metaReader->file.position == 0 );
 
             for( int i = 0 ; i < metadata_files; ++i) {
                 File &f = *(new File());
 
                 uint64_t str_len,f_position = metaReader->tell(); 
                 metaReader->read( sizeof(uint64_t) , reinterpret_cast<char*>(&str_len) );
+                assert( str_len == 4);
                 metaReader->read( str_len , buff.data() );
                 metaReader->read( sizeof(uint64_t) , reinterpret_cast<char*>(&(f.disk_usage)) );
                 metaReader->read( sizeof(uint64_t) , reinterpret_cast<char*>(&(f.size)));
+                l.log( "Size" , f.size , true );
                 metaReader->read( sizeof(uint64_t) , reinterpret_cast<char*>(&(f.start)));
                 metaReader->read( sizeof(uint64_t) , reinterpret_cast<char*>(&(f.end)));
                 metaReader->read( sizeof(uint64_t) , reinterpret_cast<char*>(&(f.metadata)));
@@ -702,7 +706,7 @@ namespace os {
         length = std::min( length , file.size - file.position );
 
         if( length > 0 && buffer != 0 && file.position < file.size ) {
-            Block current = locate( file.current , file.position );
+            Block current = load( file.current );
             assert( file.position < 1000 );
 
             printBlock( current );
@@ -710,18 +714,21 @@ namespace os {
             uint64_t next = current.block;
             current = load( next );
 
-            printBlock( current );
+            printBlock( current , true );
 
             for( int i = 0 ; i < length ; ++i ) {
                 buffer[i] = current.data[file.block_position];
                 ++file.position;
                 ++file.block_position;
+                ++file.disk_position;
                 if( file.block_position  == current.length ) {
                     if( current.next != 0 ) {
+                        file.disk_position += Block_Size - current.length;
                         current = load( current.next );
                         file.block_position = 0;
                         file.current = current.block;
                     }else {
+                        assert( false );
                         break;
                     }
                 }
@@ -809,14 +816,18 @@ namespace os {
 
             file.position += len;
             file.block_position = b.length % Block_Size;
+            file.disk_position += len;
 
             curr = b.next;
         }
+
 
         // Need to move blocks around
         if( overwritten < to_overwrite ) {
             l.log( overwritten , to_overwrite , true );
             assert( false && "TODO: Handle case 'overwritten < length'"  );
+        }else {
+            file.size += overwritten - to_overwrite;
         }
 
         l.log( "Overwritten" , overwritten , true );
