@@ -17,45 +17,14 @@
 #include "FileWriter.h"
 #include "File.h"
 
-static uint64_t depth = 0;
-static bool allEnabled = false;
 static const char Zero[os::Block_Size] = {0};
 
 
 template<uint64_t to>
-uint64_t roundTo( uint64_t input ) {
+uint64_t round( uint64_t input ) {
     return to * ((input + to - 1)/to);
 }
 
-void tabs() {
-    for( int i = 0 ; i < depth ; ++i ) std::cout << "\t";
-}
-
-template <class V>
-void log( V msg , bool req = false ) {
-    if( req || allEnabled ) {
-        tabs();
-        std::cout << msg << std::endl;                      
-    }
-}
-
-template <class K,class V>
-void log( K key , V value , bool req = false ) {
-    if( req || allEnabled ) {
-        tabs();
-        std::cout << key << ": " << value << std::endl;
-    }
-}
-
-#define enter(MSG) {    \
-    log(MSG,true);      \
-    ++depth;            \
-}
-
-#define leave(MSG) {    \
-    --depth;            \
-    log(MSG,true);      \
-}
 
 #define assertStream(stream) {              \
     assert( stream );                       \
@@ -189,7 +158,9 @@ namespace os {
 
     File& FileSystem::createNewFile( std::string name ) {
         enter( "CREATENEWFILE" );
+
         Block b = allocate( Block_Size , NULL );
+
         File &f = *(new File());
         f.name = name;
         f.size = 0;
@@ -294,9 +265,11 @@ namespace os {
                 uint64_t str_len,f_position = metaReader->tell(); 
                 metaReader->read( sizeof(uint64_t) , reinterpret_cast<char*>(&str_len) );
                 metaReader->read( str_len , buff.data() );
-                metaReader->read( sizeof(uint64_t) , reinterpret_cast<char*>(&(f.start)) );
-                metaReader->read( sizeof(uint64_t) , reinterpret_cast<char*>(&(f.end)) );
-                metaReader->read( sizeof(uint64_t) , reinterpret_cast<char*>(&(f.size)) );
+                metaReader->read( sizeof(uint64_t) , reinterpret_cast<char*>(&(f.disk_usage)) );
+                metaReader->read( sizeof(uint64_t) , reinterpret_cast<char*>(&(f.size)));
+                metaReader->read( sizeof(uint64_t) , reinterpret_cast<char*>(&(f.start)));
+                metaReader->read( sizeof(uint64_t) , reinterpret_cast<char*>(&(f.end)));
+                metaReader->read( sizeof(uint64_t) , reinterpret_cast<char*>(&(f.metadata)));
 
                 f.fs = this;
                 f.metadata = metadata->position;
@@ -452,6 +425,7 @@ namespace os {
     //
     Block FileSystem::grow( uint64_t bytes , const char *buffer ) {
         enter( "GROW" );
+
         uint64_t blocks_to_write = (bytes + Block_Size - 1) / Block_Size;
         uint64_t current = blocks_allocated;
 
@@ -464,7 +438,7 @@ namespace os {
             blocks_allocated += blocks_to_write;
             bytes_allocated += bytes;
 
-            stream.seekp( bytes_allocated - 1 , std::ios_base::beg );
+            stream.seekp( Total_Size_Block * blocks_allocated - 1 , std::ios_base::beg );
             stream.write( Zero , 1 );
             stream.flush();
 
@@ -486,7 +460,10 @@ namespace os {
 
             uint64_t bytesM = std::min( Block_Size , bytes );
             std::copy( buffer , buffer + Block_Size , curr.data.begin() );
-            if( buffer != Zero ) buffer += Block_Size;
+            if( buffer != Zero ) {
+                buffer += Block_Size;
+                curr.length = Block_Size;
+            }
             writeBlock( curr );
 
             previous = current;
@@ -501,7 +478,11 @@ namespace os {
         curr.prev = (previous == current) ? 0 : previous;
         curr.block = current;
         curr.next = 0;
+        if( buffer == Zero ) {
+            curr.length = 0;
+        }else {
         curr.length = bytes;
+        }
         std::copy( buffer , buffer + bytes , curr.data.begin() );
         std::copy( Zero + bytes , Zero + Block_Size , curr.data.begin() + bytes );
 
@@ -717,7 +698,7 @@ namespace os {
     uint64_t FileSystem::read( File &file , uint64_t length , char* buffer ) {
         enter( "READ" );
 
-        printFile( file );
+        printFile( file , true );
 
         assertStream( stream );
 
@@ -736,13 +717,16 @@ namespace os {
             printBlock( current );
 
             for( int i = 0 ; i < length ; ++i ) {
-                buffer[i] = current.data[file.position];
+                buffer[i] = current.data[file.block_position];
                 ++file.position;
-                if( file.position == current.length ) {
+                ++file.block_position;
+                if( file.block_position  == current.length ) {
                     if( current.next != 0 ) {
                         current = load( current.next );
+                        file.block_position = 0;
                         file.current = current.block;
-                        file.position = 0;
+                    }else {
+                        break;
                     }
                 }
             }
@@ -776,6 +760,7 @@ namespace os {
 
         // Going to fill up rest of the file
         if( length + file.disk_position > file.disk_usage ) {
+            assert( false );
             // Calculate how much extra space we need
             uint64_t growBy = length - (file.disk_usage - file.disk_position);
 
@@ -801,9 +786,9 @@ namespace os {
         // We assume we always have space to write to
 
         uint64_t curr = file.current;
-        uint64_t written = 0;
-        uint64_t overwritten = 0;
-        uint64_t to_overwrite = 0;
+        uint64_t written = 0;               // How much data we have written
+        uint64_t overwritten = 0;           // How much data we have overwritten
+        uint64_t to_overwrite = 0;          // How much left we need to remove
         if( file.position < file.size ) {
             to_overwrite = std::min( length , file.size - file.position );
         }
@@ -814,12 +799,11 @@ namespace os {
             // Go to the current block
             file.current = curr;
             Block b = load( curr );
-            assert( b.length == 0 );
 
             // How much room is there to write our data
             uint64_t len = std::min( Block_Size - file.block_position , length );
             // How much data will we actually overwrite
-            overwritten += file.block_position - b.length;
+            overwritten += b.length + file.block_position;
 
             std::copy( buffer , buffer + len , b.data.data() + b.length );
             b.length = file.block_position + len;
@@ -843,7 +827,10 @@ namespace os {
 
         // TODO: What happens if we fill up file exactly to end?
 
-        //file.flush();
+        if( &file != metadata ) { 
+            metaWriter->seek( file.metadata + 2 * sizeof(uint64_t) + file.name.size() , BEG );
+            metaWriter->write( sizeof(file.size) , reinterpret_cast<char*>(&(file.size) ) );
+        }
 
         leave( "WRITE" );
         return written;

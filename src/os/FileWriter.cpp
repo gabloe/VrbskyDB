@@ -84,6 +84,8 @@ namespace os {
             current = b.next;
         }
 
+        log( "File Position" , file.position , true );
+        log( "Position" , position , true );
         assert( file.position == position );
 
         // Out of the file
