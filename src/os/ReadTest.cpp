@@ -5,7 +5,7 @@
 
 int main() {
     os::FileSystem fs( "test.dat" );
-    os::File f = fs.open( "Test" );
+    os::File& f = fs.open( "Test" );
     os::FileReader reader( f );
     char buff[1024];
     reader.read( 12 , buff );

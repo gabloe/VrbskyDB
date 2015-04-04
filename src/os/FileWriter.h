@@ -10,13 +10,14 @@ namespace os {
 
     class FileWriter {
         private:
-            File file;
+            File& file;
 
         public:
-            FileWriter( File f );
+            FileWriter( File& f );
 
             uint64_t write( const uint64_t , const char* const );
-            void seek( uint64_t , FilePosition );
+            void seek( int64_t , FilePosition );
+            uint64_t tell();
             void close();
     };
 

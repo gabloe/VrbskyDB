@@ -34,6 +34,8 @@
 namespace os {
 
     class File;
+    class FileWriter;
+    class FileReader;
 
     enum BlockStatus { FULL , LAZY };
 
@@ -72,17 +74,20 @@ namespace os {
             uint64_t lastFileBlock;
 
             // Pointers to open files
-            std::list<File> openFiles;
-            std::list<File> allFiles;
+            std::list<File*> openFiles;
+            std::list<File*> allFiles;
 
-            File *metadata;
+            FileWriter *metaWriter;
+            FileReader *metaReader;
+            File       *metadata;
 
             void lock( LockType );
             void unlock( LockType );
 
 
             /* File management functions */
-            File createNewFile( std::string );
+            void insertFile( File &f );
+            File& createNewFile( std::string );
 
             /* Data management functions*/
             void saveHeader();
@@ -100,14 +105,14 @@ namespace os {
             Block locate( uint64_t , uint64_t& );
             Block reuse( uint64_t& , const char*& );
 
-            void closing( File* );
+            void closing( File& );
 
-            uint64_t read( File &f , uint64_t length , char *buffer ); 
-            uint64_t write( File &f , uint64_t length , const char *buffer ); 
-            uint64_t insert( File &f , uint64_t length , const char *buffer ); 
-            uint64_t remove( File &f, uint64_t length ); 
+            uint64_t read(      File& f, uint64_t length , char *buffer ); 
+            uint64_t write(     File& f, uint64_t length , const char *buffer ); 
+            uint64_t insert(    File& f, uint64_t length , const char *buffer ); 
+            uint64_t remove(    File& f, uint64_t length ); 
 
-            bool unlink( File );
+            bool unlink( File& );
             bool rename( File& , const std::string );
 
             FileSystem() = delete;
@@ -126,7 +131,7 @@ namespace os {
             std::list<std::string> getFilenames();
 
             // Open a file for reading or modifiying.  If the file does not exist it is created.
-            File open( const std::string );
+            File& open( const std::string );
 
             // Checks to see if a file exists
             bool exists( const std::string ); 

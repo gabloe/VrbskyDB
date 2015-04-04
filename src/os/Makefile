@@ -35,10 +35,10 @@ EndianTest.o:	EndianTest.cpp
 
 test: $(OBJECTS) $(T_OBJECTS)
 	rm -f test.dat EndianTest CTest WTest RTest
-	$(CMP) $(FLAGS) CreateTest.o FileSystem.o File.o -o CTest
-	$(CMP) $(FLAGS) FileTest.o FileSystem.o File.o -o FTest
-	$(CMP) $(FLAGS) WriteTest.o FileWriter.o FileSystem.o File.o -o WTest
-	$(CMP) $(FLAGS) ReadTest.o FileReader.o FileSystem.o File.o -o RTest
+	$(CMP) $(FLAGS) CreateTest.o $(OBJECTS) -o CTest
+	$(CMP) $(FLAGS) FileTest.o   $(OBJECTS) -o FTest
+	$(CMP) $(FLAGS) WriteTest.o  $(OBJECTS) -o WTest
+	$(CMP) $(FLAGS) ReadTest.o   $(OBJECTS) -o RTest
 	$(CMP) $(FLAGS) EndianTest.o -o EndianTest
 
 

@@ -13,10 +13,17 @@
 #include <cmath>
 
 #include "FileSystem.h"
+#include "FileReader.h"
+#include "FileWriter.h"
 #include "File.h"
 
 uint64_t depth = 0;
 bool allEnabled = false;
+
+template<uint64_t to>
+uint64_t roundTo( uint64_t input ) {
+    return to * ((input + to - 1)/to);
+}
 
 void tabs() {
     for( int i = 0 ; i < depth ; ++i ) std::cout << "\t";
@@ -65,14 +72,16 @@ void gotoBlock( uint64_t block , uint64_t blockSize , std::fstream &stream ) {
 }
 
 void printFile( os::File &file , bool req = false ) {
-    log( "File Properties" , req );
-    log( "\tFile Name: ", file.name , req );
-    log( "\tFile Start: ", file.start ,req );
-    log( "\tFile Current: ", file.current , req );
-    log(  "\tFile Position: ", file.position , req ); 
-    log(  "\tFile End: ",  file.end , req );
-    log(  "\tFile Size: ", file.size , req );
-    log(  "\tFile metadata position: ", file.metadata , req ); 
+    log( "File Properties"      , req );
+    log( "\tFile Name"          , file.name             , req );
+    log( "\tFile Size"          , file.size             , req );
+    log( "\tFile Start"         , file.start            , req );
+    log( "\tFile Current"       , file.current          , req );
+    log( "\tFile Position"      , file.position         , req ); 
+    log( "\tBlock Position"     , file.block_position   , req );
+    log( "\tDisk Position"      , file.disk_position    , req );
+    log( "\tFile End"           , file.end              , req );
+    log( "\tMeta-data position" , file.metadata         , req ); 
 }
 
 void printBlock( os::Block &b , bool req = false ) {
@@ -108,90 +117,68 @@ void compact( os::Block &b, uint64_t start , uint64_t end ) {
 namespace os {
 
     // Private functions
+    void FileSystem::insertFile( File &f ) {
 
-    File FileSystem::createNewFile( std::string name ) {
-        enter( "CREATENEWFILE" );
-
-        uint64_t junk;
-
-        log( "FileName" , name );
-
-        uint64_t lastFileBlock = 1;
         std::array<char,1024> buffer;
-        char *reint;
 
-        // Create file meta-data 
-        //  File Meta-Data:
-        //      length of name
-        //      name
-        //      first block
-        //      last block
-        //      size
-        uint64_t lengthName = name.size();
-        uint64_t numBytes = 4 * sizeof( uint64_t ) + lengthName;
+        // Length of name
+        // name
+        // disk usage
+        // size
+        // first block
+        // last block
+        // metadata
+        
+        uint64_t pos  = 0;
+        uint64_t tmp= 0;
+        char *buff = reinterpret_cast<char*>(&tmp);
 
-        Block fileData = allocate( BlockSize , NULL );
+        tmp = f.name.size();
+        std::copy( buffer.data() + pos , buffer.data() + pos + sizeof(tmp) , buff );
+        pos += sizeof(tmp);
 
+        std::copy( buffer.data() + pos , buffer.data() + pos + tmp , f.name.begin() );
+        pos += f.name.size();
 
-        log( "Growing meta-data size by" , numBytes );
+        tmp = f.disk_usage;
+        std::copy( buffer.data() + pos , buffer.data() + pos + sizeof(tmp) , buff );
+        pos += sizeof(tmp);
 
-        uint64_t metaPosition = metadata->size;
-        metadataSize += numBytes;
-        metadata->size += numBytes;
+        tmp = f.size;
+        std::copy( buffer.data() + pos , buffer.data() + pos + sizeof(tmp) , buff );
+        pos += sizeof(tmp);
 
-        // Create data to write to the filesystem
+        tmp = f.start;
+        std::copy( buffer.data() + pos , buffer.data() + pos + sizeof(tmp) , buff );
+        pos += sizeof(tmp);
 
-        // Write length of name
-        reint = reinterpret_cast<char*>( &lengthName );
-        assert( lengthName == 4 );
-        std::copy( reint , reint + sizeof(uint64_t) , buffer.begin() );
-
-        // Write name
-        std::copy( name.begin() , name.end()        , buffer.begin() + 1 * sizeof(uint64_t) );
-
-        // Write first block
-        lengthName = fileData.block; 
-        std::copy( reint , reint + sizeof(uint64_t) , buffer.begin() + 1 * sizeof(uint64_t) + name.size() );
-
-        // Write last block
-        std::copy( reint , reint + sizeof(uint64_t) , buffer.begin() + 2 * sizeof(uint64_t) + name.size() );
-
-        // Write size
-        lengthName = 0;
-        std::copy( reint , reint + sizeof(uint64_t) , buffer.begin() + 3 * sizeof(uint64_t) + name.size() );
-
-        // Write data to blocks
-        gotoBlock( lastFileBlock );
-        Block b = readBlock();
+        tmp = f.end;
+        std::copy( buffer.data() + pos , buffer.data() + pos + sizeof(tmp) , buff );
+        pos += sizeof(tmp);
 
 
-        uint64_t bytesToWrite = std::min( numBytes, (BlockSize - b.length) );
-        std::copy( buffer.begin() , buffer.begin() + bytesToWrite , b.data.data() );
-        b.length += bytesToWrite;
-        numBytes -= bytesToWrite;
-        if( numBytes > 0 ) {
-            Block end = allocate( numBytes , buffer.begin() + bytesToWrite );
-            b.next = end.block;
-            end.prev = b.block;
-            flush( end );
-        }
-        log( "About to write this block to disk" );
-        printBlock( b );
-        flush( b );
+        tmp = f.metadata;
+        std::copy( buffer.data() + pos , buffer.data() + pos + sizeof(tmp) , buff );
+        pos += sizeof(tmp);
 
-        // Update header
-        ++numFiles;
-        saveHeader();
+        metaWriter->seek( 0 , END );
+        metaWriter->write( pos , buffer.data() );
 
-        // Return new file
-        File f;
+    }
+
+    File& FileSystem::createNewFile( std::string name ) {
+        enter( "CREATENEWFILE" );
+        Block b = allocate( BlockSize , NULL );
+        File &f = *(new File());
         f.name = name;
         f.size = 0;
-        f.start = b.block;
-        f.end = b.block;
-        f.position = 0;
-        f.metadata = metaPosition;
+        f.disk_usage = BlockSize;
+        f.start = f.end = f.current = b.block;
+        f.position = f.block_position = f.disk_position = 0;
+        f.metadata = metadata->size;
         f.fs = this;
+
+        insertFile( f );
 
         leave( "CREATENEWFILE" );
         return f;
@@ -325,7 +312,7 @@ namespace os {
     bool FileSystem::rename( File &toRename , const std::string newName ) {
         enter( "RENAME" );
         for( auto file = openFiles.begin() ; file != openFiles.end() ; ++file ) {
-            File &f = *file;
+            File &f = *(*file);
             if( f.getFilename() == toRename.getFilename() ) {
                 f.name = newName;
                 toRename.name = newName;
@@ -578,12 +565,12 @@ namespace os {
 
         Block head;
         if( length == 0 ) {
-            assert( false );
+            assert( length != 0 );
             return head;
         }
 
         if( numFreeBlocks > 0 ){
-            assert( false );
+            assert( numFreeBlocks == 0 );
             Block head = reuse( length , buffer );
             if( length > 0 ) {
                 Block grown = grow( length , buffer );
@@ -698,16 +685,17 @@ namespace os {
         enter( "WRITE" );
 
         // Going to fill up rest of the file
-        if( length + file.b_position > file.disk_usage ) {
+        if( length + file.disk_position > file.disk_usage ) {
             assert( false );
             // Calculate how much extra space we need
-            uint64_t growBy = length - (file.size - file.position);
+            uint64_t growBy = length - (file.disk_usage - file.disk_position);
 
             // Load for reconnection
             Block oldBlock = lazyLoad( file.end );
             Block newBlock = grow( growBy , NULL );
 
             // Update/Reconnect
+            file.disk_usage += roundTo<BlockSize>( growBy );
             file.end = newBlock.prev;
             oldBlock.next = newBlock.block;
             newBlock.prev = oldBlock.block;
@@ -722,24 +710,39 @@ namespace os {
 
         uint64_t curr = file.current;
         uint64_t written = 0;
+        uint64_t overwritten = 0;
+
+        // While we have not written everything
         while( written < length ) {
+
+            // Go to the current block
             file.current = curr;
             Block b = load( curr );
             assert( b.length == 0 );
 
-            uint64_t len = std::min( BlockSize - b.length , length - written );
+            // How much room is there to write our data
+            uint64_t len = std::min( BlockSize - file.block_position , length );
+            // How much data will we actually overwrite
+            overwritten = file.block_position - b.length;
+
             std::copy( buffer , buffer + len , b.data.data() + b.length );
-            b.length += len;
+            b.length = file.block_position + len;
             flush( b );
 
             written += len;
 
             file.position += len;
-            file.b_position = b.length;
+            file.block_position = b.length % BlockSize;
 
             curr = b.next;
-
         }
+
+        // Need to move blocks around
+        if( overwritten < length ) {
+            assert( false && "Handle overwritten < length"  );
+        }
+
+        log( "Overwritten" , overwritten , true );
 
         // TODO: What happens if we fill up file exactly to end?
 
@@ -887,7 +890,7 @@ namespace os {
         enter( "GETFILES" );
         std::list<File*> ret;
         for( auto file = allFiles.begin() ; file != allFiles.end() ; ++file ) {
-            ret.push_back( &(*file));
+            ret.push_back(*file);
         }
         leave( "GETFILES" );
         return ret;
@@ -897,7 +900,7 @@ namespace os {
         enter( "GETOPENFILES" );
         std::list<File*> ret;
         for( auto file = openFiles.begin() ; file != openFiles.end() ; ++file ) {
-            ret.push_back( &(*file));
+            ret.push_back(*file);
         }
         return ret;
         leave( "GETOPENFILES" );
@@ -907,31 +910,27 @@ namespace os {
         enter( "GETFILENAMES" );
         std::list<std::string> names;
         for( auto file = allFiles.begin() ; file != allFiles.end() ; ++file ) {
-            names.push_back( (*file).getFilename() );
+            names.push_back( (*file)->getFilename() );
         } 
         leave( "GETFILENAMES" );
         return names;
     }
 
-    File FileSystem::open( const std::string name) {
+    File& FileSystem::open( const std::string name) {
         enter( "OPEN" );
-        File f;
         for( auto file = allFiles.begin() ; file != allFiles.end() ; ++file ) {
-            if( (*file).getFilename() == name ) {
-                f = *file;
-                printFile( f , true );
-                goto theend;
+            if( (*file)->getFilename() == name ) {
+                return **file;
+                leave("OPEN");
             }
         } 
 
         // Create new file
-        f = createNewFile( name );
-theend:
+        return createNewFile( name );
         leave( "OPEN" );
-        return f;
     }
 
-    bool FileSystem::unlink( File f ) {
+    bool FileSystem::unlink( File &f ) {
         enter( "UNLINK:1" );
         leave( "UNLINK:1" );
     }
@@ -939,14 +938,14 @@ theend:
     //
     bool FileSystem::unlink( const std::string filename ) {
         enter( "UNLINK:2" );
-        File file = open(filename);
+        File& file = open(filename);
         leave( "UNLINK:2" );
         return file.unlink();
     }
 
     bool FileSystem::exists( const std::string filename ) {
         enter( "EXISTS" );
-        File file = open(filename);
+        File& file = open(filename);
         leave( "EXISTS" );
         return file.getStatus() == OPEN;
     }
@@ -1032,32 +1031,37 @@ theend:
 
         metadata = new File();
 
+        metadata->fs = this;
         metadata->name = "Metadata";
         metadata->start = 1;
         metadata->current = 1;
         metadata->end = lastFileBlock;
         metadata->size = metadataSize;
-        metadata->position = 0;
+
+        metaWriter = new FileWriter( *metadata );
+        metaReader = new FileReader( *metadata );
 
         printFile( *metadata , true );
 
         log( "Files to read" , numFiles , true );
 
         for( int i = 0 ; i < numFiles; ++i) {
-            File f;
+            File &f = *(new File());
+
+            uint64_t str_len,f_position = metaReader->tell(); 
+            metaReader->read( sizeof(uint64_t) , reinterpret_cast<char*>(&str_len) );
+            metaReader->read( sizeof(uint64_t) , reinterpret_cast<char*>(&str_len) );
+            metaReader->read( str_len , buff.data() );
+            metaReader->read( sizeof(uint64_t) , reinterpret_cast<char*>(&(f.start)) );
+            metaReader->read( sizeof(uint64_t) , reinterpret_cast<char*>(&(f.end)) );
+            metaReader->read( sizeof(uint64_t) , reinterpret_cast<char*>(&(f.size)) );
+
             f.fs = this;
             f.metadata = metadata->position;
-            uint64_t str_len; 
-            read( *metadata , sizeof(uint64_t) , reinterpret_cast<char*>(&str_len) );
-            read( *metadata , str_len , buff.data() );
             f.name = std::string( buff.data() , str_len );
-            read( *metadata , sizeof(uint64_t) , reinterpret_cast<char*>(&(f.start)) );
-            read( *metadata , sizeof(uint64_t) , reinterpret_cast<char*>(&(f.end)) );
-            read( *metadata , sizeof(uint64_t) , reinterpret_cast<char*>(&(f.size)) );
-
             f.current = f.start;
 
-            allFiles.push_back( f );
+            allFiles.push_back( &f );
         }
 
         log( "Finished reading Meta-data" );
@@ -1066,10 +1070,11 @@ theend:
         assertStream( stream );
     }
 
-    void FileSystem::closing( File *fp ) {
+    void FileSystem::closing( File& fp ) {
         enter( "CLOSING" );
         for( auto file = openFiles.begin(); file != openFiles.end(); ++file ) {
-            if( (*file).getFilename() == (*fp).getFilename() ) {
+            File &f = *(*file);
+            if( f.getFilename() == fp.getFilename() ) {
                 openFiles.erase(file);
                 break;
             }
@@ -1080,7 +1085,8 @@ theend:
     FileSystem::~FileSystem() {
         enter( "~FILESYSTEM" );
         shutdown();
-        delete metadata;
+        delete metaWriter;
+        delete metaReader;
         leave( "~FILESYSTEM" );
     }
 

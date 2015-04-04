@@ -9,12 +9,13 @@ namespace os {
 
     class FileReader {
         private:
-            File file;
+            File& file;
         public:
 
-        FileReader(File f);
+        FileReader(File& f);
         uint64_t read( uint64_t , char* );
         void seek( uint64_t , FilePosition );
+        uint64_t tell();
         void close();
 
     };

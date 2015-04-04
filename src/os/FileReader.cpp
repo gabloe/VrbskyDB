@@ -7,7 +7,7 @@
 
 namespace os {
 
-    FileReader::FileReader(File f) : file(f) {
+    FileReader::FileReader(File& f) : file(f) {
         /* Empty Constructor */
     }
 
@@ -38,6 +38,10 @@ namespace os {
                 file.position += position;
                 break;
         };
+    }
+
+    uint64_t FileReader::tell() {
+        return file.position;
     }
 
     void FileReader::close() {

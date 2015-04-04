@@ -8,7 +8,7 @@
 int main( void ) {
     const std::string FileName = "test.dat";
     os::FileSystem fs( FileName );
-    os::File f = fs.open( "TEST" );
+    os::File &f = fs.open( "TEST" );
     fs.shutdown();
 
     return 0;

@@ -13,37 +13,42 @@ namespace os {
 
 
             public:
-                FileSystem *fs;
 
                 // Properties of file/data
                 std::string name;
-                FileStatus status;
+
                 // Size information
                 uint64_t disk_usage;    // Bytes on disk (excluding meta-data)
                 uint64_t size;          // Bytes used
                 uint64_t num_blocks;    // Number of blocks allocated (can be computed)
 
                 // Position information
-                uint64_t start;     // First block
-                uint64_t end;       // Last block
-                uint64_t metadata;  // Position of metadata (byte offset)
+                uint64_t start;         // First block
+                uint64_t end;           // Last block
+                uint64_t metadata;      // Position of metadata (byte offset)
 
                 // Live state
-                uint64_t current;   // Current block
-                uint64_t b_position;// Position in current block
+                FileStatus status;      // The current status of me
+                FileSystem *fs;         // Filesytem that I am from
+                uint64_t current;       // Current block
 
-                uint64_t position;  // Number of used bytes since first block
-                uint64_t b_position;// Number of allocated bytes since first block
+                uint64_t position;      // Offset in written bytes
+                uint64_t block_position;// Offset in block
+                uint64_t disk_position; // Offset in allocated bytes
 
-                File(): size(0), position(0), start(0), end(0), current(0) , b_position(0) {} 
+                File() {
+                    disk_usage = size = num_blocks = start = end = 0;
+                    metadata = current = position = disk_position = block_position = 0;
+                } 
 
+                File( const File &other) = delete;
+/*
                 File( const File &other ) {
 
-                    fs = other.fs;
-
-                    name    = other.name;
-                    status  = other.status;
-                    size    = other.size;
+                    // Attributes
+                    name        = other.name;
+                    size        = other.size;
+                    disk_usage  = other.disk_usage;
 
                     // Saved meta-data
                     start       = other.start;
@@ -51,14 +56,22 @@ namespace os {
                     metadata    = other.metadata;
 
                     // State
-                    current     = other.current;
-                    position    = other.position;
-                    b_position  = other.b_position;
+                    fs              = other.fs;
+                    status          = other.status;
+                    current         = other.current;
+                    position        = other.position;
+                    block_position  = other.block_position;
+                    disk_position   = other.disk_position;
                 }
+*/
 
                 // Return the current filename seen by this file descriptor
                 std::string getFilename() const {
                     return name;
+                }
+
+                uint64_t length(void) {
+                    return this->size;
                 }
 
                 // Removes the file from the filesystem

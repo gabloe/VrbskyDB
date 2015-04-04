@@ -15,6 +15,11 @@ namespace os {
     static const uint64_t GB = 1024 * MB;
     static const uint64_t TB = 1024 * GB;
 
+    template<uint64_t V>
+    uint64_t round( uint64_t t ) {
+        return V * ( (t + V - 1) / V);
+    }
+
 }
 
 #endif
