@@ -666,9 +666,11 @@ namespace os {
                 buffer[i] = current.data[file.position];
                 ++file.position;
                 if( file.position == current.length ) {
-                    current = load( current.next );
-                    file.current = current.block;
-                    file.position = 0;
+                    if( current.next != 0 ) {
+                        current = load( current.next );
+                        file.current = current.block;
+                        file.position = 0;
+                    }
                 }
             }
         }else {
@@ -722,7 +724,6 @@ namespace os {
         uint64_t written = 0;
         while( written < length ) {
             file.current = curr;
-
 
             Block b = load( file.current );
 
