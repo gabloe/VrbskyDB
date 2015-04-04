@@ -454,7 +454,8 @@ namespace os {
         enter( "LOAD" );
         assert( stream.bad() == false );
         assert( stream.fail() == false );
-        assert( block < 100000 );
+        assert( block < 10 );
+        assert( block > 0 );
 
         gotoBlock( block );
         Block b = readBlock();
@@ -696,6 +697,7 @@ namespace os {
 
         // Grow to accomodate
         if( length + file.position > file.size ) {
+            assert( false );
             // Calculate how much extra space we need
             uint64_t growBy = length - (file.size - file.position);
 
