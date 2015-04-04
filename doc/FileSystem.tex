@@ -107,6 +107,15 @@ We begin with attributes related to how much is allocated then followed by attri
     \item    Move to last spot in meta-data
     \item    If necessary grow to accomodate new information
     \item    Fill buffer with new data and then write to end of meta-data
+        \begin{itemize}
+                \item   Write the lenght of the new filename
+                \item   Write the filename
+                \item   Write how much disk is being used (Block\_Size)
+                \item   Write how many bytes are being used
+                \item   Write the first block this file starts at
+                \item   Write the last block this file starts at
+                \item   Write where in meta-data this is stored
+        \end{itemize}
 \end{itemize}
 
 
