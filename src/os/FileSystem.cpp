@@ -179,6 +179,10 @@ namespace os {
         printFile( metaWriter->file , true );
         metaWriter->write( pos , buffer.data() );
 
+        metadata_bytes_used += pos;
+        metadata_files++;
+        saveHeader();
+
         leave("INSERTFILE");
 
     }
@@ -197,11 +201,14 @@ namespace os {
 
         insertFile( f );
 
+
         leave( "CREATENEWFILE" );
         return f;
     }
 
     void FileSystem::gotoBlock( uint64_t blockId ) {
+        assert( blockId > 0 );
+        assert( blockId < blocks_allocated );
         enter( "GOTOBLOCK" );
         uint64_t offset = blockId * Total_Size_Block;
 
@@ -265,9 +272,10 @@ namespace os {
     void FileSystem::loadMetadata() {
         std::array<char,1024> buff;
         enter("LOADMETADATA");
-        gotoBlock( 1 );
 
         metadata = new File();
+        metaWriter = new FileWriter( *metadata );
+        metaReader = new FileReader( *metadata );
         metadata->fs = this;
         metadata->name = "Metadata";
         metadata->start = 1;
@@ -276,28 +284,30 @@ namespace os {
         metadata->size = metadata_bytes_used;
         metadata->disk_usage = Block_Size;
 
-        metaWriter = new FileWriter( *metadata );
-        metaReader = new FileReader( *metadata );
+        if( metadata_files > 0 ) {
 
-        for( int i = 0 ; i < metadata_files; ++i) {
-            File &f = *(new File());
+            metaReader->seek( 0 , BEG );
 
-            uint64_t str_len,f_position = metaReader->tell(); 
-            metaReader->read( sizeof(uint64_t) , reinterpret_cast<char*>(&str_len) );
-            metaReader->read( sizeof(uint64_t) , reinterpret_cast<char*>(&str_len) );
-            metaReader->read( str_len , buff.data() );
-            metaReader->read( sizeof(uint64_t) , reinterpret_cast<char*>(&(f.start)) );
-            metaReader->read( sizeof(uint64_t) , reinterpret_cast<char*>(&(f.end)) );
-            metaReader->read( sizeof(uint64_t) , reinterpret_cast<char*>(&(f.size)) );
+            for( int i = 0 ; i < metadata_files; ++i) {
+                File &f = *(new File());
 
-            f.fs = this;
-            f.metadata = metadata->position;
-            f.name = std::string( buff.data() , str_len );
-            f.current = f.start;
+                uint64_t str_len,f_position = metaReader->tell(); 
+                metaReader->read( sizeof(uint64_t) , reinterpret_cast<char*>(&str_len) );
+                metaReader->read( str_len , buff.data() );
+                metaReader->read( sizeof(uint64_t) , reinterpret_cast<char*>(&(f.start)) );
+                metaReader->read( sizeof(uint64_t) , reinterpret_cast<char*>(&(f.end)) );
+                metaReader->read( sizeof(uint64_t) , reinterpret_cast<char*>(&(f.size)) );
 
-            allFiles.push_back( &f );
+                f.fs = this;
+                f.metadata = metadata->position;
+                f.name = std::string( buff.data() , str_len );
+                f.current = f.start;
+
+                printFile( f , true );
+
+                allFiles.push_back( &f );
+            }
         }
-
         leave("LOADMETADATA");
     }
 
@@ -334,7 +344,6 @@ namespace os {
         read64( stream , metadata_start );
         read64( stream , metadata_end );
 
-        printHeader();
     }
 
     void FileSystem::saveHeader() {
@@ -1008,14 +1017,14 @@ namespace os {
         enter( "OPEN" );
         for( auto file = allFiles.begin() ; file != allFiles.end() ; ++file ) {
             if( (*file)->getFilename() == name ) {
-                return **file;
                 leave("OPEN");
+                return **file;
             }
         } 
 
         // Create new file
-        return createNewFile( name );
         leave( "OPEN" );
+        return createNewFile( name );
     }
 
     bool FileSystem::unlink( File &f ) {
@@ -1057,9 +1066,9 @@ namespace os {
             // Make room for everything
             stream.seekp( Total_Size_Block * 2 - 1 );
             stream.write( Zero , 1 );
+            stream.seekp( 0 );
 
             // Write Header
-            gotoBlock( 0 );
             stream.write( HeaderSignature.data() , SignatureSize );
             saveHeader();
 
@@ -1083,9 +1092,9 @@ namespace os {
             }
             readHeader();
         }
+        printHeader();
 
         loadMetadata();
-        printHeader();
 
 
         leave( "FILESYSTEM" );
