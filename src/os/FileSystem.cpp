@@ -130,6 +130,8 @@ namespace os {
         uint64_t lengthName = name.size();
         uint64_t numBytes = 4 * sizeof( uint64_t ) + lengthName;
 
+        Block fileData = allocate( BlockSize , NULL );
+
 
         log( "Growing meta-data size by" , numBytes );
 
@@ -148,15 +150,15 @@ namespace os {
         std::copy( name.begin() , name.end()        , buffer.begin() + 1 * sizeof(uint64_t) );
 
         // Write first block
-        lengthName = 0; 
+        lengthName = fileData.block; 
         std::copy( reint , reint + sizeof(uint64_t) , buffer.begin() + 1 * sizeof(uint64_t) + name.size() );
 
         // Write last block
         std::copy( reint , reint + sizeof(uint64_t) , buffer.begin() + 2 * sizeof(uint64_t) + name.size() );
 
         // Write size
+        lengthName = BlockSize;
         std::copy( reint , reint + sizeof(uint64_t) , buffer.begin() + 3 * sizeof(uint64_t) + name.size() );
-
 
         // Write data to blocks
         gotoBlock( lastFileBlock );
@@ -184,9 +186,9 @@ namespace os {
         // Return new file
         File f;
         f.name = name;
-        f.size = 0;
-        f.start = 0;
-        f.end = 0;
+        f.size = BlockSize;
+        f.start = b.block;
+        f.end = b.block;
         f.position = 0;
         f.metadata = metaPosition;
         f.fs = this;
@@ -366,7 +368,7 @@ namespace os {
     //
     Block FileSystem::grow( uint64_t bytes , const char *buffer ) {
         enter( "GROW" );
-        uint64_t blocksToWrite = (bytes + BlockSize) / BlockSize;
+        uint64_t blocksToWrite = (bytes + BlockSize - 1) / BlockSize;
         uint64_t current = numBlocks;
 
         const char Zero[BlockSize] = {0};
@@ -416,9 +418,9 @@ namespace os {
 
             previous = current;
             ++current;
+            bytes -= bytesM;
         }
 
-        bytes = bytes % BlockSize;
         assert( bytes > 0 );
 
         Block curr;
@@ -692,30 +694,29 @@ namespace os {
     uint64_t FileSystem::write( File &file , uint64_t length , const char* buffer ) {
         enter( "WRITE" );
 
-        // Grow
+        // Grow to accomodate
         if( length + file.position > file.size ) {
-            uint64_t growBy = file.size - (length + file.position);
+            // Calculate how much extra space we need
+            uint64_t growBy = length - (file.size - file.position);
 
-            Block b = grow( growBy , NULL );
-            // New files need to be setup
-            if( file.start == 0 ) {
-                file.start = b.block;
-                file.current = b.block;
-                file.end = b.prev;
-                b.prev = 0;
-            }else {
-                Block c = lazyLoad( file.end );
-                c.next = b.block;
-                file.end = b.prev;
-                b.prev = 0;
-                flush( c );
-            }
-            flush( b );
+            // Load for reconnection
+            Block oldBlock = lazyLoad( file.end );
+            Block newBlock = grow( growBy , NULL );
+
+            // Update/Reconnect
+            file.end = newBlock.prev;
+            oldBlock.next = newBlock.block;
+            newBlock.prev = oldBlock.block;
+            flush( newBlock );
+            flush( oldBlock );
+
+            // Save file data
             file.size += growBy; 
         }
 
-        uint64_t curr = file.current;
+        // We assume we always have space to write to
 
+        uint64_t curr = file.current;
         uint64_t written = 0;
         while( written < length ) {
             file.current = curr;
@@ -1036,6 +1037,9 @@ theend:
         metadata->position = 0;
 
         printFile( *metadata , true );
+
+        log( "Files to read" , numFiles );
+
         for( int i = 0 ; i < numFiles; ++i) {
             File f;
             f.fs = this;
@@ -1048,9 +1052,10 @@ theend:
             read( *metadata , sizeof(uint64_t) , reinterpret_cast<char*>(&(f.end)) );
             read( *metadata , sizeof(uint64_t) , reinterpret_cast<char*>(&(f.size)) );
 
-            log( "Position in metadata file" , metadata->position , true );
-            allFiles.push_back( f );
+            f.current = f.start;
 
+            printFile( f , true );
+            allFiles.push_back( f );
         }
 
         log( "Finished reading Meta-data" );
