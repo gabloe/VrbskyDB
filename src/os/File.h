@@ -18,7 +18,10 @@ namespace os {
                 // Properties of file/data
                 std::string name;
                 FileStatus status;
-                uint64_t size;
+                // Size information
+                uint64_t disk_usage;    // Bytes on disk (excluding meta-data)
+                uint64_t size;          // Bytes used
+                uint64_t num_blocks;    // Number of blocks allocated (can be computed)
 
                 // Position information
                 uint64_t start;     // First block
@@ -27,8 +30,10 @@ namespace os {
 
                 // Live state
                 uint64_t current;   // Current block
-                uint64_t position;  // Position from first element in current block
                 uint64_t b_position;// Position in current block
+
+                uint64_t position;  // Number of used bytes since first block
+                uint64_t b_position;// Number of allocated bytes since first block
 
                 File(): size(0), position(0), start(0), end(0), current(0) , b_position(0) {} 
 

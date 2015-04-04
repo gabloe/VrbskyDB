@@ -11,7 +11,7 @@
 In order to support multiple updates to a file at any point in a file we
 developed a file system which will work with the operating systems filesystem.
 Our filesystem supports chunking of data to enable anywhere inserts.
-This is different from a write which is descructive.
+This is different from a write which is destructive.
 An insert is when we want to place some data between two points without losing any of the current data.
 In current file systems this happens by taking the current data and moving it down and then writing the new data in the open spot.
 By using chunking this minimizes the amount of work to do but has some overhead on seeking to a point in a file.
@@ -25,10 +25,21 @@ Additionally we will support remove and insert which take advantage of chunking.
 
 Our file system will be stored to a single file.
 Later we might work on how to split this into multiple files.
-In our current file layout we have a single header which contains informatiom about the file system.
+In our current file layout we have a single header which contains information about the file system.
 This includes things such as how many files, the first block which is free, and so on.
 After the header comes the first block which is assigned to the data structure used to manage the files.
 This will contain information pertaining to files stored, such as the name and first block they are stored in.
+
+\section*{Issues}
+
+When writing to a file there are issues to consider.
+For instance how do we know when to grow the file.
+When we need to grow the file we can check the position in the file in terms of allocated disk space.
+We can also save the total amount of bytes allocated on disk.
+Using these two values and amount of data we can calculate if we will need more disk space.
+
+The second issue is when writing.  We can write the amount of bytes on each block contiguously and then
+find the point where we need to reconnect and move the blocks we have to the end.
 
 
 \end{document}

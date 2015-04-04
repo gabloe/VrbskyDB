@@ -157,7 +157,7 @@ namespace os {
         std::copy( reint , reint + sizeof(uint64_t) , buffer.begin() + 2 * sizeof(uint64_t) + name.size() );
 
         // Write size
-        lengthName = BlockSize;
+        lengthName = 0;
         std::copy( reint , reint + sizeof(uint64_t) , buffer.begin() + 3 * sizeof(uint64_t) + name.size() );
 
         // Write data to blocks
@@ -186,7 +186,7 @@ namespace os {
         // Return new file
         File f;
         f.name = name;
-        f.size = BlockSize;
+        f.size = 0;
         f.start = b.block;
         f.end = b.block;
         f.position = 0;
@@ -697,8 +697,8 @@ namespace os {
     uint64_t FileSystem::write( File &file , uint64_t length , const char* buffer ) {
         enter( "WRITE" );
 
-        // Grow to accomodate
-        if( length + file.position > file.size ) {
+        // Going to fill up rest of the file
+        if( length + file.b_position > file.disk_usage ) {
             assert( false );
             // Calculate how much extra space we need
             uint64_t growBy = length - (file.size - file.position);
@@ -724,8 +724,8 @@ namespace os {
         uint64_t written = 0;
         while( written < length ) {
             file.current = curr;
-
-            Block b = load( file.current );
+            Block b = load( curr );
+            assert( b.length == 0 );
 
             uint64_t len = std::min( BlockSize - b.length , length - written );
             std::copy( buffer , buffer + len , b.data.data() + b.length );
