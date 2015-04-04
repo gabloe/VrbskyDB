@@ -916,7 +916,7 @@ namespace os {
         for( auto file = allFiles.begin() ; file != allFiles.end() ; ++file ) {
             if( (*file).getFilename() == name ) {
                 f = *file;
-                printFile( f );
+                printFile( f , true );
                 goto theend;
             }
         } 
@@ -1038,7 +1038,7 @@ theend:
 
         printFile( *metadata , true );
 
-        log( "Files to read" , numFiles );
+        log( "Files to read" , numFiles , true );
 
         for( int i = 0 ; i < numFiles; ++i) {
             File f;
@@ -1054,7 +1054,6 @@ theend:
 
             f.current = f.start;
 
-            printFile( f , true );
             allFiles.push_back( f );
         }
 
