@@ -9,7 +9,10 @@
 namespace os {
 
     class FileWriter {
-        private:
+
+        friend class FileSystem;
+
+        protected:
             File& file;
 
         public:

@@ -17,8 +17,10 @@
 #include "FileWriter.h"
 #include "File.h"
 
-uint64_t depth = 0;
-bool allEnabled = false;
+static uint64_t depth = 0;
+static bool allEnabled = false;
+static const char Zero[os::Block_Size] = {0};
+
 
 template<uint64_t to>
 uint64_t roundTo( uint64_t input ) {
@@ -60,6 +62,15 @@ void log( K key , V value , bool req = false ) {
     assert( stream.is_open() );             \
     assert( stream.fail() == false );       \
     assert( stream.bad() == false );        \
+}
+
+
+void write64( std::fstream& str , uint64_t t ) {
+    str.write( reinterpret_cast<char*>( &t ) , sizeof(t) );
+}
+
+void read64( std::fstream& str , uint64_t &t ) {
+    str.read( reinterpret_cast<char*>( &t ) , sizeof(t) );
 }
 
 void gotoBlock( uint64_t block , uint64_t blockSize , std::fstream &stream ) {
@@ -118,6 +129,7 @@ namespace os {
 
     // Private functions
     void FileSystem::insertFile( File &f ) {
+        enter("INSERTFILE");
 
         std::array<char,1024> buffer;
 
@@ -131,48 +143,53 @@ namespace os {
         
         uint64_t pos  = 0;
         uint64_t tmp= 0;
-        char *buff = reinterpret_cast<char*>(&tmp);
+        char *start = reinterpret_cast<char*>(&tmp);
+        char *end = start + sizeof(tmp);
+
+        printFile( f , true );
 
         tmp = f.name.size();
-        std::copy( buffer.data() + pos , buffer.data() + pos + sizeof(tmp) , buff );
+        std::copy(start, end, buffer.begin() + pos);
         pos += sizeof(tmp);
 
-        std::copy( buffer.data() + pos , buffer.data() + pos + tmp , f.name.begin() );
+        std::copy(f.name.begin(), f.name.end(), buffer.begin() + pos);
         pos += f.name.size();
 
         tmp = f.disk_usage;
-        std::copy( buffer.data() + pos , buffer.data() + pos + sizeof(tmp) , buff );
+        std::copy(start, end, buffer.begin() + pos);
         pos += sizeof(tmp);
 
         tmp = f.size;
-        std::copy( buffer.data() + pos , buffer.data() + pos + sizeof(tmp) , buff );
+        std::copy(start, end, buffer.begin() + pos);
         pos += sizeof(tmp);
 
         tmp = f.start;
-        std::copy( buffer.data() + pos , buffer.data() + pos + sizeof(tmp) , buff );
+        std::copy(start, end, buffer.begin() + pos);
         pos += sizeof(tmp);
 
         tmp = f.end;
-        std::copy( buffer.data() + pos , buffer.data() + pos + sizeof(tmp) , buff );
+        std::copy(start, end, buffer.begin() + pos);
         pos += sizeof(tmp);
 
-
         tmp = f.metadata;
-        std::copy( buffer.data() + pos , buffer.data() + pos + sizeof(tmp) , buff );
+        std::copy(start, end, buffer.begin() + pos);
         pos += sizeof(tmp);
 
         metaWriter->seek( 0 , END );
+        printFile( metaWriter->file , true );
         metaWriter->write( pos , buffer.data() );
+
+        leave("INSERTFILE");
 
     }
 
     File& FileSystem::createNewFile( std::string name ) {
         enter( "CREATENEWFILE" );
-        Block b = allocate( BlockSize , NULL );
+        Block b = allocate( Block_Size , NULL );
         File &f = *(new File());
         f.name = name;
         f.size = 0;
-        f.disk_usage = BlockSize;
+        f.disk_usage = Block_Size;
         f.start = f.end = f.current = b.block;
         f.position = f.block_position = f.disk_position = 0;
         f.metadata = metadata->size;
@@ -186,13 +203,13 @@ namespace os {
 
     void FileSystem::gotoBlock( uint64_t blockId ) {
         enter( "GOTOBLOCK" );
-        uint64_t offset = blockId * TotalBlockSize;
+        uint64_t offset = blockId * Total_Size_Block;
 
         log( "Moving to block" , blockId );
         log( "At offset" , offset );
 
-        stream.seekp( blockId * TotalBlockSize );
-        stream.seekg( blockId * TotalBlockSize );
+        stream.seekp( blockId * Total_Size_Block );
+        stream.seekg( blockId * Total_Size_Block );
         leave( "GOTOBLOCK" );
     }
 
@@ -200,7 +217,7 @@ namespace os {
         enter( "READBLOCK" );
         Block ret;
         ret.status = FULL;
-        ret.block = stream.tellp() / TotalBlockSize;
+        ret.block = stream.tellp() / Total_Size_Block;
 
         log( "About to read block" , ret.block );
         assertStream( stream );
@@ -225,7 +242,7 @@ namespace os {
 
         printBlock( b );
 
-        assert( stream.tellp() == b.block * TotalBlockSize );
+        assert( stream.tellp() == b.block * Total_Size_Block );
 
         assertStream( stream );
 
@@ -245,31 +262,102 @@ namespace os {
 
     }
 
+    void FileSystem::loadMetadata() {
+        std::array<char,1024> buff;
+        enter("LOADMETADATA");
+        gotoBlock( 1 );
+
+        metadata = new File();
+        metadata->fs = this;
+        metadata->name = "Metadata";
+        metadata->start = 1;
+        metadata->current = 1;
+        metadata->end = metadata_end;
+        metadata->size = metadata_bytes_used;
+        metadata->disk_usage = Block_Size;
+
+        metaWriter = new FileWriter( *metadata );
+        metaReader = new FileReader( *metadata );
+
+        for( int i = 0 ; i < metadata_files; ++i) {
+            File &f = *(new File());
+
+            uint64_t str_len,f_position = metaReader->tell(); 
+            metaReader->read( sizeof(uint64_t) , reinterpret_cast<char*>(&str_len) );
+            metaReader->read( sizeof(uint64_t) , reinterpret_cast<char*>(&str_len) );
+            metaReader->read( str_len , buff.data() );
+            metaReader->read( sizeof(uint64_t) , reinterpret_cast<char*>(&(f.start)) );
+            metaReader->read( sizeof(uint64_t) , reinterpret_cast<char*>(&(f.end)) );
+            metaReader->read( sizeof(uint64_t) , reinterpret_cast<char*>(&(f.size)) );
+
+            f.fs = this;
+            f.metadata = metadata->position;
+            f.name = std::string( buff.data() , str_len );
+            f.current = f.start;
+
+            allFiles.push_back( &f );
+        }
+
+        leave("LOADMETADATA");
+    }
+
+    void FileSystem::printHeader() {
+        log( "Bytes Allocated", bytes_allocated , true );
+        log( "Bytes Used", bytes_used , true );
+        log( "Blocks Allocated", blocks_allocated , true );
+        log( "Blocks Used", blocks_used , true );
+        log( "Number free blocks", free_count , true );
+        log( "First free block", free_first , true );
+        log( "Bytes allocated for metadata", metadata_bytes_allocated , true );
+        log( "Blocks allocated for metadata", metadata_allocated_blocks , true );
+        log( "Bytes used for meta-data", metadata_bytes_used , true );
+        log( "Blocks used for metadata", metadata_blocks_used , true );
+        log( "Files created", metadata_files , true );
+        log( "First block for metadata", metadata_start , true );
+        log( "Last block for metadata", metadata_end , true );
+    }
+
+    void FileSystem::readHeader() {
+        stream.seekp( SignatureSize , std::ios_base::beg );
+        assert( stream.tellp() == 8 );
+        read64( stream , bytes_allocated );
+        read64( stream , bytes_used );
+        read64( stream , blocks_allocated );
+        read64( stream , blocks_used );
+        read64( stream , free_count );
+        read64( stream , free_first );
+        read64( stream , metadata_bytes_allocated );
+        read64( stream , metadata_allocated_blocks );
+        read64( stream , metadata_bytes_used );
+        read64( stream , metadata_blocks_used );
+        read64( stream , metadata_files );
+        read64( stream , metadata_start );
+        read64( stream , metadata_end );
+
+        printHeader();
+    }
+
     void FileSystem::saveHeader() {
         enter( "SAVEHEADER" );
 
         assertStream( stream );
 
-        log( "Writing Header to Disk" );
-        log( "\tTotal number of bytes stored: "           , totalBytes );
-        log( "\tFirst block of the free list: "           , freeList );
-        log( "\tNumber of blocks used for file data: "    , numBlocks );
-        log( "\tNumber of free blocks: "                  , numFreeBlocks );
-        log( "\tNumber of files created: "                , numFiles );
-        log( "\tAmount of data used for meta-data: "      , metadataSize );
-
         stream.seekp( SignatureSize , std::ios_base::beg );
-
         assert( stream.tellp() == 8 );
+        write64( stream , bytes_allocated );
+        write64( stream , bytes_used );
+        write64( stream , blocks_allocated );
+        write64( stream , blocks_used );
+        write64( stream , free_count );
+        write64( stream , free_first );
+        write64( stream , metadata_bytes_allocated );
+        write64( stream , metadata_allocated_blocks );
+        write64( stream , metadata_bytes_used );
+        write64( stream , metadata_blocks_used );
+        write64( stream , metadata_files );
+        write64( stream , metadata_start );
+        write64( stream , metadata_end );
 
-        // Write header
-        stream.write( reinterpret_cast<char*>(&totalBytes) , sizeof(totalBytes) );
-        stream.write( reinterpret_cast<char*>(&freeList) , sizeof(freeList) );
-        stream.write( reinterpret_cast<char*>(&numBlocks) , sizeof(numBlocks) );
-        stream.write( reinterpret_cast<char*>(&numFreeBlocks) , sizeof(numFreeBlocks) );
-        stream.write( reinterpret_cast<char*>(&numFiles) , sizeof(numFiles) );
-        stream.write( reinterpret_cast<char*>(&metadataSize) , sizeof(metadataSize) );
-        stream.write( reinterpret_cast<char*>(&lastFileBlock) , sizeof(lastFileBlock) );
         stream.flush();
 
         assertStream( stream );
@@ -355,28 +443,19 @@ namespace os {
     //
     Block FileSystem::grow( uint64_t bytes , const char *buffer ) {
         enter( "GROW" );
-        uint64_t blocksToWrite = (bytes + BlockSize - 1) / BlockSize;
-        uint64_t current = numBlocks;
+        uint64_t blocks_to_write = (bytes + Block_Size - 1) / Block_Size;
+        uint64_t current = blocks_allocated;
 
-        const char Zero[BlockSize] = {0};
         if( buffer == NULL ) {
             buffer = Zero;
         }
 
-
-        log( "Growing filesystem by" , bytes , true );
-        log( "Blocks to be added" , blocksToWrite , true );
-
-        // Just grow first
         lock( WRITE );
         {
-            numBlocks += blocksToWrite;
-            totalBytes += bytes;
+            blocks_allocated += blocks_to_write;
+            bytes_allocated += bytes;
 
-            log( "Total Bytes" , numBlocks * TotalBlockSize , true );
-            assertStream( stream );
-
-            stream.seekp( numBlocks * TotalBlockSize , std::ios_base::beg );
+            stream.seekp( bytes_allocated - 1 , std::ios_base::beg );
             stream.write( Zero , 1 );
             stream.flush();
 
@@ -384,23 +463,21 @@ namespace os {
             assertStream( stream );
         }unlock( WRITE );
 
-        assertStream( stream );
-
-        // In case we have no data
-
         // Write new data
-        stream.seekp( TotalBlockSize * current , std::ios_base::beg );
+        stream.seekp( Total_Size_Block * current , std::ios_base::beg );
 
-        uint64_t previous = numBlocks - 1;
-        for( int i = 0 ; i < blocksToWrite - 1; ++i) {
+        assert( current != 0 );
+
+        uint64_t previous = blocks_allocated - 1;
+        for( int i = 0 ; i < blocks_to_write - 1; ++i) {
             Block curr;
             curr.prev = previous;
             curr.block = current; 
             curr.next = current + 1;
 
-            uint64_t bytesM = std::min( BlockSize , bytes );
-            std::copy( buffer , buffer + BlockSize , curr.data.begin() );
-            if( buffer != Zero ) buffer += BlockSize;
+            uint64_t bytesM = std::min( Block_Size , bytes );
+            std::copy( buffer , buffer + Block_Size , curr.data.begin() );
+            if( buffer != Zero ) buffer += Block_Size;
             writeBlock( curr );
 
             previous = current;
@@ -417,14 +494,14 @@ namespace os {
         curr.next = 0;
         curr.length = bytes;
         std::copy( buffer , buffer + bytes , curr.data.begin() );
-        std::copy( Zero + bytes , Zero + BlockSize , curr.data.begin() + bytes );
+        std::copy( Zero + bytes , Zero + Block_Size , curr.data.begin() + bytes );
 
         printBlock( curr );
         flush( curr );
 
-        curr = load( numBlocks - blocksToWrite );
+        curr = load( blocks_allocated - blocks_to_write );
 
-        assert( ( numBlocks - blocksToWrite - 1) < 1000 );
+        assert( ( blocks_allocated - blocks_to_write - 1) < 1000 );
         leave( "GROW" );
 
         return curr;
@@ -507,27 +584,27 @@ namespace os {
 
         assertStream( stream );
 
-        if( numFreeBlocks > 0 ) {
-            uint64_t prevBlock = 0,currBlock = freeList;
+        if( free_count > 0 ) {
+            uint64_t prevBlock = 0,currBlock = free_first;
             Block current;
 
             head = lazyLoad( currBlock );
 
             do {
                 // Update free list
-                freeList = current.next;
-                --numFreeBlocks;
+                free_first = current.next;
+                --free_count;
 
-                // Currently we treat the freeList as a special file, so just use it as such
+                // Currently we treat the free_first as a special file, so just use it as such
                 current = lazyLoad( currBlock );
                 current.status = FULL;
-                current.length = std::min( length , BlockSize );
+                current.length = std::min( length , Block_Size );
                 uint64_t fillOffset = 0;
                 if( buffer != 0 ) {
                     std::copy( buffer , buffer + current.length , current.data.data() );
-                    fillOffset = BlockSize - current.length;
+                    fillOffset = Block_Size - current.length;
                 }
-                std::fill( current.data.begin() + fillOffset , current.data.begin() + BlockSize , 0 );
+                std::fill( current.data.begin() + fillOffset , current.data.begin() + Block_Size , 0 );
 
                 // Update input
                 buffer += current.length;
@@ -538,9 +615,9 @@ namespace os {
 
                 // Go to next
                 prevBlock = currBlock;
-                currBlock = freeList;
+                currBlock = free_first;
 
-            } while ( numFreeBlocks > 0 && length > 0 );
+            } while ( free_count > 0 && length > 0 );
 
             current.next = 0;
             head.prev = prevBlock;
@@ -569,8 +646,8 @@ namespace os {
             return head;
         }
 
-        if( numFreeBlocks > 0 ){
-            assert( numFreeBlocks == 0 );
+        if( free_count > 0 ){
+            assert( free_count == 0 );
             Block head = reuse( length , buffer );
             if( length > 0 ) {
                 Block grown = grow( length , buffer );
@@ -684,9 +761,12 @@ namespace os {
     uint64_t FileSystem::write( File &file , uint64_t length , const char* buffer ) {
         enter( "WRITE" );
 
+        log( "Filename" , file.name , true );
+        log( "File Position" , file.position , true );
+        log( "Length to write" , length , true );
+
         // Going to fill up rest of the file
         if( length + file.disk_position > file.disk_usage ) {
-            assert( false );
             // Calculate how much extra space we need
             uint64_t growBy = length - (file.disk_usage - file.disk_position);
 
@@ -695,7 +775,7 @@ namespace os {
             Block newBlock = grow( growBy , NULL );
 
             // Update/Reconnect
-            file.disk_usage += roundTo<BlockSize>( growBy );
+            file.disk_usage += roundTo<Block_Size>( growBy );
             file.end = newBlock.prev;
             oldBlock.next = newBlock.block;
             newBlock.prev = oldBlock.block;
@@ -704,6 +784,9 @@ namespace os {
 
             // Save file data
             file.size += growBy; 
+
+            assert( false && "Do not handle growing very well, probably best to just break for now" );
+
         }
 
         // We assume we always have space to write to
@@ -711,6 +794,10 @@ namespace os {
         uint64_t curr = file.current;
         uint64_t written = 0;
         uint64_t overwritten = 0;
+        uint64_t to_overwrite = 0;
+        if( file.position < file.size ) {
+            to_overwrite = std::min( length , file.size - file.position );
+        }
 
         // While we have not written everything
         while( written < length ) {
@@ -721,9 +808,9 @@ namespace os {
             assert( b.length == 0 );
 
             // How much room is there to write our data
-            uint64_t len = std::min( BlockSize - file.block_position , length );
+            uint64_t len = std::min( Block_Size - file.block_position , length );
             // How much data will we actually overwrite
-            overwritten = file.block_position - b.length;
+            overwritten += file.block_position - b.length;
 
             std::copy( buffer , buffer + len , b.data.data() + b.length );
             b.length = file.block_position + len;
@@ -732,14 +819,15 @@ namespace os {
             written += len;
 
             file.position += len;
-            file.block_position = b.length % BlockSize;
+            file.block_position = b.length % Block_Size;
 
             curr = b.next;
         }
 
         // Need to move blocks around
-        if( overwritten < length ) {
-            assert( false && "Handle overwritten < length"  );
+        if( overwritten < to_overwrite ) {
+            log( overwritten , to_overwrite , true );
+            assert( false && "TODO: Handle case 'overwritten < length'"  );
         }
 
         log( "Overwritten" , overwritten , true );
@@ -765,7 +853,7 @@ namespace os {
     //  @return -   The number of bytes written
     uint64_t FileSystem::insert( File &file , uint64_t length , const char* buffer ) {
         enter( "INSERT" );
-        assert( numFreeBlocks == 0 );
+        assert( free_count == 0 );
         if( length > 0 ) {
             // Grow file if neccessary 
             if( file.position > file.size ) {
@@ -791,7 +879,7 @@ namespace os {
             Block b = locate( file.current , file.position );
 
             // We might have to split
-            split( b , file.position % BlockSize );
+            split( b , file.position % Block_Size );
 
             // Now append to here
             Block next = allocate( length , buffer );
@@ -828,7 +916,7 @@ namespace os {
     //
     uint64_t FileSystem::remove( File &file ,uint64_t length ) {
         enter( "REMOVE" );
-        assert( numFreeBlocks == 0 );
+        assert( free_count == 0 );
         uint64_t remaining = std::min( length , file.size - file.position );
 
         // Make sure can remove bytes
@@ -953,7 +1041,6 @@ namespace os {
 
     FileSystem::FileSystem( const std::string filename) {
         enter( "FILESYSTEM" );
-        std::array<char,1024> buff;
 
         fileSystemLocation = filename;
 
@@ -966,105 +1053,40 @@ namespace os {
             stream.open( filename , std::fstream::in |  std::fstream::out | std::fstream::binary );
 
             log( "The file does not exist, so we are creating it" );
-            totalBytes = 0;
-            freeList = 0;
-            numBlocks = 2;
-            numFreeBlocks = 0;
-            numFiles = 0;
-            metadataSize = 0;
-            lastFileBlock = 1;
 
-            // Now we go to the beginning
-            stream.seekp( 0 , std::ios_base::beg );
+            // Make room for everything
+            stream.seekp( Total_Size_Block * 2 - 1 );
+            stream.write( Zero , 1 );
 
-            // Write header
+            // Write Header
+            gotoBlock( 0 );
             stream.write( HeaderSignature.data() , SignatureSize );
-            stream.write( reinterpret_cast<char*>(&totalBytes) , sizeof(totalBytes) );
-            stream.write( reinterpret_cast<char*>(&freeList) , sizeof(freeList) );
-            stream.write( reinterpret_cast<char*>(&numBlocks) , sizeof(numBlocks) );
-            stream.write( reinterpret_cast<char*>(&numFreeBlocks) , sizeof(numFreeBlocks) );
-            stream.write( reinterpret_cast<char*>(&numFiles) , sizeof(numFiles) );
-            stream.write( reinterpret_cast<char*>(&metadataSize) , sizeof(metadataSize) );
-            stream.write( reinterpret_cast<char*>(&lastFileBlock) , sizeof(lastFileBlock) );
+            saveHeader();
 
-            assert( TotalBlockSize == 1024 );
-            stream.seekp( TotalBlockSize , std::ios_base::beg );
+            // Write FileSystem meta-data
+            gotoBlock( 1 );
+            Block b;
+            b.block = 1;
+            b.prev = b.next = b.length = 0;
+            writeBlock( b );
 
-            // Write file "data-strcture"
-            stream.write( reinterpret_cast<char*>(&totalBytes) , sizeof(totalBytes) ); // Prev
-            stream.write( reinterpret_cast<char*>(&totalBytes) , sizeof(totalBytes) );  // Next
-            stream.seekp( TotalBlockSize * 2 - 1 );
-            stream.write( reinterpret_cast<char*>(&totalBytes) , sizeof( totalBytes ));
-
-            stream.flush();
 
         }else {
 
             //  Read the header
+            std::array<char,SignatureSize> buff;
             stream.read( buff.data() , SignatureSize );
 
             if( std::strncmp( buff.data() , HeaderSignature.data() , SignatureSize ) != 0 ) {
                 std::cout << "Invalid header signature found" << std::endl;
                 std::exit( -1 );
             }
-
-            stream.read( reinterpret_cast<char*>(&totalBytes)       , sizeof(totalBytes) );
-            stream.read( reinterpret_cast<char*>(&freeList)         , sizeof(freeList) );
-            stream.read( reinterpret_cast<char*>(&numBlocks)        , sizeof(numBlocks) );
-            stream.read( reinterpret_cast<char*>(&numFreeBlocks)    , sizeof(numFreeBlocks) );
-            stream.read( reinterpret_cast<char*>(&numFiles)         , sizeof(numFiles) );
-            stream.read( reinterpret_cast<char*>(&metadataSize)     , sizeof(metadataSize) );
-            stream.read( reinterpret_cast<char*>(&lastFileBlock)     , sizeof(lastFileBlock) );
-
+            readHeader();
         }
 
-        log( "Total number of bytes stored"           , totalBytes );
-        log( "First block of the free list"           , freeList );
-        log( "Number of blocks used for file data"    , numBlocks );
-        log( "Number of free blocks"                  , numFreeBlocks );
-        log( "Number of files created"                , numFiles );
-        log( "Amount of data used for meta-data"      , metadataSize );
+        loadMetadata();
+        printHeader();
 
-        //  Read the filenames
-        log( "Loading File Meta-data" );
-        log( "Number of files" , numFiles );
-
-        metadata = new File();
-
-        metadata->fs = this;
-        metadata->name = "Metadata";
-        metadata->start = 1;
-        metadata->current = 1;
-        metadata->end = lastFileBlock;
-        metadata->size = metadataSize;
-
-        metaWriter = new FileWriter( *metadata );
-        metaReader = new FileReader( *metadata );
-
-        printFile( *metadata , true );
-
-        log( "Files to read" , numFiles , true );
-
-        for( int i = 0 ; i < numFiles; ++i) {
-            File &f = *(new File());
-
-            uint64_t str_len,f_position = metaReader->tell(); 
-            metaReader->read( sizeof(uint64_t) , reinterpret_cast<char*>(&str_len) );
-            metaReader->read( sizeof(uint64_t) , reinterpret_cast<char*>(&str_len) );
-            metaReader->read( str_len , buff.data() );
-            metaReader->read( sizeof(uint64_t) , reinterpret_cast<char*>(&(f.start)) );
-            metaReader->read( sizeof(uint64_t) , reinterpret_cast<char*>(&(f.end)) );
-            metaReader->read( sizeof(uint64_t) , reinterpret_cast<char*>(&(f.size)) );
-
-            f.fs = this;
-            f.metadata = metadata->position;
-            f.name = std::string( buff.data() , str_len );
-            f.current = f.start;
-
-            allFiles.push_back( &f );
-        }
-
-        log( "Finished reading Meta-data" );
 
         leave( "FILESYSTEM" );
         assertStream( stream );

@@ -71,7 +71,7 @@ namespace os {
 
             // Update
             if( pos > move ) { // About to go to next block
-                file.disk_position += BlockSize;
+                file.disk_position += Block_Size;
                 file.block_position = 0;
             }else {
                 file.block_position += move;
@@ -84,12 +84,14 @@ namespace os {
             current = b.next;
         }
 
+        assert( file.position == position );
+
         // Out of the file
         if( file.position < position ) {
             file.current = 0;
             file.position += position;
-            file.disk_position += round<BlockSize>(position);
-            file.block_position = position % BlockSize;
+            file.disk_position += round<Block_Size>(position);
+            file.block_position = position % Block_Size;
         }
     }
 

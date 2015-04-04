@@ -42,16 +42,14 @@ namespace os {
     static const uint64_t SignatureSize = 8;
     static const std::array<char,8> HeaderSignature = { 0xD , 0xE , 0xA , 0xD , 0xB , 0xE , 0xE , 0xF  };
 
-    static const uint64_t TotalBlockSize = KB;
-    static const uint64_t HeaderSize = TotalBlockSize;
-    static const uint64_t LengthOffset = sizeof(uint64_t) * 10;
-    // TotalBlockSize - sizeof(prev) - sizeof(next) - sizeof(length)
-    static const uint64_t BlockSize = TotalBlockSize - 3 * sizeof(uint64_t);
+    static const uint64_t Total_Size_Block = KB;
+    static const uint64_t Header_Size = Total_Size_Block;
+    static const uint64_t Block_Size = Total_Size_Block - 3 * sizeof(uint64_t);
 
     struct Block {
         BlockStatus status;
         uint64_t block,prev,next,length;
-        std::array<char,BlockSize> data;
+        std::array<char,Block_Size> data;
         Block() {
             status = LAZY;
             block = prev = next = length = 0;
@@ -65,13 +63,19 @@ namespace os {
             std::fstream stream;
 
             std::string fileSystemLocation;
-            uint64_t totalBytes;
-            uint64_t freeList;
-            uint64_t numBlocks;
-            uint64_t numFreeBlocks;
-            uint64_t numFiles;
-            uint64_t metadataSize;
-            uint64_t lastFileBlock;
+            uint64_t bytes_allocated             = Block_Size;
+            uint64_t bytes_used                  = 0;
+            uint64_t blocks_allocated            = 2;
+            uint64_t blocks_used                 = 0;    // Given to file-system
+            uint64_t free_count                  = 0;
+            uint64_t free_first                  = 0;
+            uint64_t metadata_bytes_allocated    = Block_Size;
+            uint64_t metadata_allocated_blocks   = 1;
+            uint64_t metadata_bytes_used         = 0;
+            uint64_t metadata_blocks_used        = 0;
+            uint64_t metadata_files              = 0;
+            uint64_t metadata_start              = 1;
+            uint64_t metadata_end                = 1;
 
             // Pointers to open files
             std::list<File*> openFiles;
@@ -86,11 +90,14 @@ namespace os {
 
 
             /* File management functions */
+            void loadMetadata();
             void insertFile( File &f );
             File& createNewFile( std::string );
 
             /* Data management functions*/
             void saveHeader();
+            void readHeader();
+            void printHeader();
 
             void gotoBlock( uint64_t );
             Block readBlock();
