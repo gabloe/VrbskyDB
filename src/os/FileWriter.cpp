@@ -3,13 +3,9 @@
 #include <cassert>
 #include <algorithm>
 
-#include "Logging.h"
-
 #include "FileSystem.h"
 #include "File.h"
 #include "FileWriter.h"
-
-static Log l(std::cout);
 
 namespace os {
 
@@ -88,8 +84,6 @@ namespace os {
             current = b.next;
         }
 
-        l.log( "File Position" , file.position , true );
-        l.log( "Position" , position , true );
         assert( file.position == position );
 
         // Out of the file

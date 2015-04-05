@@ -145,8 +145,6 @@ namespace os {
         metaWriter->write( pos , buffer.data() );
 
         metadata_bytes_used += pos;
-        metadata_files++;
-        saveHeader();
 
         l.leave("INSERTFILE");
 
@@ -167,7 +165,8 @@ namespace os {
         f.fs = this;
 
         insertFile( f );
-
+        metadata_files++;
+        saveHeader();
 
         l.leave( "CREATENEWFILE" );
         return f;
@@ -260,7 +259,7 @@ namespace os {
                 l.disableMethod();
                 uint64_t str_len,f_position = metaReader->tell(); 
                 metaReader->read( sizeof(uint64_t) , reinterpret_cast<char*>(&str_len) );
-                assert( str_len == 4);
+                l.log( "str_len" , str_len );
                 metaReader->read( str_len , buff.data() );
                 metaReader->read( sizeof(uint64_t) , reinterpret_cast<char*>(&(f.disk_usage)) );
                 metaReader->read( sizeof(uint64_t) , reinterpret_cast<char*>(&(f.size)));
@@ -756,6 +755,7 @@ namespace os {
 
         l.log( "Filename" , file.name , true );
         l.log( "File Position" , file.position , true );
+        l.log( "File Size" , file.size , true );
         l.log( "Length to write" , length , true );
 
         // Going to fill up rest of the file
@@ -777,7 +777,7 @@ namespace os {
             flush( oldBlock );
 
             // Save file data
-            file.size += growBy; 
+            file.disk_usage += growBy; 
 
             assert( false && "Do not handle growing very well, probably best to just break for now" );
 
@@ -790,6 +790,7 @@ namespace os {
         uint64_t overwritten = 0;           // How much data we have overwritten
         uint64_t to_overwrite = 0;          // How much left we need to remove
         if( file.position < file.size ) {
+            assert( false );
             to_overwrite = std::min( length , file.size - file.position );
         }
 
@@ -823,8 +824,10 @@ namespace os {
         if( overwritten < to_overwrite ) {
             l.log( overwritten , to_overwrite , true );
             assert( false && "TODO: Handle case 'overwritten < length'"  );
-        }else {
-            file.size += overwritten - to_overwrite;
+        }else if( file.position > file.size  ) {
+            l.log( "File has grown" , overwritten - to_overwrite , true );
+            file.size += file.position - file.size;
+            bytes_used += file.position - file.size;;
         }
 
         l.log( "Overwritten" , overwritten , true );
@@ -832,8 +835,7 @@ namespace os {
         // TODO: What happens if we fill up file exactly to end?
 
         if( &file != metadata ) { 
-            metaWriter->seek( file.metadata + 2 * sizeof(uint64_t) + file.name.size() , BEG );
-            metaWriter->write( sizeof(file.size) , reinterpret_cast<char*>(&(file.size) ) );
+            insertFile( file );
         }
 
         l.leave( "WRITE" );
@@ -1009,6 +1011,7 @@ namespace os {
         for( auto file = allFiles.begin() ; file != allFiles.end() ; ++file ) {
             if( (*file)->getFilename() == name ) {
                 l.leave("OPEN");
+                printFile( **file , true );
                 return **file;
             }
         } 
@@ -1106,6 +1109,7 @@ namespace os {
 
     FileSystem::~FileSystem() {
         l.enter( "~FILESYSTEM" );
+        printHeader();
         shutdown();
         delete metaWriter;
         delete metaReader;
