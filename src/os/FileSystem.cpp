@@ -965,6 +965,12 @@ namespace os {
 
     void FileSystem::shutdown() {
         l.enter( "SHUTDOWN" );
+        static bool done = false;
+        if( done ) {
+            return;
+        }
+        done = true;
+        saveHeader();
         for( auto file = openFiles.begin() ; file != openFiles.end() ; ) {
             //(*file).close();
             openFiles.erase(file);
