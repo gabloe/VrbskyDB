@@ -198,7 +198,7 @@ rapidjson::Document select(rapidjson::Document &docArray, rapidjson::Document &f
 		os::FileReader reader(file);
 		std::string docTxt = reader.readAll();
 		reader.close();
-		
+
 		// Parse the document
 		rapidjson::Document doc;
 		doc.Parse(docTxt.c_str());
