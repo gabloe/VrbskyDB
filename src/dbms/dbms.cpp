@@ -7,6 +7,9 @@
 #include "../storage/LinearHash.h"
 #include "../parsing/Parser.h"
 #include "../parsing/Scanner.h"
+#include "../os/FileSystem.h"
+#include "../os/FileReader.h"
+#include "../os/FileWriter.h"
 
 #include <readline/readline.h>
 #include <readline/history.h>
@@ -80,7 +83,7 @@ void appendDocToProject(uint64_t projectHash, std::string doc, META &meta) {
  *
  */
 
-void insertDocument(const rapidjson::Value &doc, uint64_t projHash, INDICES &indices, META &meta) {
+void insertDocument(const rapidjson::Value &doc, uint64_t projHash, INDICES &indices, META &meta, FILESYSTEM &fs) {
 	assert(doc.GetType() == rapidjson::kObjectType);
 	rapidjson::Document d;
 	d.SetObject();
@@ -90,10 +93,10 @@ void insertDocument(const rapidjson::Value &doc, uint64_t projHash, INDICES &ind
 		std::string fieldUUID = newUUID();
 		std::string row = createRow(doc, itr->name.GetString(), docUUID, fieldUUID);
 		// Insert this row into the DB
-		//TODO:
-		// ------------------------
-		// Filesystem stuff here
-		// ------------------------
+		os::File &file = fs.open(fieldUUID.c_str());
+		os::FileWriter writer(file);
+		writer.write(row.size(), row.c_str());
+		writer.close();
 
 		// TODO: For debugging purposes only.  Remove this once the filesystem stuff is done.
 		std::cout << toPrettyString(row) << std::endl;
@@ -162,7 +165,7 @@ void updateProjectList(std::string pname, META &meta) {
  *	If the JSON object is a single object, insert the document into the DB.
  */
 
-void insertDocuments(rapidjson::Document &docs, std::string pname, INDICES &indices, META &meta) {
+void insertDocuments(rapidjson::Document &docs, std::string pname, INDICES &indices, META &meta, FILESYSTEM &fs) {
 	uint64_t projectHash = hash(pname, pname.size());
 	uint64_t uuidHash;
 	if (!meta.contains(projectHash)) {
@@ -185,10 +188,10 @@ void insertDocuments(rapidjson::Document &docs, std::string pname, INDICES &indi
 	// If it't an array of documents.  Iterate over them and insert each document.
 	if (docs.GetType() == rapidjson::kArrayType) {
 		for (rapidjson::SizeType i = 0; i < docs.Size(); ++i) {
-			insertDocument(docs[i], uuidHash, indices, meta);
+			insertDocument(docs[i], uuidHash, indices, meta, fs);
 		}
 	} else if (docs.GetType() == rapidjson::kObjectType) {
-		insertDocument(docs, uuidHash, indices, meta);
+		insertDocument(docs, uuidHash, indices, meta, fs);
 	}
 	
 }
@@ -201,9 +204,9 @@ void insertDocuments(rapidjson::Document &docs, std::string pname, INDICES &indi
  *
  */
 
-void execute(Parsing::Query &q, META &meta, INDICES &indices, std::string dataFile) {
+void execute(Parsing::Query &q, META &meta, INDICES &indices, FILESYSTEM &fs) {
     clock_t start, end;
-    start = std::clock();	
+    start = std::clock();
     switch (q.command) {
         case Parsing::CREATE:
             {
@@ -216,7 +219,7 @@ void execute(Parsing::Query &q, META &meta, INDICES &indices, std::string dataFi
 		rapidjson::Document &docs = *q.with;
 		std::string project = *q.project;
 		// Insert documents in docs into project.
-		insertDocuments(docs, project, indices, meta);
+		insertDocuments(docs, project, indices, meta, fs);
 		break;
 	    }
         case Parsing::SELECT:
@@ -483,6 +486,7 @@ int main(int argc, char **argv) {
     char *buf;
     Storage::LinearHash<std::string> *meta;
     Storage::LinearHash<uint64_t> *indices;
+    os::FileSystem *fs = new os::FileSystem(data_fname);
 
     if (file_exists(meta_fname)) {
         meta = readFromFile<std::string>(meta_fname);
@@ -518,14 +522,15 @@ int main(int argc, char **argv) {
         Parsing::Query *query = p.parse();
         if (query) {
             std::cout << "Buf: " << buf << std::endl;
-            execute( *query, *meta, *indices, data_fname);
+            execute( *query, *meta, *indices, *fs);
         }
         std::cout << std::endl;
     }
     std::cout << "Goodbye!" << std::endl;
     free(buf);
-    dumpToFile(meta_fname, *meta);
+    //dumpToFile(meta_fname, *meta);
     dumpToFile(indices_fname, *indices);
+    fs->shutdown();
 
     return 0;
 }
