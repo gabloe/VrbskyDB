@@ -1056,6 +1056,7 @@ namespace os {
 
 
     FileSystem::FileSystem( const std::string filename) {
+        l.toggleOutput();
         l.enter( "FILESYSTEM" );
 
         fileSystemLocation = filename;
