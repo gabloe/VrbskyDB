@@ -47,26 +47,26 @@ void gotoBlock( uint64_t block , uint64_t blockSize , std::fstream &stream ) {
     assertStream( stream );
 }
 
-void printFile( os::File &file , bool req = false ) {
-    l.log( "File Properties"      , req );
-    l.log( "\tFile Name"          , file.name             , req );
-    l.log( "\tFile Size"          , file.size             , req );
-    l.log( "\tFile Start"         , file.start            , req );
-    l.log( "\tFile Current"       , file.current          , req );
-    l.log( "\tFile Position"      , file.position         , req ); 
-    l.log( "\tBlock Position"     , file.block_position   , req );
-    l.log( "\tDisk Position"      , file.disk_position    , req );
-    l.log( "\tFile End"           , file.end              , req );
-    l.log( "\tMeta-data position" , file.metadata         , req ); 
+void printFile( os::File &file , bool force = false ) {
+    l.log( "File Properties"      , force );
+    l.log( "\tFile Name"          , file.name             , force );
+    l.log( "\tFile Size"          , file.size             , force );
+    l.log( "\tFile Start"         , file.start            , force );
+    l.log( "\tFile Current"       , file.current          , force );
+    l.log( "\tFile Position"      , file.position         , force ); 
+    l.log( "\tBlock Position"     , file.block_position   , force );
+    l.log( "\tDisk Position"      , file.disk_position    , force );
+    l.log( "\tFile End"           , file.end              , force );
+    l.log( "\tMeta-data position" , file.metadata         , force ); 
 }
 
-void printBlock( os::Block &b , bool req = false ) {
-    l.log( "Printing Block" , req );
-    l.log( "\tBlock"        , b.block , req );
-    l.log( "\tStatus"       , ( (b.status == os::FULL)?"FULL":"LAZY") , req );
-    l.log( "\tPrevious"     , b.prev , req );
-    l.log( "\tNext"         , b.next , req );
-    l.log( "\tLength"       , b.length , req );
+void printBlock( os::Block &b , bool force = false ) {
+    l.log( "Printing Block" , force );
+    l.log( "\tBlock"        , b.block , force );
+    l.log( "\tStatus"       , ( (b.status == os::FULL)?"FULL":"LAZY") , force );
+    l.log( "\tPrevious"     , b.prev , force );
+    l.log( "\tNext"         , b.next , force );
+    l.log( "\tLength"       , b.length , force );
 }
 
 // Given a block and a start and end we remove all the bytes inbetween
@@ -214,10 +214,7 @@ namespace os {
     void FileSystem::writeBlock( Block &b ) {
         l.enter( "WRITEBLOCK" );
 
-        printBlock( b );
-
         assert( stream.tellp() == b.block * Total_Size_Block );
-
         assertStream( stream );
 
         lock( WRITE );
@@ -260,6 +257,7 @@ namespace os {
             for( int i = 0 ; i < metadata_files; ++i) {
                 File &f = *(new File());
 
+                l.disableMethod();
                 uint64_t str_len,f_position = metaReader->tell(); 
                 metaReader->read( sizeof(uint64_t) , reinterpret_cast<char*>(&str_len) );
                 assert( str_len == 4);
@@ -268,8 +266,12 @@ namespace os {
                 metaReader->read( sizeof(uint64_t) , reinterpret_cast<char*>(&(f.size)));
                 l.log( "Size" , f.size , true );
                 metaReader->read( sizeof(uint64_t) , reinterpret_cast<char*>(&(f.start)));
+                l.log( "Start" , f.start , true );
                 metaReader->read( sizeof(uint64_t) , reinterpret_cast<char*>(&(f.end)));
+                l.log( "End" , f.end , true );
                 metaReader->read( sizeof(uint64_t) , reinterpret_cast<char*>(&(f.metadata)));
+                l.log( "Meta" , f.metadata , true );
+                l.enableMethod();
 
                 f.fs = this;
                 f.metadata = metadata->position;
@@ -486,7 +488,6 @@ namespace os {
         std::copy( buffer , buffer + bytes , curr.data.begin() );
         std::copy( Zero + bytes , Zero + Block_Size , curr.data.begin() + bytes );
 
-        printBlock( curr );
         flush( curr );
 
         curr = load( blocks_allocated - blocks_to_write );
@@ -709,12 +710,8 @@ namespace os {
             Block current = load( file.current );
             assert( file.position < 1000 );
 
-            printBlock( current );
-
             uint64_t next = current.block;
             current = load( next );
-
-            printBlock( current , true );
 
             for( int i = 0 ; i < length ; ++i ) {
                 buffer[i] = current.data[file.block_position];
@@ -722,13 +719,13 @@ namespace os {
                 ++file.block_position;
                 ++file.disk_position;
                 if( file.block_position  == current.length ) {
+                    printBlock( current , true );
                     if( current.next != 0 ) {
                         file.disk_position += Block_Size - current.length;
                         current = load( current.next );
                         file.block_position = 0;
                         file.current = current.block;
                     }else {
-                        assert( false );
                         break;
                     }
                 }

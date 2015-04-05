@@ -7,6 +7,7 @@ class Log {
         std::ostream &output;
         int depth = 0;
         bool enabled = false;
+        bool methodEnabled = true;
 
         void tabs() {
             for( int i = 0 ; i < depth ; ++i ) output << "\t";
@@ -20,8 +21,16 @@ class Log {
             enabled = true;
         }
 
+        void enableMethod() {
+            methodEnabled = true;
+        }
+
         void disable() {
             enabled = false;
+        }
+
+        void disableMethod() {
+            methodEnabled = false;
         }
 
         template<class T>
@@ -41,13 +50,17 @@ class Log {
         }
 
         void enter( std::string method ) {
-            log( method , true );
-            ++depth;
+            if( methodEnabled ) {
+                log( method , true );
+                ++depth;
+            }
         }
 
         void leave( std::string method ) {
-            --depth;
-            log( method , true );
+            if( methodEnabled ) {
+                --depth;
+                log( method , true );
+            }
         }
 
 };
