@@ -2,6 +2,9 @@
 #include <sstream> 
 #include <limits>
 #include <cstddef>
+#include <chrono>
+#include <ctime>
+#include <iomanip>
 
 #include "dbms.h"
 #include "../storage/LinearHash.h"
@@ -15,30 +18,6 @@
 #include <readline/history.h>
 #include <pretty.h>
 #include <UUID.h>
-
-/*
- *	createRow ---
- *	
- *	Given a document and a key, create a new document containing the key/value pair, the field ID and the document ID.
- */
-
-std::string createRow(const rapidjson::Value &doc, const std::string key, std::string docUUID, std::string fieldUUID) {
-	rapidjson::Document d;
-	d.SetObject();
-
-	// Insert the data.
-	rapidjson::Value k(key.c_str(), d.GetAllocator());
-	rapidjson::Value v(doc[key.c_str()], d.GetAllocator());
-	d.AddMember(k, v, d.GetAllocator());
-
-	rapidjson::Value fieldID(fieldUUID.c_str(), d.GetAllocator());
-	d.AddMember("_field", fieldID, d.GetAllocator());
-
-	rapidjson::Value dID(docUUID.c_str(), d.GetAllocator());
-	d.AddMember("_doc", dID, d.GetAllocator());
-
-	return toString(&d);
-}
 
 /*
  *	appendDocToProject ---
@@ -83,24 +62,28 @@ void appendDocToProject(uint64_t projectHash, std::string doc, META &meta) {
  *
  */
 
-void insertDocument(const rapidjson::Value &doc, uint64_t projHash, INDICES &indices, META &meta, FILESYSTEM &fs) {
+void insertDocument(rapidjson::Value &doc, uint64_t projHash, INDICES &indices, META &meta, FILESYSTEM &fs) {
 	assert(doc.GetType() == rapidjson::kObjectType);
+	std::string docUUID = newUUID();
 	rapidjson::Document d;
 	d.SetObject();
-	std::string docUUID = newUUID();
-	for (rapidjson::Value::ConstMemberIterator itr = doc.MemberBegin(); itr < doc.MemberEnd(); ++itr) {
-		// Create a serialized row of data with some metadata fields
-		std::string fieldUUID = newUUID();
-		std::string row = createRow(doc, itr->name.GetString(), docUUID, fieldUUID);
-		// Insert this row into the DB
-		os::File &file = fs.open(fieldUUID.c_str());
-		os::FileWriter writer(file);
-		writer.write(row.size(), row.c_str());
-		writer.close();
 
-		// TODO: For debugging purposes only.  Remove this once the filesystem stuff is done.
-		std::cout << toPrettyString(row) << std::endl;
+	for (rapidjson::Value::ConstMemberIterator itr = doc.MemberBegin(); itr < doc.MemberEnd(); ++itr) {
+		rapidjson::Value k(itr->name.GetString(), d.GetAllocator());
+		rapidjson::Value v(doc[itr->name.GetString()], d.GetAllocator());
+		d.AddMember(k, v, d.GetAllocator());
 	}
+
+	rapidjson::Value dID(docUUID.c_str(), d.GetAllocator());
+	d.AddMember("_doc", dID, d.GetAllocator());
+	std::string data = toString(&d);
+
+	// Insert this row into the DB
+	os::File &file = fs.open(docUUID.c_str());
+	os::FileWriter writer(file);
+	writer.write(data.size(), data.c_str());
+	writer.close();
+
 	appendDocToProject(projHash, docUUID, meta);
 }
 
@@ -196,6 +179,72 @@ void insertDocuments(rapidjson::Document &docs, std::string pname, INDICES &indi
 	
 }
 
+rapidjson::Document select(rapidjson::Document &docArray, rapidjson::Document &fields, FILESYSTEM &fs) {
+	rapidjson::Document result;
+	result.SetObject();
+
+	assert(docArray.GetType() == rapidjson::kArrayType);
+	assert(fields.GetType() == rapidjson::kArrayType);
+
+	// Iterate over every document
+	for (rapidjson::Value::ConstValueIterator docID = docArray.Begin(); docID != docArray.End(); ++docID) {
+		// Open the document
+		std::string dID = docID->GetString();
+		os::File &file = fs.open(dID);
+		os::FileReader reader(file);
+		std::string docTxt = reader.readAll();
+		reader.close();
+		
+		// Parse the document
+		rapidjson::Document doc;
+		doc.Parse(docTxt.c_str());
+		
+		// Handle * in field list
+		bool selectAll = false;
+		for (rapidjson::Value::ConstValueIterator fieldName = fields.Begin(); fieldName != fields.End(); ++fieldName) {
+			std::string field = fieldName->GetString();
+			if (field.compare("*") == 0) {
+				selectAll = true;
+				break;
+			}
+		}
+
+		rapidjson::Value docVal;
+		docVal.SetObject();
+
+		// Iterate over the desired fields
+		if (selectAll) {
+			// Add every field of the document to the result
+			for (rapidjson::Value::ConstMemberIterator fieldName = doc.MemberBegin(); fieldName != doc.MemberEnd(); ++fieldName) {
+				std::string field = fieldName->name.GetString();
+				rapidjson::Value k(field.c_str(), result.GetAllocator());
+				docVal.AddMember(k, doc[field.c_str()], result.GetAllocator());
+			}
+		} else {
+			for (rapidjson::Value::ConstValueIterator fieldName = fields.Begin(); fieldName != fields.End(); ++fieldName) {
+				std::string field = fieldName->GetString();
+				if (doc.HasMember(field.c_str())) {
+					rapidjson::Value k(field.c_str(), result.GetAllocator());
+					docVal.AddMember(k, doc[field.c_str()], result.GetAllocator());
+				}
+			}
+		}
+		rapidjson::Value docName(dID.c_str(), result.GetAllocator());
+		result.AddMember(docName, docVal, result.GetAllocator());
+	}
+
+	// Create a timestamp
+	std::chrono::system_clock::time_point now = std::chrono::system_clock::now();
+	std::time_t now_c = std::chrono::system_clock::to_time_t(now);
+	std::stringstream timestamp;
+	timestamp << std::put_time(std::localtime(&now_c), "%F %T");
+
+	// Add timestamp to result
+	rapidjson::Value tstamp(timestamp.str().c_str(), result.GetAllocator());
+	result.AddMember("_timestamp", tstamp, result.GetAllocator());
+	return result;
+}
+
 /*
  *	execute ---
  *	
@@ -224,7 +273,21 @@ void execute(Parsing::Query &q, META &meta, INDICES &indices, FILESYSTEM &fs) {
 	    }
         case Parsing::SELECT:
             {
-		q.print();
+		std::string project = *q.project;
+		uint64_t pHash = hash(project, project.size());
+		if (meta.contains(pHash)) {
+			std::string pid;
+			meta.get(pHash, pid);
+			uint64_t docsHash = hash(pid, pid.size());
+			if (meta.contains(docsHash)) {
+				std::string docs;
+				meta.get(docsHash, docs);
+				rapidjson::Document docArray;
+				docArray.Parse(docs.c_str());
+				rapidjson::Document data = select(docArray, *q.fields, fs);
+				std::cout << toPrettyString(&data) << std::endl;
+			}
+		}
                 break;
             }
         case Parsing::DELETE:
@@ -528,8 +591,8 @@ int main(int argc, char **argv) {
     }
     std::cout << "Goodbye!" << std::endl;
     free(buf);
-    //dumpToFile(meta_fname, *meta);
-    dumpToFile(indices_fname, *indices);
+    dumpToFile(meta_fname, *meta);
+    //dumpToFile(indices_fname, *indices);
     fs->shutdown();
 
     return 0;

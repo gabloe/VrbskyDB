@@ -7,9 +7,7 @@
 #include <rapidjson/writer.h>
 #include <rapidjson/prettywriter.h>
 
-
-
-inline std::string toString(rapidjson::Value *val) {
+inline std::string toString(const rapidjson::Value *val) {
     rapidjson::StringBuffer buffer;
     rapidjson::Writer<rapidjson::StringBuffer> writer(buffer);
     val->Accept(writer);
