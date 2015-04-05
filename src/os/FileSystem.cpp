@@ -93,7 +93,7 @@ void compact( os::Block &b, uint64_t start , uint64_t end ) {
 namespace os {
 
     // Private functions
-    void FileSystem::insertFile( File &f ) {
+    uint64_t FileSystem::insertFile( File &f ) {
         l.enter("INSERTFILE");
 
         std::array<char,1024> buffer;
@@ -144,9 +144,9 @@ namespace os {
         printFile( metaWriter->file , true );
         metaWriter->write( pos , buffer.data() );
 
-        metadata_bytes_used += pos;
 
         l.leave("INSERTFILE");
+        return pos;
 
     }
 
@@ -164,7 +164,7 @@ namespace os {
         f.metadata = metadata->size;
         f.fs = this;
 
-        insertFile( f );
+        metadata_bytes_used += insertFile( f );
         metadata_files++;
         saveHeader();
 

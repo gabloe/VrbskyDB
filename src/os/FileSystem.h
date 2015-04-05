@@ -91,7 +91,7 @@ namespace os {
 
             /* File management functions */
             void loadMetadata();
-            void insertFile( File &f );
+            uint64_t insertFile( File &f );
             File& createNewFile( std::string );
 
             /* Data management functions*/
