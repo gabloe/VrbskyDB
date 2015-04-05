@@ -140,7 +140,7 @@ namespace os {
         std::copy(start, end, buffer.begin() + pos);
         pos += sizeof(tmp);
 
-        metaWriter->seek( 0 , END );
+        metaWriter->seek( f.metadata , BEG );
         printFile( metaWriter->file , true );
         metaWriter->write( pos , buffer.data() );
 
@@ -790,7 +790,6 @@ namespace os {
         uint64_t overwritten = 0;           // How much data we have overwritten
         uint64_t to_overwrite = 0;          // How much left we need to remove
         if( file.position < file.size ) {
-            assert( false );
             to_overwrite = std::min( length , file.size - file.position );
         }
 
