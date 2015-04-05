@@ -829,8 +829,6 @@ namespace os {
             bytes_used += file.position - file.size;;
         }
 
-        l.log( "Overwritten" , overwritten , true );
-
         // TODO: What happens if we fill up file exactly to end?
 
         if( &file != metadata ) { 
