@@ -1,0 +1,20 @@
+\documentclass{article}
+\usepackage{graphicx}
+
+\begin{document}
+
+\title{NoSQL Database Design}
+\author{Gabriel Loewen \and Jeffrey Robinson}
+
+\maketitle
+
+\section{Description}
+We are implementing a document-oriented database management system named VrbskyDB.  In this database management system we store documents as JSON objects.  A JSON object is a collection of key/value pairs where a value can be a string, a number, a boolean, an embedded object, or an array.  When a document is inserted into a database we assign a universally unique identifier (UUID) to the document.  Documents are stored in a virtual filesystem that allows for file creation, file writing, and file reading.  When data is written to a file the virtual filesystem automatically chunks the data into equal sized segments.  The chunking process allows data to grow or shrink without having to extensively manipulate the filesystem structure.  Both linear hash tables and B-tree data structures are built on top of the virtual filesystem, and are used to store metadata and indexes, respectively.  The grammar of VrbskyDB shares a lot of similarities with SQL, but does not allow join operations.
+
+\section{Query Grammar}
+
+\section{Storage}
+
+\section{Indexes}
+
+\end{document}
