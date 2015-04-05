@@ -42,7 +42,7 @@ test: $(OBJECTS) $(T_OBJECTS)
 	$(CMP) $(FLAGS) FileTest.o   $(OBJECTS) -o FTest
 	$(CMP) $(FLAGS) WriteTest.o  $(OBJECTS) -o WTest
 	$(CMP) $(FLAGS) ReadTest.o   $(OBJECTS) -o RTest
-	$(CMP) $(FLAGS) LargeWriteTest.o   $(OBJECTS) -o LRTest
+	$(CMP) $(FLAGS) LargeWriteTest.o   $(OBJECTS) -o LWTest
 	$(CMP) $(FLAGS) EndianTest.o -o EndianTest
 
 
