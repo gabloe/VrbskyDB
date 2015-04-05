@@ -172,16 +172,14 @@ namespace os {
     }
 
     void FileSystem::gotoBlock( uint64_t blockId ) {
+        l.enter( "GOTOBLOCK" );
         assert( blockId > 0 );
         assert( blockId < blocks_allocated );
-        l.enter( "GOTOBLOCK" );
         uint64_t offset = blockId * Total_Size_Block;
-
-        l.log( "Moving to block" , blockId );
-        l.log( "At offset" , offset );
 
         stream.seekp( blockId * Total_Size_Block );
         stream.seekg( blockId * Total_Size_Block );
+
         l.leave( "GOTOBLOCK" );
     }
 
@@ -212,6 +210,7 @@ namespace os {
     void FileSystem::writeBlock( Block &b ) {
         l.enter( "WRITEBLOCK" );
 
+        gotoBlock( b.block );
         assert( stream.tellp() == b.block * Total_Size_Block );
         assertStream( stream );
 
@@ -445,10 +444,9 @@ namespace os {
             assertStream( stream );
         }unlock( WRITE );
 
-        // Write new data
-        stream.seekp( Total_Size_Block * current , std::ios_base::beg );
 
         assert( current != 0 );
+        gotoBlock(current);
 
         uint64_t previous = blocks_allocated - 1;
         for( int i = 0 ; i < blocks_to_write - 1; ++i) {
@@ -506,7 +504,6 @@ namespace os {
         l.enter( "LOAD" );
         assert( stream.bad() == false );
         assert( stream.fail() == false );
-        assert( block < 10 );
         assert( block > 0 );
 
         gotoBlock( block );
