@@ -758,7 +758,6 @@ namespace os {
 
         // Going to fill up rest of the file
         if( length + file.disk_position > file.disk_usage ) {
-            assert( false );
             // Calculate how much extra space we need
             uint64_t growBy = length - (file.disk_usage - file.disk_position);
 
