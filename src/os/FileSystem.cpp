@@ -775,8 +775,7 @@ namespace os {
 
             // Save file data
             file.disk_usage += growBy; 
-
-            assert( false && "Do not handle growing very well, probably best to just break for now" );
+            bytes_allocated += growBy;
 
         }
 
