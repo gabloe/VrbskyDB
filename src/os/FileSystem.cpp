@@ -96,6 +96,9 @@ namespace os {
     uint64_t FileSystem::insertFile( File &f ) {
         l.enter("INSERTFILE");
 
+
+        printFile( f , true );
+
         std::array<char,1024> buffer;
 
         // Length of name
@@ -141,6 +144,7 @@ namespace os {
         pos += sizeof(tmp);
 
         metaWriter->seek( f.metadata , BEG );
+        assert( metadata->position == f.metadata );
         printFile( metaWriter->file , true );
         metaWriter->write( pos , buffer.data() );
 
@@ -272,7 +276,6 @@ namespace os {
                 l.enableMethod();
 
                 f.fs = this;
-                f.metadata = metadata->position;
                 f.name = std::string( buff.data() , str_len );
                 f.current = f.start;
 
@@ -966,17 +969,16 @@ namespace os {
     void FileSystem::shutdown() {
         l.enter( "SHUTDOWN" );
         static bool done = false;
-        if( done ) {
-            return;
-        }
-        done = true;
-        saveHeader();
-        for( auto file = openFiles.begin() ; file != openFiles.end() ; ) {
-            //(*file).close();
-            openFiles.erase(file);
+        if( !done ) { 
+            done = true;
+            saveHeader();
+            for( auto file = openFiles.begin() ; file != openFiles.end() ; ) {
+                //(*file).close();
+                openFiles.erase(file);
+            }
+            stream.close();
         }
         l.leave( "SHUTDOWN" );
-        stream.close();
     }
 
     std::list<File*> FileSystem::getFiles() {
