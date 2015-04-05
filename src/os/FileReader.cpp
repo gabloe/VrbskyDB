@@ -11,6 +11,13 @@ namespace os {
         /* Empty Constructor */
     }
 
+    // Read all of the data in this file and return it.
+    std::string FileReader::readAll() {
+	char buff[file.size];
+	uint64_t size = file.fs->read( file, file.size, buff );
+	return std::string(buff, file.size);
+    }
+
     uint64_t FileReader::read( uint64_t length , char* buffer ) {
         // TODO:    As of now the current is always start
         //          In the future it would be nice to

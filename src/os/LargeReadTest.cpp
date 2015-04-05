@@ -6,15 +6,10 @@
 int main() {
     os::FileSystem fs( "test.dat" );
     os::File& f = fs.open( "TEST" );
+    std::cout << "File size: " << f.size << std::endl;
     os::FileReader reader( f );
-    char buff[1024];
-    reader.read( 1024 , buff );
-    char c = 'a';
-    for( int i = 0 ; i < 1024; ++i ) {
-        assert( c == buff[i] );
-        ++c;
-        if( c > 'z' ) c = 'a';
-    }
-    std::cout << std::string( buff , 1024 ) << std::endl;
+    char buff[f.size];
+    reader.read( f.size , buff );
+    std::cout << std::string( buff , f.size ) << std::endl;
     return 0;
 }

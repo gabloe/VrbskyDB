@@ -4,6 +4,7 @@
 
 #include "Constants.h"
 #include "File.h"
+#include <assert.h>
 
 namespace os {
 
@@ -15,6 +16,7 @@ namespace os {
         public:
 
         FileReader(File& f);
+        std::string readAll();
         uint64_t read( uint64_t , char* );
         void seek( uint64_t , FilePosition );
         uint64_t tell();

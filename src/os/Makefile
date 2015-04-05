@@ -2,7 +2,7 @@
 CMP=g++
 FLAGS=--std=c++11 -g
 OBJECTS=FileWriter.o FileReader.o File.o FileSystem.o
-T_OBJECTS=CreateTest.o EndianTest.o FileTest.o WriteTest.o ReadTest.o LargeWriteTest.o LargeReadTest.o
+T_OBJECTS=CreateTest.o EndianTest.o FileTest.o WriteTest.o ReadTest.o LargeWriteTest.o LargeReadTest.o ReadAllTest.o
 
 all:	FileReader.o FileWriter.o File.o FileSystem.o
 
@@ -33,6 +33,9 @@ LargeWriteTest.o:	LargeWriteTest.cpp
 ReadTest.o:	ReadTest.cpp
 	$(CMP) $(FLAGS) -c ReadTest.cpp
 
+ReadAllTest.o:	ReadAllTest.cpp
+	$(CMP) $(FLAGS) -c ReadAllTest.cpp
+
 LargeReadTest.o:	LargeReadTest.cpp
 	$(CMP) $(FLAGS) -c LargeReadTest.cpp
 
@@ -45,11 +48,11 @@ test: $(OBJECTS) $(T_OBJECTS)
 	$(CMP) $(FLAGS) FileTest.o   $(OBJECTS) -o FTest
 	$(CMP) $(FLAGS) WriteTest.o  $(OBJECTS) -o WTest
 	$(CMP) $(FLAGS) ReadTest.o   $(OBJECTS) -o RTest
-	$(CMP) $(FLAGS) ReadTest.o   $(OBJECTS) -o RTest
+	$(CMP) $(FLAGS) ReadAllTest.o   $(OBJECTS) -o RAllTest
 	$(CMP) $(FLAGS) LargeWriteTest.o   $(OBJECTS) -o LWTest
 	$(CMP) $(FLAGS) LargeReadTest.o   $(OBJECTS) -o LRTest
 	$(CMP) $(FLAGS) EndianTest.o -o EndianTest
 
 
 clean:
-	rm -f *.o test.dat EndianTest CTest WTest RTest FTest LWTest LRTest
+	rm -f *.o test.dat EndianTest CTest WTest RTest FTest LWTest LRTest RAllTest

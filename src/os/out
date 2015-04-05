@@ -1,0 +1,177 @@
+Log: FILESYSTEM
+	Log: SAVEHEADER
+	Log: SAVEHEADER
+	Log: GOTOBLOCK
+	Log: GOTOBLOCK
+	Log: WRITEBLOCK
+	Log: WRITEBLOCK
+	Bytes Allocated: 1000
+	Bytes Used: 0
+	Blocks Allocated: 2
+	Blocks Used: 0
+	Number free blocks: 0
+	First free block: 0
+	Bytes allocated for metadata: 1000
+	Blocks allocated for metadata: 1
+	Bytes used for meta-data: 0
+	Blocks used for metadata: 0
+	Files created: 0
+	First block for metadata: 1
+	Last block for metadata: 1
+	Log: LOADMETADATA
+	Log: LOADMETADATA
+Log: FILESYSTEM
+Log: OPEN
+Log: OPEN
+CREATING FILE: TEST
+Log: CREATENEWFILE
+	Log: ALLOCATE
+		Log: GROW
+			Log: SAVEHEADER
+			Log: SAVEHEADER
+			Log: FLUSH
+				Log: GOTOBLOCK
+				Log: GOTOBLOCK
+				Log: WRITEBLOCK
+				Log: WRITEBLOCK
+			Log: FLUSH
+			Log: LOAD
+				Log: GOTOBLOCK
+				Log: GOTOBLOCK
+				Log: READBLOCK
+				Log: READBLOCK
+			Log: LOAD
+		Log: GROW
+	Log: ALLOCATE
+	Log: INSERTFILE
+		Log: File Properties
+			File Name: TEST
+			File Size: 0
+			File Start: 2
+			File Current: 2
+			File Position: 0
+			Block Position: 0
+			Disk Position: 0
+			File End: 2
+			Meta-data position: 0
+		Log: File Properties
+			File Name: Metadata
+			File Size: 0
+			File Start: 1
+			File Current: 1
+			File Position: 0
+			Block Position: 0
+			Disk Position: 0
+			File End: 1
+			Meta-data position: 0
+		Log: WRITE
+			Filename: Metadata
+			File Position: 0
+			File Size: 0
+			Length to write: 52
+			Log: LOAD
+				Log: GOTOBLOCK
+				Log: GOTOBLOCK
+				Log: READBLOCK
+				Log: READBLOCK
+			Log: LOAD
+			Log: FLUSH
+				Log: GOTOBLOCK
+				Log: GOTOBLOCK
+				Log: WRITEBLOCK
+				Log: WRITEBLOCK
+			Log: FLUSH
+			File has grown: 0
+			Overwritten: 0
+		Log: WRITE
+	Log: INSERTFILE
+	Log: SAVEHEADER
+	Log: SAVEHEADER
+Log: CREATENEWFILE
+Log: WRITE
+	Filename: TEST
+	File Position: 0
+	File Size: 0
+	Length to write: 12
+	Log: LOAD
+		Log: GOTOBLOCK
+		Log: GOTOBLOCK
+		Log: READBLOCK
+		Log: READBLOCK
+	Log: LOAD
+	Log: FLUSH
+		Log: GOTOBLOCK
+		Log: GOTOBLOCK
+		Log: WRITEBLOCK
+		Log: WRITEBLOCK
+	Log: FLUSH
+	File has grown: 0
+	Overwritten: 0
+	Log: INSERTFILE
+		Log: File Properties
+			File Name: TEST
+			File Size: 12
+			File Start: 2
+			File Current: 2
+			File Position: 12
+			Block Position: 12
+			Disk Position: 12
+			File End: 2
+			Meta-data position: 0
+		Log: LOAD
+			Log: GOTOBLOCK
+			Log: GOTOBLOCK
+			Log: READBLOCK
+			Log: READBLOCK
+		Log: LOAD
+		Log: File Properties
+			File Name: Metadata
+			File Size: 52
+			File Start: 1
+			File Current: 1
+			File Position: 52
+			Block Position: 52
+			Disk Position: 52
+			File End: 1
+			Meta-data position: 0
+		Log: WRITE
+			Filename: Metadata
+			File Position: 52
+			File Size: 52
+			Length to write: 52
+			Log: LOAD
+				Log: GOTOBLOCK
+				Log: GOTOBLOCK
+				Log: READBLOCK
+				Log: READBLOCK
+			Log: LOAD
+			Log: FLUSH
+				Log: GOTOBLOCK
+				Log: GOTOBLOCK
+				Log: WRITEBLOCK
+				Log: WRITEBLOCK
+			Log: FLUSH
+			File has grown: 104
+			Overwritten: 104
+		Log: WRITE
+	Log: INSERTFILE
+Log: WRITE
+Log: SHUTDOWN
+Log: SHUTDOWN
+Log: ~FILESYSTEM
+	Bytes Allocated: 2000
+	Bytes Used: 0
+	Blocks Allocated: 3
+	Blocks Used: 0
+	Number free blocks: 0
+	First free block: 0
+	Bytes allocated for metadata: 1000
+	Blocks allocated for metadata: 1
+	Bytes used for meta-data: 52
+	Blocks used for metadata: 0
+	Files created: 1
+	First block for metadata: 1
+	Last block for metadata: 1
+	Log: SHUTDOWN
+	Log: SHUTDOWN
+Log: ~FILESYSTEM
