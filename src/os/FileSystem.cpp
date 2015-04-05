@@ -144,7 +144,6 @@ namespace os {
         printFile( metaWriter->file , true );
         metaWriter->write( pos , buffer.data() );
 
-
         l.leave("INSERTFILE");
         return pos;
 
@@ -824,7 +823,8 @@ namespace os {
             l.log( overwritten , to_overwrite , true );
             assert( false && "TODO: Handle case 'overwritten < length'"  );
         }else if( file.position > file.size  ) {
-            l.log( "File has grown" , overwritten - to_overwrite , true );
+            l.log( "File has grown" , file.position - file.size , true );
+            bytes_used += file.position - file.size;
             file.size += file.position - file.size;
             bytes_used += file.position - file.size;;
         }
@@ -1010,6 +1010,7 @@ namespace os {
         for( auto file = allFiles.begin() ; file != allFiles.end() ; ++file ) {
             if( (*file)->getFilename() == name ) {
                 l.leave("OPEN");
+                l.log( "Opening existing file" , true );
                 printFile( **file , true );
                 return **file;
             }
