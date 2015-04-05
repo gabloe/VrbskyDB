@@ -96,9 +96,6 @@ namespace os {
     uint64_t FileSystem::insertFile( File &f ) {
         l.enter("INSERTFILE");
 
-
-        printFile( f , true );
-
         std::array<char,1024> buffer;
 
         // Length of name
@@ -145,7 +142,6 @@ namespace os {
 
         metaWriter->seek( f.metadata , BEG );
         assert( metadata->position == f.metadata );
-        printFile( metaWriter->file , true );
         metaWriter->write( pos , buffer.data() );
 
         l.leave("INSERTFILE");
@@ -791,6 +787,7 @@ namespace os {
         uint64_t written = 0;               // How much data we have written
         uint64_t overwritten = 0;           // How much data we have overwritten
         uint64_t to_overwrite = 0;          // How much left we need to remove
+
         if( file.position < file.size ) {
             to_overwrite = std::min( length , file.size - file.position );
         }
@@ -798,17 +795,21 @@ namespace os {
         // While we have not written everything
         while( written < length ) {
 
+            l.log( "In the loop" , true );
+
             // Go to the current block
             file.current = curr;
             Block b = load( curr );
 
             // How much room is there to write our data
             uint64_t len = std::min( Block_Size - file.block_position , length );
+            l.log( "Length is" , len , true );
             // How much data will we actually overwrite
             overwritten += b.length + file.block_position;
 
-            std::copy( buffer , buffer + len , b.data.data() + b.length );
+            std::copy( buffer + written , buffer + len + written , b.data.data() + file.block_position );
             b.length = file.block_position + len;
+            assert( b.status == FULL );
             flush( b );
 
             written += len;
@@ -972,10 +973,14 @@ namespace os {
         if( !done ) { 
             done = true;
             saveHeader();
-            for( auto file = openFiles.begin() ; file != openFiles.end() ; ) {
-                //(*file).close();
-                openFiles.erase(file);
+            for( auto file = openFiles.begin() ; file != openFiles.end() ; ++file ) {
+                l.log( "Closing a file" , true );
+                if( (*file)->status == OPEN ) {
+                    insertFile( **file );
+                    (*file)->status = CLOSED;
+                }
             }
+            stream.flush();
             stream.close();
         }
         l.leave( "SHUTDOWN" );
@@ -1015,16 +1020,18 @@ namespace os {
         l.enter( "OPEN" );
         for( auto file = allFiles.begin() ; file != allFiles.end() ; ++file ) {
             if( (*file)->getFilename() == name ) {
+                openFiles.push_back( *file );
+                (*file)->status = OPEN;
                 l.leave("OPEN");
-                l.log( "Opening existing file" , true );
-                printFile( **file , true );
                 return **file;
             }
         } 
-
         // Create new file
+        File &f = createNewFile( name );
+        f.status = OPEN;
+        openFiles.push_back( &f );
         l.leave( "OPEN" );
-        return createNewFile( name );
+        return f;
     }
 
     bool FileSystem::unlink( File &f ) {
@@ -1119,6 +1126,7 @@ namespace os {
         shutdown();
         delete metaWriter;
         delete metaReader;
+        delete metadata;
         l.leave( "~FILESYSTEM" );
     }
 
