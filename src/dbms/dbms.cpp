@@ -183,6 +183,10 @@ rapidjson::Document select(rapidjson::Document &docArray, rapidjson::Document &f
 	rapidjson::Document result;
 	result.SetObject();
 
+	rapidjson::Value array;
+	array.SetArray();
+	array.Reserve(docArray.Size(), result.GetAllocator());
+
 	assert(docArray.GetType() == rapidjson::kArrayType);
 	assert(fields.GetType() == rapidjson::kArrayType);
 
@@ -212,26 +216,36 @@ rapidjson::Document select(rapidjson::Document &docArray, rapidjson::Document &f
 		rapidjson::Value docVal;
 		docVal.SetObject();
 
+		int count = 0;
 		// Iterate over the desired fields
 		if (selectAll) {
 			// Add every field of the document to the result
 			for (rapidjson::Value::ConstMemberIterator fieldName = doc.MemberBegin(); fieldName != doc.MemberEnd(); ++fieldName) {
 				std::string field = fieldName->name.GetString();
 				rapidjson::Value k(field.c_str(), result.GetAllocator());
-				docVal.AddMember(k, doc[field.c_str()], result.GetAllocator());
+				rapidjson::Value &v_tmp = doc[field.c_str()];
+				rapidjson::Value v(v_tmp, result.GetAllocator());
+				docVal.AddMember(k, v, result.GetAllocator());
+				count++;
 			}
 		} else {
 			for (rapidjson::Value::ConstValueIterator fieldName = fields.Begin(); fieldName != fields.End(); ++fieldName) {
 				std::string field = fieldName->GetString();
 				if (doc.HasMember(field.c_str())) {
 					rapidjson::Value k(field.c_str(), result.GetAllocator());
-					docVal.AddMember(k, doc[field.c_str()], result.GetAllocator());
+					rapidjson::Value &v_tmp = doc[field.c_str()];
+					rapidjson::Value v(v_tmp, result.GetAllocator());
+					docVal.AddMember(k, v, result.GetAllocator());
+					count++;
 				}
 			}
 		}
-		rapidjson::Value docName(dID.c_str(), result.GetAllocator());
-		result.AddMember(docName, docVal, result.GetAllocator());
+		if (count > 0) {
+			array.PushBack(docVal, result.GetAllocator());
+		}
 	}
+
+	result.AddMember("_result", array, result.GetAllocator());
 
 	// Create a timestamp
 	std::chrono::system_clock::time_point now = std::chrono::system_clock::now();
