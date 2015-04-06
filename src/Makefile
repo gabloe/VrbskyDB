@@ -18,7 +18,7 @@ $(OBJECTS)Scanner.o: ./parsing/Scanner.cpp
 
 $(OBJECTS)FileSystem.o: ./os/FileSystem.cpp
 	cd ./os && $(MAKE) FileSystem.o
-	mv ./os/Filesystem.o $(OBJECTS)FileSystem.o
+	mv ./os/FileSystem.o $(OBJECTS)FileSystem.o
 
 $(OBJECTS)FileWriter.o: ./os/FileWriter.cpp
 	cd ./os && $(MAKE) FileWriter.o

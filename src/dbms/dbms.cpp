@@ -3,8 +3,8 @@
 #include <limits>
 #include <cstddef>
 #include <chrono>
-#include <ctime>
 #include <iomanip>
+#include <ctime>
 
 #include "dbms.h"
 #include "../storage/LinearHash.h"
@@ -318,7 +318,8 @@ rapidjson::Document select(rapidjson::Document &docArray, rapidjson::Document &o
 	std::chrono::system_clock::time_point now = std::chrono::system_clock::now();
 	std::time_t now_c = std::chrono::system_clock::to_time_t(now);
 	std::stringstream timestamp;
-	timestamp << std::put_time(std::localtime(&now_c), "%F %T");
+	//timestamp << std::put_time(std::localtime(&now_c), "%F %T");
+	timestamp << std::localtime(&now_c);
 
 	// Add timestamp to result
 	rapidjson::Value tstamp(timestamp.str().c_str(), result.GetAllocator());
