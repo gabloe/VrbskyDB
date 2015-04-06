@@ -23,7 +23,7 @@ DBMS:
 	make -C dbms
 
 test:
-	cd ./tests && $(MAKE) all
+	make -C tests
 
 $(OUT):
 	mkdir -p $(OUT)

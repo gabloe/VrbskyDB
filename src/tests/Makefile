@@ -11,11 +11,14 @@ OUTPUT=$(OUT)LinearHashTest $(OUT)ParserTest $(OUT)UUIDTest \
 	$(OUT)ReadTest $(OUT)LargeReadTest $(OUT)LargeWriteTest \
 	$(OUT)CreateTest $(OUT)FileTest $(OUT)ReplaceTest $(OUT)ReadAllTest
 
-all: $(OUT) OS $(OUTPUT)
+all: $(OUT) PARSING OS $(OUTPUT)
 
 
 run: $(OUT)LinearHashTest $(OUT)ParserTest $(OUT)UUIDTest
 	cd $(OUT) && ./ParserTest && ./LinearHashTest && ./UUIDTest
+
+PARSING:
+	make -C ../parsing/
 
 OS:
 	make -C ../os/
@@ -31,7 +34,6 @@ $(OUT)LinearHashTest: ./LinearHashTest.cpp
 	$(CC) $(CFLAGS) $(INCLUDES) ./LinearHashTest.cpp -o $(OUT)LinearHashTest
 
 $(OUT)ParserTest: ./ParserTest.cpp
-	cd ../parsing/ && $(MAKE) Parser.o && $(MAKE) Scanner.o
 	$(CC) $(CFLAGS) $(INCLUDES) ./ParserTest.cpp -o $(OUT)ParserTest $(OBJECTS)Parser.o $(OBJECTS)Scanner.o
 	cp queries $(OUT)queries
 
