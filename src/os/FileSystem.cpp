@@ -96,6 +96,10 @@ namespace os {
     uint64_t FileSystem::insertFile( File &f ) {
         l.enter("INSERTFILE");
 
+        l.toggleOutput();
+        printFile( f , true );
+        l.toggleOutput();
+
         std::array<char,1024> buffer;
 
         // Length of name
@@ -222,6 +226,7 @@ namespace os {
             if( b.status == FULL ) {
                 stream.write( b.data.data() , b.length );
             }
+            stream.flush();
         }
         unlock( WRITE );
 
@@ -274,7 +279,9 @@ namespace os {
                 f.name = std::string( buff.data() , str_len );
                 f.current = f.start;
 
+                l.toggleOutput();
                 printFile( f , true );
+                l.toggleOutput();
 
                 allFiles.push_back( &f );
             }
@@ -821,10 +828,12 @@ namespace os {
             l.log( overwritten , to_overwrite , true );
             assert( false && "TODO: Handle case 'overwritten < length'"  );
         }else if( file.position > file.size  ) {
+            l.toggleOutput();
             l.log( "File has grown" , file.position - file.size , true );
             bytes_used += file.position - file.size;
             file.size += file.position - file.size;
             bytes_used += file.position - file.size;;
+            l.toggleOutput();
         }
 
         // TODO: What happens if we fill up file exactly to end?
@@ -1023,6 +1032,7 @@ namespace os {
         // Create new file
         File &f = createNewFile( name );
         f.status = OPEN;
+        allFiles.push_back( &f );
         openFiles.push_back( &f );
         l.leave( "OPEN" );
         return f;
@@ -1032,6 +1042,7 @@ namespace os {
         l.enter( "CLOSE" );
         for( auto file = openFiles.begin() ; file != openFiles.end() ; ++file ) {
             if( (*file)->getFilename() == name && (*file)->status == OPEN ) {
+                assert( (*file)->size != 0 );
                 insertFile( **file );
                 (*file)->status = CLOSED;
 		(*file)->position = 0;

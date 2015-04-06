@@ -13,16 +13,17 @@ namespace os {
 
     // Read all of the data in this file and return it.
     std::string FileReader::readAll() {
-	char buff[file.size];
-	uint64_t size = file.fs->read( file, file.size, buff );
-	return std::string(buff, file.size);
+        char buff[file.size];
+        uint64_t size = file.fs->read( file, file.size, buff );
+        assert( size != 0 );
+        return std::string(buff, file.size);
     }
 
     uint64_t FileReader::read( uint64_t length , char* buffer ) {
         // TODO:    As of now the current is always start
         //          In the future it would be nice to
         //          not linearly search the entire file
-        
+
         return file.fs->read( file , length , buffer );
     }
 
@@ -34,22 +35,22 @@ namespace os {
         Block b;
         switch( pos ) {
             case BEG:
-		{
-                file.position = position;
-                file.current = file.start;
-                break;
-		}
+                {
+                    file.position = position;
+                    file.current = file.start;
+                    break;
+                }
             case END:
-		{
-                file.position = file.size - position;
-                file.current = file.start;
-                break;
-		}
+                {
+                    file.position = file.size - position;
+                    file.current = file.start;
+                    break;
+                }
             case CUR:
-		{
-                file.position += position;
-                break;
-		}
+                {
+                    file.position += position;
+                    break;
+                }
         };
     }
 
@@ -58,7 +59,7 @@ namespace os {
     }
 
     void FileReader::close() {
-	file.fs->close(file.name);
+        file.fs->close(file.name);
     }
 
 };
