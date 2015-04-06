@@ -64,4 +64,4 @@ test: $(OBJECTS) $(T_OBJECTS)
 
 
 clean:
-	rm -f *.o test.dat EndianTest CTest WTest RTest RepTest FTest LWTest LRTest RAllTest
+	rm -f *.db *.o test.dat EndianTest CTest WTest RTest RepTest FTest LWTest LRTest RAllTest WRTest
