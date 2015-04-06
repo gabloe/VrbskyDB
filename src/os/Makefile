@@ -1,21 +1,24 @@
 
 CC=g++
 CFLAGS=--std=c++11 -g
-OBJ=../objects/
+OUT=../objects/
 
-all:	$(OBJ)FileReader.o $(OBJ)FileWriter.o $(OBJ)File.o $(OBJ)FileSystem.o
+all: $(OUT) $(OUT)FileReader.o $(OUT)FileWriter.o $(OUT)File.o $(OUT)FileSystem.o
 
-$(OBJ)FileWriter.o:	FileWriter.cpp FileWriter.h
-	$(CC) $(CFLAGS) -c FileWriter.cpp -o $(OBJ)FileWriter.o
+$(OUT)FileWriter.o:	FileWriter.cpp FileWriter.h
+	$(CC) $(CFLAGS) -c FileWriter.cpp -o $(OUT)FileWriter.o
 
-$(OBJ)FileReader.o:	FileReader.cpp FileReader.h
-	$(CC) $(CFLAGS) -c FileReader.cpp -o $(OBJ)FileReader.o
+$(OUT)FileReader.o:	FileReader.cpp FileReader.h
+	$(CC) $(CFLAGS) -c FileReader.cpp -o $(OUT)FileReader.o
 
-$(OBJ)File.o:			File.cpp File.h
-	$(CC) $(CFLAGS) -c File.cpp -o $(OBJ)File.o
+$(OUT)File.o:			File.cpp File.h
+	$(CC) $(CFLAGS) -c File.cpp -o $(OUT)File.o
 
-$(OBJ)FileSystem.o:	FileSystem.cpp FileSystem.h
-	$(CC) $(CFLAGS) -c FileSystem.cpp -o $(OBJ)FileSystem.o
+$(OUT)FileSystem.o:	FileSystem.cpp FileSystem.h
+	$(CC) $(CFLAGS) -c FileSystem.cpp -o $(OUT)FileSystem.o
+
+$(OUT):
+	mkdir -p $(OUT)
 
 clean:
 	rm -f ../objects/FileSystem.o ../objects/File.o ../objects/FileReader.o ../objects/FileWriter.o

@@ -10,26 +10,26 @@ else
    LIBS += -luuid -lreadline
 endif
 
-binary: $(OUT) $(OBJECTS)dbms.o $(OBJECTS)Parser.o $(OBJECTS)Scanner.o OS 
+binary: $(OUT) $(OBJECTS) OS PARSING DBMS
 	$(CC) $(CFLAGS) $(INCLUDES) -o $(OUT)dbms $(OBJECTS)*.o $(LIBS) 
-
-$(OBJECTS)Scanner.o: ./parsing/Scanner.cpp
-	cd ./parsing && $(MAKE) Scanner.o
 
 OS:
 	make -C os
 
-$(OBJECTS)Parser.o: ./parsing/Parser.cpp 
-	cd ./parsing && $(MAKE) Parser.o
+PARSING:
+	make -C parsing
 
-$(OBJECTS)dbms.o: ./dbms/dbms.cpp
-	cd ./dbms && $(MAKE) dbms.o
+DBMS:
+	make -C dbms
 
 test:
 	cd ./tests && $(MAKE) all
 
 $(OUT):
 	mkdir -p $(OUT)
+
+$(OBJECTS):
+	mkdir -p $(OBJECTS)
 
 clean:
 	cd ./tests && $(MAKE) clean

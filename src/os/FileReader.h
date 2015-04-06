@@ -2,8 +2,8 @@
 #ifndef OS_FILEREADER_H_
 #define OS_FILEREADER_H_
 
-#include "Constants.h"
-#include "File.h"
+#include "../os/Constants.h"
+#include "../os/File.h"
 #include <assert.h>
 
 namespace os {

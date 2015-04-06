@@ -3,11 +3,14 @@ CC=g++
 CFLAGS=--std=c++11 -O3 -Wall -Wextra
 INCLUDES += -I../include/
 LIBS += 
+OBJS=$(OUT)Scanner.o $(OUT)Parser.o
 
-Scanner.o: $(OUT) Scanner.cpp
+all: $(OUT) $(OBJS)
+
+$(OUT)Scanner.o: Scanner.cpp
 	$(CC) $(CFLAGS) $(INCLUDES) -o $(OUT)Scanner.o -c Scanner.cpp $(LIBS)
 
-Parser.o: $(OUT) Parser.cpp
+$(OUT)Parser.o: Parser.cpp
 	$(CC) $(CFLAGS) $(INCLUDES) -o $(OUT)Parser.o -c Parser.cpp $(LIBS)
 
 $(OUT):

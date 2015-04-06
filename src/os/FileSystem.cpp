@@ -12,11 +12,11 @@
 // std::min
 #include <cmath>
 
-#include "Logging.h"
-#include "FileSystem.h"
-#include "FileReader.h"
-#include "FileWriter.h"
-#include "File.h"
+#include "../os/Logging.h"
+#include "../os/FileSystem.h"
+#include "../os/FileReader.h"
+#include "../os/FileWriter.h"
+#include "../os/File.h"
 
 static const char Zero[os::Block_Size] = {0};
 
