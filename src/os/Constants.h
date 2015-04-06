@@ -3,11 +3,7 @@
 #define OS_CONSTANTS_H_
 
 #include <cstdint>
-
 #include <iostream>
-
-static uint64_t depth = 0;
-static bool allEnabled = false;
 
 
 template<uint64_t V>
