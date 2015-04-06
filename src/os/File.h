@@ -42,28 +42,6 @@ namespace os {
                 } 
 
                 File( const File &other) = delete;
-/*
-                File( const File &other ) {
-
-                    // Attributes
-                    name        = other.name;
-                    size        = other.size;
-                    disk_usage  = other.disk_usage;
-
-                    // Saved meta-data
-                    start       = other.start;
-                    end         = other.end;
-                    metadata    = other.metadata;
-
-                    // State
-                    fs              = other.fs;
-                    status          = other.status;
-                    current         = other.current;
-                    position        = other.position;
-                    block_position  = other.block_position;
-                    disk_position   = other.disk_position;
-                }
-*/
 
                 // Return the current filename seen by this file descriptor
                 std::string getFilename() const {

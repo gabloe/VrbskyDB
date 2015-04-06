@@ -15,7 +15,7 @@ namespace os {
     std::string FileReader::readAll() {
         char buff[file.size];
         uint64_t size = file.fs->read( file, file.size, buff );
-        assert( size != 0 );
+        assert( file.size != 0 );
         return std::string(buff, file.size);
     }
 

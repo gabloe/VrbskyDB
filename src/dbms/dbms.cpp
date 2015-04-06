@@ -82,7 +82,7 @@ void insertDocument(rapidjson::Value &doc, uint64_t projHash, INDICES &indices, 
 	os::File &file = fs.open(docUUID.c_str());
 	os::FileWriter writer(file);
 	writer.write(data.size(), data.c_str());
-	//writer.close();
+	writer.close();
 
 	appendDocToProject(projHash, docUUID, meta);
 }
@@ -234,7 +234,7 @@ rapidjson::Document select(rapidjson::Document &docArray, rapidjson::Document &o
 		os::File &file = fs.open(dID);
 		os::FileReader reader(file);
 		std::string docTxt = reader.readAll();
-		//reader.close();
+		reader.close();
 
 		// Parse the document
 		rapidjson::Document doc;
