@@ -179,6 +179,69 @@ void insertDocuments(rapidjson::Document &docs, std::string pname, INDICES &indi
 	
 }
 
+// Assume doc is an array or an object.
+rapidjson::Document processFields(rapidjson::Document &doc, rapidjson::Document &aggregates) {
+	assert(doc.GetType() == rapidjson::kArrayType && aggregates.GetType() == rapidjson::kArrayType);
+	rapidjson::Document newDoc;
+	newDoc.SetArray();
+	for (rapidjson::Value::ConstValueIterator src = doc.Begin(); src != doc.End(); ++src) {
+		if (src->GetType() == rapidjson::kStringType) {
+			std::string srcVal = src->GetString();
+			bool match = false;
+			for (rapidjson::Value::ConstValueIterator dest = newDoc.Begin(); dest != newDoc.End(); ++dest) {
+				std::string destVal = dest->GetString();
+				if (srcVal.compare(destVal) == 0) {
+					match = true;
+					break;
+				}
+			}
+			if (!match) {
+				rapidjson::Value newVal(srcVal.c_str(), newDoc.GetAllocator());
+				newDoc.PushBack(newVal, newDoc.GetAllocator());
+			}
+		}
+	}
+
+	for (rapidjson::Value::ConstValueIterator agg = aggregates.Begin(); agg != aggregates.End(); ++agg) {
+		assert(agg->GetType() == rapidjson::kObjectType);
+		bool found = false;
+		const rapidjson::Value &obj = *agg;
+		std::string aggVal = obj["field"].GetString();
+		for (rapidjson::Value::ConstValueIterator src = newDoc.Begin(); src != newDoc.End(); ++src) {
+			std::string srcVal = src->GetString();
+			if (aggVal.compare(srcVal) == 0) {
+				found = true;
+				break;
+			}
+		}
+		if (!found) {
+			rapidjson::Value tmpField;	
+			tmpField.SetObject();
+			rapidjson::Value fieldName(aggVal.c_str(), newDoc.GetAllocator());
+			tmpField.AddMember("_temporary", fieldName, newDoc.GetAllocator());
+			newDoc.PushBack(tmpField, newDoc.GetAllocator());
+		}
+	}
+
+	return newDoc;
+}
+
+rapidjson::Document extractAggregates(rapidjson::Document &fields) {
+	assert(fields.GetType() == rapidjson::kArrayType);
+	
+	rapidjson::Document newArray;
+	newArray.SetArray();
+
+	for (rapidjson::Value::ConstValueIterator it = fields.Begin(); it != fields.End(); ++it) {
+		if (it->GetType() == rapidjson::kObjectType) {
+			const rapidjson::Value &v_tmp = *it;
+			rapidjson::Value v(v_tmp, newArray.GetAllocator());
+			newArray.PushBack(v, newArray.GetAllocator());
+		}
+	}
+	return newArray;
+}
+
 rapidjson::Document select(rapidjson::Document &docArray, rapidjson::Document &origFields, FILESYSTEM &fs) {
 	rapidjson::Document result;
 	result.SetObject();
@@ -190,40 +253,17 @@ rapidjson::Document select(rapidjson::Document &docArray, rapidjson::Document &o
 	assert(docArray.GetType() == rapidjson::kArrayType);
 	assert(origFields.GetType() == rapidjson::kArrayType);
 
-	// Bundle the aggregates up
-	rapidjson::Document aggregates;
-	aggregates.SetArray();
-
-	// Handle * in field list and get aggregates
 	bool selectAll = false;
 
-	// Array of unique fields
-	rapidjson::Document fields;
-	fields.SetArray();
+	rapidjson::Document aggregates = extractAggregates(origFields);
+	rapidjson::Document fields = processFields(origFields, aggregates);
 
-	// Create array of unique fields and an array of aggregates if any exist in the field list.	
-	for (rapidjson::Value::ConstValueIterator field = origFields.Begin(); field != origFields.End(); ++field) {
-		if (field->GetType() == rapidjson::kStringType) {
-			std::string fieldTxt = field->GetString();
-			if (fieldTxt.compare("*") == 0) {
-				selectAll = true;
-			}
-			bool unique = true;
-			for (rapidjson::Value::ConstValueIterator uniqueField = fields.Begin(); uniqueField != fields.End(); ++uniqueField) {
-				std::string uniqueTxt = uniqueField->GetString();
-				if (!uniqueTxt.compare(fieldTxt)) {
-					unique = false;
-				}
-			}
-			if (unique) {
-				rapidjson::Value fieldVal(fieldTxt.c_str(), fields.GetAllocator());
-				fields.PushBack(fieldVal, fields.GetAllocator());
-			}
-		} else if (field->GetType() == rapidjson::kObjectType) {
-			// The field is an aggregation
-			const rapidjson::Value &obj_tmp = *field;	
-			rapidjson::Value obj(obj_tmp, aggregates.GetAllocator());
-			aggregates.PushBack(obj, aggregates.GetAllocator());
+	// Check for *
+	for (rapidjson::Value::ConstValueIterator it = fields.Begin(); it != fields.End(); ++it) {
+		if (it->GetType() != rapidjson::kStringType) continue;
+		std::string val = it->GetString();
+		if (val.compare("*") == 0) {
+			selectAll = true;
 		}
 	}
 
@@ -257,19 +297,29 @@ rapidjson::Document select(rapidjson::Document &docArray, rapidjson::Document &o
 			}
 		} else {
 			for (rapidjson::Value::ConstValueIterator field = fields.Begin(); field != fields.End(); ++field) {
-				std::string fieldTxt;
-				if (field->GetType() == rapidjson::kStringType) {
-					fieldTxt = field->GetString();
-				} else {
-					// Shouldn't happen
-					continue;
-				}
-				if (doc.HasMember(fieldTxt.c_str())) {
-					rapidjson::Value k(fieldTxt.c_str(), result.GetAllocator());
-					rapidjson::Value &v_tmp = doc[fieldTxt.c_str()];
-					rapidjson::Value v(v_tmp, result.GetAllocator());
-					docVal.AddMember(k, v, result.GetAllocator());
-					count++;
+				if (field->GetType() == rapidjson::kObjectType) {
+					const rapidjson::Value &obj = *field;
+					if (obj.HasMember("_temporary")) {
+						std::string tmpField = obj["_temporary"].GetString();
+						if (doc.HasMember(tmpField.c_str())) {
+							rapidjson::Value tempObj;
+							tempObj.SetObject();
+							rapidjson::Value k(tmpField.c_str(), result.GetAllocator());
+							rapidjson::Value &v_tmp = doc[tmpField.c_str()];
+							rapidjson::Value v(v_tmp, result.GetAllocator());	
+							tempObj.AddMember("_temporary", v, result.GetAllocator());
+							docVal.AddMember(k, tempObj, result.GetAllocator());
+						}
+					}
+				} else if (field->GetType() == rapidjson::kStringType) {
+					std::string fieldTxt = field->GetString();
+					if (doc.HasMember(fieldTxt.c_str())) {
+						rapidjson::Value k(fieldTxt.c_str(), result.GetAllocator());
+						rapidjson::Value &v_tmp = doc[fieldTxt.c_str()];
+						rapidjson::Value v(v_tmp, result.GetAllocator());
+						docVal.AddMember(k, v, result.GetAllocator());
+						count++;
+					}
 				}
 			}
 		}
@@ -284,19 +334,24 @@ rapidjson::Document select(rapidjson::Document &docArray, rapidjson::Document &o
 		std::string function = obj["function"].GetString();
 		std::string field = obj["field"].GetString();
 		double aggVal = 0.0;
-		for (rapidjson::Value::ConstValueIterator result = array.Begin(); result != array.End(); ++result) {
-			const rapidjson::Value &doc = *result;
+		for (rapidjson::Value::ValueIterator result = array.Begin(); result != array.End(); ++result) {
+			rapidjson::Value &doc = *result;
 			assert(doc.GetType() == rapidjson::kObjectType);
 			// Process the aggregate on this field
 			if (doc.HasMember(field.c_str())) {
-				const rapidjson::Value &val = doc[field.c_str()];
+				rapidjson::Value &val = doc[field.c_str()];
 				double x = 0.0;
+				if (val.GetType() == rapidjson::kObjectType) {
+					if (val.HasMember("_temporary")) {
+						std::cout << "Found temp" << std::endl;
+						val = val["_temporary"];
+					}
+				}
 				if (val.IsInt()) {
 					x = (double)val.GetInt();
 				} else if (val.IsDouble()) {
 					x = (double)val.GetDouble();
 				}
-					
 				if (!function.compare("SUM")) {
 					aggVal += x;	
 				}
