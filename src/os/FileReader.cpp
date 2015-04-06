@@ -34,16 +34,22 @@ namespace os {
         Block b;
         switch( pos ) {
             case BEG:
+		{
                 file.position = position;
                 file.current = file.start;
                 break;
+		}
             case END:
+		{
                 file.position = file.size - position;
                 file.current = file.start;
                 break;
+		}
             case CUR:
+		{
                 file.position += position;
                 break;
+		}
         };
     }
 
@@ -52,6 +58,7 @@ namespace os {
     }
 
     void FileReader::close() {
+	file.fs->close(file.name);
     }
 
 };

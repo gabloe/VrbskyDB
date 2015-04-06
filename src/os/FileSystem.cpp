@@ -1029,9 +1029,26 @@ namespace os {
         return f;
     }
 
+    void FileSystem::close(const std::string name) {
+        l.enter( "CLOSE" );
+        for( auto file = openFiles.begin() ; file != openFiles.end() ; ++file ) {
+            if( (*file)->getFilename() == name && (*file)->status == OPEN ) {
+                insertFile( **file );
+                (*file)->status = CLOSED;
+		(*file)->position = 0;
+		(*file)->current = (*file)->start;
+		(*file)->block_position = 0;
+		(*file)->disk_position = 0;
+		openFiles.remove(*file);
+		break;
+            }
+        }
+    }
+
     bool FileSystem::unlink( File &f ) {
         l.enter( "UNLINK:1" );
         l.leave( "UNLINK:1" );
+	return false;
     }
 
     //

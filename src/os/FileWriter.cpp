@@ -100,5 +100,6 @@ namespace os {
     }
 
     void FileWriter::close() {
+	file.fs->close(file.name);
     }
 };

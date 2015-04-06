@@ -139,6 +139,7 @@ namespace os {
 
             // Open a file for reading or modifiying.  If the file does not exist it is created.
             File& open( const std::string );
+            void close( const std::string );
 
             // Checks to see if a file exists
             bool exists( const std::string ); 
