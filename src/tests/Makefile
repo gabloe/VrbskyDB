@@ -6,16 +6,20 @@ INCLUDE_DIR=../include/
 INCLUDES=-I$(INCLUDE_DIR)
 OS_OBJS=$(OBJECTS)File.o $(OBJECTS)FileSystem.o $(OBJECTS)FileReader.o $(OBJECTS)FileWriter.o
 
-OUTPUT=$(OUT)LinearHashTest $(OUT)ParserTest $(OUT)UUIDTest \
-	$(OUT)WriteReadTest $(OUT)EndianTest $(OUT)WriteTest \
-	$(OUT)ReadTest $(OUT)LargeReadTest $(OUT)LargeWriteTest \
-	$(OUT)CreateTest $(OUT)FileTest $(OUT)ReplaceTest $(OUT)ReadAllTest
+OUTPUT=$(OUT)LinearHashTest $(OUT)ParserTest $(OUT)UUIDTest $(OUT)EndianTest \
+	$(OUT)CreateTest $(OUT)FileTest $(OUT)WriteReadTest \
+	$(OUT)WriteTest $(OUT)ReadTest \
+	$(OUT)LargeWriteTest $(OUT)LargeReadTest \
+	$(OUT)ReadAllTest $(OUT)ReplaceTest
 
 all: $(OUT) PARSING OS $(OUTPUT)
 
 
-run: $(OUT)LinearHashTest $(OUT)ParserTest $(OUT)UUIDTest
-	cd $(OUT) && ./ParserTest && ./LinearHashTest && ./UUIDTest
+run: all
+	for B in $(OUTPUT); do	\
+		echo "Running $$B";	\
+		$$B;				\
+	done
 
 PARSING:
 	make -C ../parsing/

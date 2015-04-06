@@ -24,6 +24,7 @@ DBMS:
 
 test:
 	make -C tests
+	make -C tests run
 
 $(OUT):
 	mkdir -p $(OUT)
