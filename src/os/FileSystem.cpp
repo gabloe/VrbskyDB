@@ -816,7 +816,6 @@ namespace os {
             curr = b.next;
         }
 
-
         // Need to move blocks around
         if( overwritten < to_overwrite ) {
             l.log( overwritten , to_overwrite , true );

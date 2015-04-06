@@ -6,7 +6,7 @@ class Log {
     private:
         std::ostream &output;
         int depth = 0;
-        bool enabled = false;
+        bool enabled = true;
         bool methodEnabled = true;
         bool working = true;
 
