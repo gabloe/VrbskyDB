@@ -75,4 +75,8 @@ match the traditional layout of file I/O APIs.
 
 \section{Indexes}
 
+Indexes are planned to be stored in a B-tree data structure.  User's will be able to create an index on any field and
+when a query is executed that includes indexed fields the query will use the index for optimized lookups.  The B-tree
+will be built on top of the virtual filesystem and be treated like a normal file.
+
 \end{document}
