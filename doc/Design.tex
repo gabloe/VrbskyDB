@@ -1,6 +1,8 @@
 \documentclass{article}
 \usepackage{graphicx}
-
+\usepackage{textcomp, xspace}
+\newcommand\la{\textlangle\xspace}
+\newcommand\ra{\textrangle\xspace}
 \begin{document}
 
 \title{NoSQL Database Design}
@@ -12,6 +14,17 @@
 We are implementing a document-oriented database management system named VrbskyDB.  In this database management system we store documents as JSON objects.  A JSON object is a collection of key/value pairs where a value can be a string, a number, a boolean, an embedded object, or an array.  When a document is inserted into a database we assign a universally unique identifier (UUID) to the document.  Documents are stored in a virtual filesystem that allows for file creation, file writing, and file reading.  When data is written to a file the virtual filesystem automatically chunks the data into equal sized segments.  The chunking process allows data to grow or shrink without having to extensively manipulate the filesystem structure.  Both linear hash tables and B-tree data structures are built on top of the virtual filesystem, and are used to store metadata and indexes, respectively.  The grammar of VrbskyDB shares a lot of similarities with SQL, but does not allow join operations.
 
 \section{Query Grammar}
+The grammar of VrbskyDB shares some similarities with SQL.  We have named the query languge VQL for ``Vrbsky Query Language''.  VQL supports inserting documents, deleting documents, adding data to a document, removing data from a document, and creating indexes.
+
+\subsection{Insert}
+Insert one or more documents into a project.  If the specified project does not exist then the project will automatically be created.
+\begin{center}
+INSERT INTO \la PROJECT NAME \ra WITH \la JSON \ra \\
+Or \\
+INSERT INTO \la PROJECT NAME \ra WITH [ \la JSON \ra, \la JSON \ra, ... ]
+\end{center}
+
+\subsection{Create}
 
 \section{Storage}
 
