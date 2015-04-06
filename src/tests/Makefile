@@ -79,5 +79,6 @@ $(OUT):
 
 clean:
 	rm -f $(OUTPUT)
+	rm -f output.dat test.dat
 
 .PHONY: clean
