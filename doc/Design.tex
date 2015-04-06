@@ -1,6 +1,7 @@
 \documentclass{article}
 \usepackage{graphicx}
 \usepackage{textcomp, xspace}
+\usepackage{fullpage}
 \newcommand\la{\textlangle\xspace}
 \newcommand\ra{\textrangle\xspace}
 \begin{document}
@@ -27,6 +28,22 @@ INSERT INTO \la PROJECT NAME \ra WITH [ \la JSON \ra, \la JSON \ra, ... ]
 \subsection{Create}
 
 \section{Storage}
+
+For VrbskyDB we implemented a rudamentary storage engine which mimics a file system.
+The engine includes additional operations crucial for databses that native filesystems do not support.
+We include an insert and a remove method which allows for arbitrary inserts and removes anywhere in a file.
+This has the benefit of removing costly copies to shift data to make room.
+
+These operations are possible due to the data-structure format we used for our files.
+Each file is broken into blocks which can hold a fixed amount of data.
+When a file is written to we allocate enough blocks for the data.
+If at some point we need to perform an insert into the middle of the file we allocate
+a new chain of blocks for the new data and relink our file in the proper order.
+For removes we perform a similar operation but instead of adding blocks we remove them and 
+place them on a special file which represents the free list of blocks.
+
+In addition to the storage engine we also supply a File, FileReader, and FileWriter class which
+match the traditional layout of file I/O APIs.
 
 \section{Indexes}
 
