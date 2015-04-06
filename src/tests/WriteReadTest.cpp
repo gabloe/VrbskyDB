@@ -2,10 +2,10 @@
 #include <iostream>
 #include <string>
 
-#include "FileSystem.h"
-#include "File.h"
-#include "FileWriter.h"
-#include "FileReader.h"
+#include "../os/FileSystem.h"
+#include "../os/File.h"
+#include "../os/FileWriter.h"
+#include "../os/FileReader.h"
 
 int main(void) {
     char data[] = {"Hello"};

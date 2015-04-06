@@ -1,7 +1,7 @@
 #ifndef _HASH_H_
 #define _HASH_H_
 
-#ifdef _MSC_VER
+#include <string>
 
 // Hash function
 uint64_t hash3(const void * key, int len, unsigned int seed = 0) {
@@ -70,8 +70,7 @@ uint64_t hash1(const char* data, size_t length) {
     return result;
 }
 
-template<typename T>
-inline uint64_t hash(T &str, size_t len) {
+inline uint64_t hash(std::string &str, size_t len) {
     //return hash1( str.c_str() , len );
     //return hash2( str.c_str() , len );
     return hash3(str.c_str(), len);		// Murmer

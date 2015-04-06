@@ -1,7 +1,7 @@
 #include <cassert>
 #include <string>
 
-#include "FileReader.h"
+#include "../os/FileReader.h"
 
 int main() {
     os::FileSystem fs( "test.dat" );

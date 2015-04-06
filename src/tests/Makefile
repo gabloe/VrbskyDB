@@ -4,14 +4,18 @@ CC=g++
 CFLAGS=--std=c++11 -O3 -Wall -Wextra -g
 INCLUDE_DIR=../include/
 INCLUDES=-I$(INCLUDE_DIR)
+OBJ=../objects
 
-all: $(OUT)LinearHashTest $(OUT)ParserTest $(OUT)UUIDTest \
+all: OS $(OUT)LinearHashTest $(OUT)ParserTest $(OUT)UUIDTest \
 	$(OUT)WriteReadTest $(OUT)EndianTest $(OUT)WriteTest \
 	$(OUT)ReadTest $(OUT)LargeReadTest $(OUT)LargeWriteTest \
 	$(OUT)CreateTest $(OUT)FileTest $(OUT)ReplaceTest $(OUT)ReadAllTest
 
 run: $(OUT)LinearHashTest $(OUT)ParserTest $(OUT)UUIDTest
 	cd $(OUT) && ./ParserTest && ./LinearHashTest && ./UUIDTest
+
+OS:
+	make -C ../os
 
 RapidJSONTest: $(OUT)RapidJSONTest
 
@@ -29,7 +33,7 @@ $(OUT)ParserTest: $(OUT) ./ParserTest.cpp
 	cp queries $(OUT)queries
 
 $(OUT)UUIDTest: $(OUT) ./uuidtest.cpp
-	$(CC) $(CFLAGS) $(INCLUDES) ./uuidtest.cpp -o $(OUT)UUIDTest
+	$(CC) $(CFLAGS) $(INCLUDES) -luuid ./uuidtest.cpp -o $(OUT)UUIDTest
 
 $(OUT)WriteReadTest: $(OUT) ./WriteReadTest.cpp
 	$(CC) $(CFLAGS) $(INCLUDES) ./WriteReadTest.cpp -o $(OUT)WriteReadTest
