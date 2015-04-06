@@ -3,8 +3,6 @@
 
 #define OS_FILESYSTEM_H_
 
-#include "Constants.h"
-
 #include <iostream>
 
 #include <ios>
@@ -12,6 +10,8 @@
 #include <string>
 #include <list>
 #include <array>
+
+#include "../os/Constants.h"
 
 
 // FileStructure

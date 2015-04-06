@@ -2,9 +2,9 @@
 #ifndef OS_FILEWRITER_H_
 #define OS_FILEWRITER_H_
 
-#include "Constants.h"
-#include "File.h"
-#include "FileWriter.h"
+#include "../os/Constants.h"
+#include "../os/File.h"
+#include "../os/FileWriter.h"
 
 namespace os {
 

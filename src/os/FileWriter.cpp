@@ -3,9 +3,9 @@
 #include <cassert>
 #include <algorithm>
 
-#include "FileSystem.h"
-#include "File.h"
-#include "FileWriter.h"
+#include "../os/FileSystem.h"
+#include "../os/File.h"
+#include "../os/FileWriter.h"
 
 namespace os {
 

@@ -7,6 +7,7 @@
 #include <ctime>
 
 #include "dbms.h"
+#include "../hashing/Hash.h"
 #include "../storage/LinearHash.h"
 #include "../parsing/Parser.h"
 #include "../parsing/Scanner.h"

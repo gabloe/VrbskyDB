@@ -1,8 +1,8 @@
 
-#include "FileReader.h"
+#include "../os/FileReader.h"
 
-#include "FileSystem.h"
-#include "File.h"
+#include "../os/FileSystem.h"
+#include "../os/File.h"
 
 
 namespace os {
