@@ -354,7 +354,7 @@ int projectFields(rapidjson::Document *src, rapidjson::Value *dest, rapidjson::D
 void aggregateField(rapidjson::Value *result, rapidjson::Value *data, std::string function) {
     if (!data->IsNumber()) return;
     std::map<std::string, std::function<void(rapidjson::Value*,rapidjson::Value&)>>  funcMap =
-    {{ "SUM", sumAggregate},
+       {{ "SUM", sumAggregate},
         { "AVG", sumAggregate}, // Special case
         { "MIN", minAggregate},
         { "MAX", maxAggregate}
@@ -393,6 +393,7 @@ rapidjson::Value processAggregate(rapidjson::Value *src, const rapidjson::Value 
         }
     }
 
+    // Special case, handle average aggregate.  Is there a better way to do this?
     if (function.compare("AVG") == 0 && count > 0) {
         result = rapidjson::Value(result.GetDouble() / count);
     }
@@ -407,16 +408,26 @@ rapidjson::Value processAggregate(rapidjson::Value *src, const rapidjson::Value 
     return obj;
 }
 
+bool validateSpecialCompare(std::string val) {
+	if (val.compare("#gt") == 0 || val.compare("#lt") == 0 || val.compare("#eq") == 0) {
+		return true;
+	}
+	return false;
+}
+
 // First is the value from the condition.  It may contain special fields... #gt, #lt
-bool sameValues(rapidjson::Value &first, rapidjson::Value &second) {
+bool sameValues(rapidjson::Value &first, rapidjson::Value &second, rapidjson::Document::AllocatorType &allocator) {
     bool foundSpecial = false;
+    std::string specialCompare;
+    rapidjson::Value specialValue;
     if (first.GetType() != second.GetType()) {
 	// Could be a special condition.
 	if (first.GetType() == rapidjson::kObjectType) {
-		for (rapidjson::Value::ConstMemberIterator it = first.MemberBegin(); it != first.MemberEnd(); ++it) {
-			std::string key = first[it->name].GetString();
-			if (key[0] == '#') {
+		for (rapidjson::Value::MemberIterator it = first.MemberBegin(); it != first.MemberEnd(); ++it) {
+			specialCompare = it->name.GetString();
+			if (specialCompare[0] == '#') {
 				foundSpecial = true;
+				specialValue = rapidjson::Value(first[specialCompare.c_str()], allocator);
 				break;
 			}
 		}
@@ -428,12 +439,19 @@ bool sameValues(rapidjson::Value &first, rapidjson::Value &second) {
 	}
     }
 
+    rapidjson::Value condition;
+    rapidjson::Type type;
     if (foundSpecial) {
-	// TODO: Implement special fields in where clause.
-	return false;
+	type = specialValue.GetType();
+	if (!validateSpecialCompare(specialCompare) || type != second.GetType()) {
+		return false;
+	}
+	condition = specialValue;
+    } else {
+	type = first.GetType();
+	condition = first;
     }
 
-    rapidjson::Type type = first.GetType();
     switch (type) {
         case rapidjson::kNullType:
             {
@@ -442,25 +460,47 @@ bool sameValues(rapidjson::Value &first, rapidjson::Value &second) {
             }
         case rapidjson::kStringType:
             {
-                std::string firstStr = first.GetString();
+                std::string firstStr = condition.GetString();
                 std::string secondStr = second.GetString();
-                return firstStr.compare(secondStr) == 0;
+		if (foundSpecial) {
+			if (!specialCompare.compare("#gt")) {
+                		return secondStr.compare(firstStr) > 0;
+			} else if (!specialCompare.compare("#lt")) {
+                		return secondStr.compare(firstStr) < 0;
+			} else if (!specialCompare.compare("#eq")) {
+                		return firstStr.compare(secondStr) == 0;
+			}
+		} else {
+                	return firstStr.compare(secondStr) == 0;
+		}
             }
         case rapidjson::kNumberType:
             {
                 double firstNum;
                 double secondNum;
-                if (first.IsInt()) {
-                    firstNum = first.GetInt();
+                if (condition.IsInt()) {
+                    firstNum = (double)condition.GetInt();
                 } else {
                     firstNum = first.GetDouble();
                 }
                 if (second.IsInt()) {
-                    secondNum = second.GetInt();
+                    secondNum = (double)second.GetInt();
                 } else {
                     secondNum = second.GetDouble();
                 }
-                return firstNum == secondNum;
+		
+		if (foundSpecial) {
+			if (!specialCompare.compare("#gt")) {
+                		return secondNum > firstNum;
+			} else if (!specialCompare.compare("#lt")) {
+                		return secondNum < firstNum;
+			} else if (!specialCompare.compare("#eq")) {
+                		return secondNum == firstNum;
+			}
+		} else {
+                	return firstNum == secondNum;
+		}
+		break;
             }
         case rapidjson::kFalseType:
             {
@@ -474,13 +514,13 @@ bool sameValues(rapidjson::Value &first, rapidjson::Value &second) {
             }
         case rapidjson::kObjectType: // Special case, compare fields recursively.
             {
-                for (rapidjson::Value::MemberIterator it = first.MemberBegin(); it != first.MemberEnd(); ++it) {
+                for (rapidjson::Value::MemberIterator it = condition.MemberBegin(); it != first.MemberEnd(); ++it) {
                     if (!second.HasMember(it->name.GetString())) {
                         return false;
                     }
-                    rapidjson::Value &firstEmbed = first[it->name.GetString()];
+                    rapidjson::Value &firstEmbed = condition[it->name.GetString()];
                     rapidjson::Value &secondEmbed = second[it->name.GetString()];
-                    if (!sameValues(firstEmbed, secondEmbed)) {
+                    if (!sameValues(firstEmbed, secondEmbed, allocator)) {
                         return false;
                     }
                 }
@@ -488,19 +528,18 @@ bool sameValues(rapidjson::Value &first, rapidjson::Value &second) {
             }
         case rapidjson::kArrayType:
             {
-                if (first.Size() != second.Size()) {
+                if (condition.Size() != second.Size()) {
                     return false;
                 }
-                for (rapidjson::SizeType i=0; i < first.Size(); ++i) {
-                    if (!sameValues(first[i], second[i])) {
+                for (rapidjson::SizeType i=0; i < condition.Size(); ++i) {
+                    if (!sameValues(condition[i], second[i], allocator)) {
                         return false;
                     }
                 }
                 return true;
             }
-        default:
-            return false;
     }
+    return false;
 }
 
 bool documentMatchesConditions(rapidjson::Document &doc, rapidjson::Document &conditions) {
@@ -512,7 +551,7 @@ bool documentMatchesConditions(rapidjson::Document &doc, rapidjson::Document &co
 
         rapidjson::Value &condVal = conditions[condKey.c_str()];
         rapidjson::Value &docVal = doc[condKey.c_str()];
-        if (!sameValues(condVal, docVal)) {
+        if (!sameValues(condVal, docVal, conditions.GetAllocator())) {
             return false;
         }
     }
