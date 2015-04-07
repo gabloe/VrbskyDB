@@ -691,7 +691,6 @@ namespace os {
 
         if( length > 0 && buffer != 0 && file.position < file.size ) {
             Block current = load( file.current );
-            assert( file.position < 1000 );
 
             uint64_t next = current.block;
             current = load( next );
