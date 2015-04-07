@@ -6,6 +6,7 @@
 #include "../os/FileSystem.h"
 #include "../os/File.h"
 #include "../os/FileWriter.h"
+#include "../assert/Assert.h"
 
 namespace os {
 
@@ -50,7 +51,7 @@ namespace os {
 
         // Assertion:   The files current position is not
         //              after the requested position
-        assert( file.position <= position );
+        Assert( "We could not go to the requested position" , file.name , file.size , file.position <= position );
 
         if( position < 0 ) {
             throw std::runtime_error( "Invalid file position" );
@@ -63,7 +64,8 @@ namespace os {
         // While we have more disk space and we have not reached the position 
         while( file.disk_position < file.disk_usage && file.position < position ) {
             // Load block
-            Block b = file.fs->load( current );
+            file.current = current;
+            Block b = file.fs->lazyLoad( current );
 
             // Minimum of remaining bytes in current block
             // and distance to position requested
@@ -83,11 +85,11 @@ namespace os {
             // Get next
             current = b.next;
         }
-
-        assert( file.position == position );
+        Assert( "We could not go to the requested position" , file.disk_usage , position , file.position == position );
 
         // Out of the file
         if( file.position < position ) {
+            assert(false);
             file.current = 0;
             file.position += position;
             file.disk_position += round<Block_Size>(position);

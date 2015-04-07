@@ -151,6 +151,7 @@ namespace os {
         l.enter( "CREATENEWFILE" );
 
         Block b = allocate( Block_Size , NULL );
+        assert( b.block != 0 );
 
         File &f = *(new File());
         f.name = name;
@@ -746,7 +747,11 @@ namespace os {
 
             // Update/Reconnect
             file.disk_usage += growBy;
-            file.end = newBlock.prev;
+            if( newBlock.prev == 0 ) {
+                file.end = newBlock.block;
+            }else {
+                file.end = newBlock.prev;
+            }
             oldBlock.next = newBlock.block;
             newBlock.prev = oldBlock.block;
             flush( newBlock );
