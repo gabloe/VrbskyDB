@@ -420,22 +420,22 @@ bool sameValues(rapidjson::Value &first, rapidjson::Value &second, rapidjson::Do
     bool foundSpecial = false;
     std::string specialCompare;
     rapidjson::Value specialValue;
-    if (first.GetType() != second.GetType()) {
-	// Could be a special condition.
-	if (first.GetType() == rapidjson::kObjectType) {
-		for (rapidjson::Value::MemberIterator it = first.MemberBegin(); it != first.MemberEnd(); ++it) {
-			specialCompare = it->name.GetString();
-			if (specialCompare[0] == '#') {
-				foundSpecial = true;
-				specialValue = rapidjson::Value(first[specialCompare.c_str()], allocator);
-				break;
-			}
+    // Could be a special condition.
+    if (first.GetType() == rapidjson::kObjectType && second.GetType() != rapidjson::kObjectType) {
+	for (rapidjson::Value::MemberIterator it = first.MemberBegin(); it != first.MemberEnd(); ++it) {
+		specialCompare = it->name.GetString();
+		if (specialCompare[0] == '#') {
+			foundSpecial = true;
+			specialValue = rapidjson::Value(first[specialCompare.c_str()], allocator);
+			break;
 		}
-		if (!foundSpecial) {
-			return false;
-		}
-	} else {
-        	return false;
+	}
+	if (!foundSpecial) {
+		return false;
+	}
+    } else {
+	if (first.GetType() != second.GetType()) {
+		return false;
 	}
     }
 
@@ -473,6 +473,7 @@ bool sameValues(rapidjson::Value &first, rapidjson::Value &second, rapidjson::Do
 		} else {
                 	return firstStr.compare(secondStr) == 0;
 		}
+		break;
             }
         case rapidjson::kNumberType:
             {
@@ -504,17 +505,19 @@ bool sameValues(rapidjson::Value &first, rapidjson::Value &second, rapidjson::Do
             }
         case rapidjson::kFalseType:
             {
+		if (foundSpecial) return false;
                 return true;
                 break;
             }
         case rapidjson::kTrueType:
             {
+		if (foundSpecial) return false;
                 return true;
                 break;
             }
         case rapidjson::kObjectType: // Special case, compare fields recursively.
             {
-                for (rapidjson::Value::MemberIterator it = condition.MemberBegin(); it != first.MemberEnd(); ++it) {
+                for (rapidjson::Value::MemberIterator it = condition.MemberBegin(); it != condition.MemberEnd(); ++it) {
                     if (!second.HasMember(it->name.GetString())) {
                         return false;
                     }
@@ -528,6 +531,7 @@ bool sameValues(rapidjson::Value &first, rapidjson::Value &second, rapidjson::Do
             }
         case rapidjson::kArrayType:
             {
+		if (foundSpecial) return false;
                 if (condition.Size() != second.Size()) {
                     return false;
                 }
