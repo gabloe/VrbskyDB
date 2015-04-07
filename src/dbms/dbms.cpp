@@ -650,9 +650,21 @@ void execute(Parsing::Query &q, META &meta, FILESYSTEM &fs) {
                         rapidjson::Document docArray;
                         docArray.Parse(docs.c_str());
                         rapidjson::Document data = select(docArray, *q.fields, q.where, fs);
-                        std::cout << toPrettyString(&data) << std::endl;
+			if (data.HasMember("_result")) {
+				rapidjson::Value &array = data["_result"];
+				if (array.Size() == 0) {
+					std::cout << "Result Empty!" << std::endl;	
+				} else {
+                        		std::cout << toPrettyString(&data) << std::endl;
+				}
+			} else {
+				// Not sure how this would happen...
+				std::cout << "Error occured during operation." << std::endl;
+			}
                     }
-                }
+                } else {
+			std::cout << "Project '" << project << "' does not exist!" << std::endl;
+		}
                 break;
             }
         case Parsing::DELETE:
