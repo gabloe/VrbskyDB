@@ -28,7 +28,7 @@ namespace os {
     }
 
     // Move the file pointer to a new position
-    void FileReader::seek( uint64_t position , FilePosition from ){
+    void FileReader::seek( int64_t position , FilePosition from ){
         // TODO:    Improve performance by moving from my current position
         switch( from ) {
             case BEG:

@@ -18,7 +18,7 @@ namespace os {
         FileReader(File& f);
         char *readAll();
         uint64_t read( uint64_t , char* );
-        void seek( uint64_t , FilePosition );
+        void seek( int64_t , FilePosition );
         uint64_t tell();
         void close();
 
