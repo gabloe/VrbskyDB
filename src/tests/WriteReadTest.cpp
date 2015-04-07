@@ -1,6 +1,7 @@
 
 #include <iostream>
 #include <string>
+#include <cassert>
 
 #include "../os/FileSystem.h"
 #include "../os/File.h"
@@ -15,15 +16,16 @@ int main(void) {
     os::File &first = fs.open( "TEST" );
     os::FileWriter out( first );
     out.write( sizeof(data) , data );
+    assert(first.size == sizeof(data));
     out.close();
 
     os::File& second = fs.open( "TEST" );
+    assert(second.size == sizeof(data));
     os::FileReader in( second );
     in.read( sizeof(test) , test );
     in.close();
 
-    std::cout << "Data Written: " << std::string( data , sizeof(data) ) << std::endl;
-    std::cout << "Data Read: " << std::string( test , sizeof(test) ) << std::endl;
+    for( size_t i = 0 ; i < sizeof(data) ; ++i ) assert( data[i] == test[i] );
 
     fs.shutdown();
     return 0;

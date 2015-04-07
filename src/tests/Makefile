@@ -8,7 +8,7 @@ OS_OBJS=$(OBJECTS)File.o $(OBJECTS)FileSystem.o $(OBJECTS)FileReader.o $(OBJECTS
 
 OUTPUT=$(OUT)LinearHashTest $(OUT)ParserTest $(OUT)UUIDTest $(OUT)EndianTest \
 	$(OUT)CreateTest $(OUT)FileTest $(OUT)WriteReadTest \
-	$(OUT)WriteTest $(OUT)ReadTest \
+	$(OUT)WriteTest \
 	$(OUT)LargeWriteTest $(OUT)LargeReadTest \
 	$(OUT)ReadAllTest $(OUT)ReplaceTest
 
@@ -17,6 +17,7 @@ all: $(OUT) PARSING OS $(OUTPUT)
 
 run: all
 	for B in $(OUTPUT); do	\
+		rm -f test.dat;		\
 		echo "Running $$B";	\
 		$$B;				\
 	done
@@ -56,9 +57,6 @@ $(OUT)LargeReadTest: ./LargeReadTest.cpp
 $(OUT)ReadAllTest: ./ReadAllTest.cpp
 	$(CC) $(CFLAGS) $(INCLUDES) $(OS_OBJS) ./ReadAllTest.cpp -o $(OUT)ReadAllTest
 
-$(OUT)ReadTest: ./ReadTest.cpp
-	$(CC) $(CFLAGS) $(INCLUDES) $(OS_OBJS) ./ReadTest.cpp -o $(OUT)ReadTest
-	
 $(OUT)LargeWriteTest: ./LargeWriteTest.cpp
 	$(CC) $(CFLAGS) $(INCLUDES) $(OS_OBJS) ./LargeWriteTest.cpp -o $(OUT)LargeWriteTest
 
