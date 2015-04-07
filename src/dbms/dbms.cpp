@@ -407,9 +407,30 @@ rapidjson::Value processAggregate(rapidjson::Value *src, const rapidjson::Value 
     return obj;
 }
 
+// First is the value from the condition.  It may contain special fields... #gt, #lt
 bool sameValues(rapidjson::Value &first, rapidjson::Value &second) {
+    bool foundSpecial = false;
     if (first.GetType() != second.GetType()) {
-        return false;
+	// Could be a special condition.
+	if (first.GetType() == rapidjson::kObjectType) {
+		for (rapidjson::Value::ConstMemberIterator it = first.MemberBegin(); it != first.MemberEnd(); ++it) {
+			std::string key = first[it->name].GetString();
+			if (key[0] == '#') {
+				foundSpecial = true;
+				break;
+			}
+		}
+		if (!foundSpecial) {
+			return false;
+		}
+	} else {
+        	return false;
+	}
+    }
+
+    if (foundSpecial) {
+	// TODO: Implement special fields in where clause.
+	return false;
     }
 
     rapidjson::Type type = first.GetType();
