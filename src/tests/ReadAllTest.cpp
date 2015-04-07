@@ -19,7 +19,7 @@ void check( char *data) {
 }
 
 void writeData() {
-    os::FileSystem fs( "test.data" );
+    os::FileSystem fs( "test.dat" );
     os::File& file = fs.open( "TEST" );
     os::FileWriter writer( file );
     char *data = genData();
@@ -29,7 +29,7 @@ void writeData() {
 }
 
 void readAllTest()  {
-    os::FileSystem fs( "test.data" );
+    os::FileSystem fs( "test.dat" );
     os::File& file = fs.open( "TEST" );
     assert(file.size == DataSize);
     os::FileReader reader( file );

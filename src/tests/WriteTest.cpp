@@ -9,7 +9,7 @@ const size_t DataSize = 2 * 1024;
 
 void writeData() {
     const char MyData[] = "Jello World";
-    os::FileSystem fs( "test.data" );
+    os::FileSystem fs( "test.dat" );
     os::File &file = fs.open( "TEST" );
     os::FileWriter writer( file );
     writer.write( sizeof( MyData ) , MyData );

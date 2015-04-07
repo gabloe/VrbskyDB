@@ -97,7 +97,7 @@ namespace os {
             /* Data management functions*/
             void saveHeader();
             void readHeader();
-            void printHeader();
+            void printHeader(bool);
 
             void gotoBlock( uint64_t );
             Block readBlock();

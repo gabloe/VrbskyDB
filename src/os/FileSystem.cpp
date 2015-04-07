@@ -252,7 +252,6 @@ namespace os {
             for( int i = 0 ; i < metadata_files; ++i) {
                 File &f = *(new File());
 
-                l.disableMethod();
                 uint64_t str_len,f_position = metaReader->tell(); 
                 metaReader->read( sizeof(uint64_t) , reinterpret_cast<char*>(&str_len) );
                 metaReader->read( str_len , buff.data() );
@@ -261,7 +260,6 @@ namespace os {
                 metaReader->read( sizeof(uint64_t) , reinterpret_cast<char*>(&(f.start)));
                 metaReader->read( sizeof(uint64_t) , reinterpret_cast<char*>(&(f.end)));
                 metaReader->read( sizeof(uint64_t) , reinterpret_cast<char*>(&(f.metadata)));
-                l.enableMethod();
 
                 f.fs = this;
                 f.name = std::string( buff.data() , str_len );
@@ -273,20 +271,20 @@ namespace os {
         l.leave("LOADMETADATA");
     }
 
-    void FileSystem::printHeader() {
-        l.log( "Bytes Allocated", bytes_allocated , true );
-        l.log( "Bytes Used", bytes_used , true );
-        l.log( "Blocks Allocated", blocks_allocated , true );
-        l.log( "Blocks Used", blocks_used , true );
-        l.log( "Number free blocks", free_count , true );
-        l.log( "First free block", free_first , true );
-        l.log( "Bytes allocated for metadata", metadata_bytes_allocated , true );
-        l.log( "Blocks allocated for metadata", metadata_allocated_blocks , true );
-        l.log( "Bytes used for meta-data", metadata_bytes_used , true );
-        l.log( "Blocks used for metadata", metadata_blocks_used , true );
-        l.log( "Files created", metadata_files , true );
-        l.log( "First block for metadata", metadata_start , true );
-        l.log( "Last block for metadata", metadata_end , true );
+    void FileSystem::printHeader( bool force = false) {
+        l.log( "Bytes Allocated", bytes_allocated , force );
+        l.log( "Bytes Used", bytes_used , force );
+        l.log( "Blocks Allocated", blocks_allocated , force );
+        l.log( "Blocks Used", blocks_used , force );
+        l.log( "Number free blocks", free_count , force );
+        l.log( "First free block", free_first , force );
+        l.log( "Bytes allocated for metadata", metadata_bytes_allocated , force );
+        l.log( "Blocks allocated for metadata", metadata_allocated_blocks , force );
+        l.log( "Bytes used for meta-data", metadata_bytes_used , force );
+        l.log( "Blocks used for metadata", metadata_blocks_used , force );
+        l.log( "Files created", metadata_files , force );
+        l.log( "First block for metadata", metadata_start , force );
+        l.log( "Last block for metadata", metadata_end , force );
     }
 
     void FileSystem::readHeader() {
@@ -1050,7 +1048,7 @@ namespace os {
 
 
     FileSystem::FileSystem( const std::string filename) {
-        l.toggleOutput();
+        l.disable();
         l.enter( "FILESYSTEM" );
 
         fileSystemLocation = filename;
