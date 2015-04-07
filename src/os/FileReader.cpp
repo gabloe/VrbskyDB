@@ -29,29 +29,76 @@ namespace os {
 
     // Move the file pointer to a new position
     void FileReader::seek( uint64_t position , FilePosition pos ){
-        // TODO:    performance efficiency, try to change 
-        //          current to the correct current instead
-        //          of start
-        Block b;
-        switch( pos ) {
+        // TODO:    Improve performance by moving from my current position
+        switch( from ) {
             case BEG:
-                {
-                    file.position = position;
-                    file.current = file.start;
-                    break;
-                }
+                file.current = file.start;
+                file.position = 0;
+                file.block_position = 0;
+                file.disk_position = 0;
+                break;
             case END:
-                {
-                    file.position = file.size - position;
-                    file.current = file.start;
-                    break;
-                }
+                file.current = file.start;
+                file.position = 0;
+                file.block_position = 0;
+                file.disk_position = 0;
+                position = file.size - position;
+                break;
             case CUR:
-                {
-                    file.position += position;
-                    break;
+                if( position < 0 ) {
+                    position = position + file.position;
+                    file.current = file.start;
+                    file.block_position = 0;
+                    file.disk_position = 0;
                 }
+                break;
         };
+
+        // Assertion:   The files current position is not
+        //              after the requested position
+        assert( file.position <= position );
+
+        if( position < 0 ) {
+            throw std::runtime_error( "Invalid file position" );
+        }
+
+        uint64_t pos = position;
+
+        uint64_t current = file.current;
+
+        // While we have more disk space and we have not reached the position 
+        while( file.disk_position < file.disk_usage && file.position < position ) {
+            // Load block
+            Block b = file.fs->load( current );
+
+            // Minimum of remaining bytes in current block
+            // and distance to position requested
+            uint64_t move = std::min( b.length - file.block_position , pos );
+
+            // Update
+            if( pos > move ) { // About to go to next block
+                file.disk_position += Block_Size;
+                file.block_position = 0;
+            }else {
+                file.block_position += move;
+                file.disk_position += move;
+            }
+            file.position += move;
+            pos -= move;
+
+            // Get next
+            current = b.next;
+        }
+
+        assert( file.position == position );
+
+        // Out of the file
+        if( file.position < position ) {
+            file.current = 0;
+            file.position += position;
+            file.disk_position += round<Block_Size>(position);
+            file.block_position = position % Block_Size;
+        }
     }
 
     uint64_t FileReader::tell() {
