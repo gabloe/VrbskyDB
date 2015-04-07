@@ -10,16 +10,16 @@ else
    LIBS += -luuid -lreadline
 endif
 
-binary: $(OUT) $(OBJECTS) OS PARSING DBMS
+binary: $(OUT) $(OBJECTS) OST PARSINGT DBMST
 	$(CC) $(CFLAGS) $(INCLUDES) -o $(OUT)dbms $(OBJECTS)*.o $(LIBS) 
 
-OS:
+OST:
 	make -C os
 
-PARSING:
+PARSINGT:
 	make -C parsing
 
-DBMS:
+DBMST:
 	make -C dbms
 
 test:
