@@ -223,9 +223,11 @@ void insertDocuments(rapidjson::Document &docs, std::string pname, META &meta, F
     if (docs.GetType() == rapidjson::kArrayType) {
         for (rapidjson::SizeType i = 0; i < docs.Size(); ++i) {
             insertDocument(docs[i], uuidHash, meta, fs);
+	    std::cout << toString(&docs[i]) << std::endl;
         }
     } else if (docs.GetType() == rapidjson::kObjectType) {
         insertDocument(docs, uuidHash, meta, fs);
+	std::cout << toString(&docs) << std::endl;
     }
 
 }
@@ -593,12 +595,15 @@ rapidjson::Document select(rapidjson::Document &docArray, rapidjson::Document &o
         std::string dID = docID->GetString();
         os::File &file = fs.open(dID);
         os::FileReader reader(file);
-        std::string docTxt = reader.readAll();
+        std::string docTxt = std::string(reader.readAll());
+	std::cout << "Read: " << docTxt << std::endl;
         reader.close();
 
         // Parse the document
         rapidjson::Document doc;
         doc.Parse(docTxt.c_str());
+
+	assert(!doc.HasParseError());
 
         rapidjson::Value docVal;
         docVal.SetObject();
@@ -616,6 +621,7 @@ rapidjson::Document select(rapidjson::Document &docArray, rapidjson::Document &o
         // Iterate over the desired fields
         if (selectAll) {
             // Add every field of the document to the result
+	    std::cout << "doc is : " << toString(&doc) << std::endl;
             count += selectAllFields(&doc, &docVal, result.GetAllocator());
         } else {
             count += projectFields(&doc, &docVal, &fields, result.GetAllocator());
@@ -1020,6 +1026,7 @@ int main(int argc, char **argv) {
     }
     std::cout << "Goodbye!" << std::endl;
     free(buf);
+    dumpToFile(meta_fname, *meta);
     fs->shutdown();
 
     return 0;
