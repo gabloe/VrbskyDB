@@ -3,8 +3,8 @@ OBJECTS=./objects/
 CC=g++
 CFLAGS=--std=c++11 -O3 -Wall -Wextra -g
 INCLUDES += -I ./include/
-OS = $(shell uname)
-ifeq ($(OS), Darwin)
+systemName = $(shell uname)
+ifeq ($(systemName), Darwin)
    LIBS += -L/opt/local/lib -lreadline
 else
    LIBS += -luuid -lreadline

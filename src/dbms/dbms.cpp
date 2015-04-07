@@ -320,7 +320,7 @@ rapidjson::Value processAggregate(rapidjson::Value *src, const rapidjson::Value 
 			// Must remove this from the array...
 			rapidjson::Value &embObject = obj[field.c_str()];
 			if (embObject.GetType() == rapidjson::kObjectType && embObject.HasMember("_temporary")) {
-				embObject = embObject["_temporary"];
+				//embObject = embObject["_temporary"];
 			}
 			std::cout << embObject.GetType() << std::endl;
 		}
