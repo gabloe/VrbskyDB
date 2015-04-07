@@ -813,7 +813,7 @@ namespace os {
         }
 
         l.leave( "WRITE" );
-        return written;
+        return remaining;
     }
 
     //  insert  -   We insert data at a given offset in the file.  We do not write

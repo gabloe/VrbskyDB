@@ -13,6 +13,7 @@
 #include <limits>
 #include <random>
 
+#include "../assert/Assert.h"
 #include "../hashing/Hash.h"
 
 #ifdef _MSC_VER
@@ -72,16 +73,6 @@ struct Wrapper<std::string> {
 
 #define _MAX(A,B) (A) > (B) ? (A) : (B)
 
-
-// Helper Functions
-
-// If the test fails we print out the message and then exit
-void Assert(std::string msg, bool test) {
-    if (!test) {
-        std::cerr << msg << std::endl;
-        exit(-1);
-    }
-}
 
 // Given an array d, we swap elements i and j
 template <typename K>

@@ -132,7 +132,11 @@ void insertDocument(rapidjson::Value &doc, uint64_t projHash, META &meta, FILESY
     // Insert this row into the DB
     os::File &file = fs.open(docUUID.c_str());
     os::FileWriter writer(file);
-    writer.write(data.size(), data.c_str());
+    // START DEBUGGING
+    size_t test = writer.write(data.size(), data.c_str());
+    size_t len = data.size();
+    Assert( "Data size" , len , test , test == 0 );
+    // END DEBUGGING
     writer.close();
 
     appendDocToProject(projHash, docUUID, meta);
@@ -595,8 +599,9 @@ rapidjson::Document select(rapidjson::Document &docArray, rapidjson::Document &o
         std::string dID = docID->GetString();
         os::File &file = fs.open(dID);
         os::FileReader reader(file);
-        std::string docTxt = std::string(reader.readAll());
-	std::cout << "Read: " << docTxt << std::endl;
+        char *c = reader.readAll();
+        std::string docTxt = std::string(c,file.size);
+        delete[] c;
         reader.close();
 
         // Parse the document
