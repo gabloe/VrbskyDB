@@ -7,7 +7,7 @@
 #include "Scanner.h"
 
 namespace Parsing {
-	const std::string Aggregates[] = {"AVG", "MIN", "MAX", "SUM", "STDEV" /*, TODO: Others. */};
+	const std::string Aggregates[] = {"AVG", "MIN", "MAX", "SUM" /*, TODO: Others. */};
 	const std::string Commands[] = {"CREATE", "INSERT", "SELECT", "DELETE", "UPDATE", "SHOW" /*, TODO: Others. */};
 	const std::string CreateArgs[] = {"INDEX ON"};
 	const std::string SelectArgs[] = {"FROM"};
@@ -34,7 +34,6 @@ namespace Parsing {
 		MIN   = 1,
 		MAX   = 2,
 		SUM   = 3,
-		STDEV = 4
 	};
 
 	struct Query {

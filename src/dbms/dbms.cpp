@@ -2,9 +2,8 @@
 #include <sstream> 
 #include <limits>
 #include <cstddef>
-#include <chrono>
-#include <iomanip>
-#include <ctime>
+#include <time.h>
+#include <map>
 
 #include "dbms.h"
 #include "../hashing/Hash.h"
@@ -19,6 +18,54 @@
 #include <readline/history.h>
 #include <pretty.h>
 #include <UUID.h>
+
+void sumAggregate(rapidjson::Value *val, rapidjson::Value &result) {
+	if (result.IsNull()) {
+		result.SetDouble(0.0);
+	}
+
+	double x;
+	if (val->IsInt()) {
+		x = (double)val->GetInt();
+	} else {
+		x = val->GetDouble();
+	}
+	result = rapidjson::Value(result.GetDouble() + x);
+}
+
+void minAggregate(rapidjson::Value *val, rapidjson::Value &result) {
+	if (result.IsNull()) {
+		result.SetDouble(std::numeric_limits<double>::max());
+	}
+
+	double x;
+	if (val->IsInt()) {
+		x = (double)val->GetInt();
+	} else {
+		x = val->GetDouble();
+	}
+
+	if (x < result.GetDouble()) {
+		result = rapidjson::Value(x);
+	}
+}
+
+void maxAggregate(rapidjson::Value *val, rapidjson::Value &result) {
+	if (result.IsNull()) {
+		result.SetDouble(std::numeric_limits<double>::min());
+	}
+
+	double x;
+	if (val->IsInt()) {
+		x = (double)val->GetInt();
+	} else {
+		x = val->GetDouble();
+	}
+
+	if (x > result.GetDouble()) {
+		result = rapidjson::Value(x);
+	}
+}
 
 /*
  *	appendDocToProject ---
@@ -190,7 +237,6 @@ rapidjson::Document processFields(rapidjson::Document &doc, rapidjson::Document 
 	// Build an array of unique keys
 	for (rapidjson::Value::ConstValueIterator src = doc.Begin(); src != doc.End(); ++src) {
 		if (src->IsString()) {
-			std::cout << "Found a string!" << std::endl;
 			std::string srcVal = src->GetString();
 			bool match = false;
 			for (rapidjson::Value::ConstValueIterator dest = newDoc.Begin(); dest != newDoc.End(); ++dest) {
@@ -302,8 +348,19 @@ int projectFields(rapidjson::Document *src, rapidjson::Value *dest, rapidjson::D
 	return count;
 }
 
+void aggregateField(rapidjson::Value *result, rapidjson::Value *data, std::string function) {
+	if (!data->IsNumber()) return;
+	std::map<std::string, std::function<void(rapidjson::Value*,rapidjson::Value&)>>  funcMap =
+        	{{ "SUM", sumAggregate},
+          	 { "AVG", sumAggregate}, // Special case
+          	 { "MIN", minAggregate},
+		 { "MAX", maxAggregate}
+         	};
+	funcMap[function.c_str()](data, *result);
+}
+
 // For each result in src, apply aggregate function.  Return value.
-rapidjson::Value processAggregate(rapidjson::Value *src, const rapidjson::Value *func) {
+rapidjson::Value processAggregate(rapidjson::Value *src, const rapidjson::Value *func, rapidjson::Document::AllocatorType &allocator) {
 	rapidjson::Value result;
 	rapidjson::Value &array = *src;
 	const rapidjson::Value &aggregate = *func;
@@ -312,24 +369,133 @@ rapidjson::Value processAggregate(rapidjson::Value *src, const rapidjson::Value 
 	std::string function = aggregate["function"].GetString();
 	std::string field = aggregate["field"].GetString();
 
+	int count = 0;
 	for (rapidjson::Value::ValueIterator it = array.Begin(); it != array.End(); ++it) {
 		rapidjson::Value &obj = *it;
 		assert(obj.GetType() == rapidjson::kObjectType);
-		
+	
 		if (obj.HasMember(field.c_str())) {
-			// Must remove this from the array...
+			rapidjson::Value embValue;
 			rapidjson::Value &embObject = obj[field.c_str()];
+
 			if (embObject.GetType() == rapidjson::kObjectType && embObject.HasMember("_temporary")) {
-				//embObject = embObject["_temporary"];
+				rapidjson::Value &tmp = embObject["_temporary"];
+				embValue = rapidjson::Value(tmp, allocator);
+			} else {
+				embValue = rapidjson::Value(embObject, allocator);
 			}
-			std::cout << embObject.GetType() << std::endl;
+			
+			aggregateField(&result, &embValue, function);
+			count++;
 		}
 	}
-	
-	return result;
+
+	if (function.compare("AVG") == 0 && count > 0) {
+		result = rapidjson::Value(result.GetDouble() / count);
+	}
+
+	// Bundle up the result in an object.
+	rapidjson::Value obj;
+	obj.SetObject();
+	std::string objKey(function + "(" + field + ")");
+	rapidjson::Value k(objKey.c_str(), allocator);
+	rapidjson::Value v(result, allocator);
+	obj.AddMember(k, v, allocator);
+	return obj;
 }
 
-rapidjson::Document select(rapidjson::Document &docArray, rapidjson::Document &origFields, FILESYSTEM &fs) {
+bool sameValues(rapidjson::Value &first, rapidjson::Value &second) {
+	if (first.GetType() != second.GetType()) {
+		return false;
+	}
+
+	rapidjson::Type type = first.GetType();
+	switch (type) {
+	case rapidjson::kNullType:
+		{
+		return true;
+		break;
+		}
+	case rapidjson::kStringType:
+		{
+		std::string firstStr = first.GetString();
+		std::string secondStr = second.GetString();
+		return firstStr.compare(secondStr) == 0;
+		}
+	case rapidjson::kNumberType:
+		{
+		double firstNum;
+		double secondNum;
+		if (first.IsInt()) {
+			firstNum = first.GetInt();
+		} else {
+			firstNum = first.GetDouble();
+		}
+		if (second.IsInt()) {
+			secondNum = second.GetInt();
+		} else {
+			secondNum = second.GetDouble();
+		}
+		return firstNum == secondNum;
+		}
+	case rapidjson::kFalseType:
+		{
+		return true;
+		break;
+		}
+	case rapidjson::kTrueType:
+		{
+		return true;
+		break;
+		}
+	case rapidjson::kObjectType: // Special case, compare fields recursively.
+		{
+		for (rapidjson::Value::MemberIterator it = first.MemberBegin(); it != first.MemberEnd(); ++it) {
+			if (!second.HasMember(it->name.GetString())) {
+				return false;
+			}
+			rapidjson::Value &firstEmbed = first[it->name.GetString()];
+			rapidjson::Value &secondEmbed = second[it->name.GetString()];
+			if (!sameValues(firstEmbed, secondEmbed)) {
+				return false;
+			}
+		}
+		return true;
+		}
+	case rapidjson::kArrayType:
+		{
+		if (first.Size() != second.Size()) {
+			return false;
+		}
+		for (rapidjson::SizeType i=0; i < first.Size(); ++i) {
+			if (!sameValues(first[i], second[i])) {
+				return false;
+			}
+		}
+		return true;
+		}
+	default:
+		return false;
+	}
+}
+
+bool documentMatchesConditions(rapidjson::Document &doc, rapidjson::Document &conditions) {
+	for (rapidjson::Value::ConstMemberIterator condIt = conditions.MemberBegin(); condIt != conditions.MemberEnd(); ++condIt) {
+		std::string condKey = condIt->name.GetString();
+		if (!doc.HasMember(condKey.c_str())) {
+			return false;
+		}
+
+		rapidjson::Value &condVal = conditions[condKey.c_str()];
+		rapidjson::Value &docVal = doc[condKey.c_str()];
+		if (!sameValues(condVal, docVal)) {
+			return false;
+		}
+	}
+	return true;
+}
+
+rapidjson::Document select(rapidjson::Document &docArray, rapidjson::Document &origFields, rapidjson::Document *where, FILESYSTEM &fs) {
 	rapidjson::Document result;
 	result.SetObject();
 
@@ -370,6 +536,15 @@ rapidjson::Document select(rapidjson::Document &docArray, rapidjson::Document &o
 		rapidjson::Value docVal;
 		docVal.SetObject();
 
+		if (where) {
+			rapidjson::Document &whereDoc = *where;
+			// Check if the document contains the values specified in where clause.
+			// If not, move on to the next document.
+			if (!documentMatchesConditions(doc, whereDoc)) {
+				continue;	
+			}
+		}
+
 		int count = 0;
 		// Iterate over the desired fields
 		if (selectAll) {
@@ -385,20 +560,48 @@ rapidjson::Document select(rapidjson::Document &docArray, rapidjson::Document &o
 
 	for (rapidjson::Value::ConstValueIterator agg = aggregates.Begin(); agg != aggregates.End(); ++agg) {
 		const rapidjson::Value &aggVal = *agg;
-		rapidjson::Value aggResult = processAggregate(&array, &aggVal);
+		rapidjson::Value aggResult = processAggregate(&array, &aggVal, result.GetAllocator());
+		array.PushBack(aggResult, result.GetAllocator());
+	}
+
+	rapidjson::Value::ValueIterator tmp = array.Begin();
+	while (tmp != array.End()) {
+		rapidjson::Value &tmpObj = *tmp;
+		rapidjson::Value::MemberIterator tmpField = tmpObj.MemberBegin();
+		int numFields = 0;
+		int numDeleted = 0;
+		while (tmpField != tmpObj.MemberEnd()) {
+			std::string key = tmpField->name.GetString();
+			rapidjson::Value &embedded = tmpObj[key.c_str()];
+			if (embedded.GetType() == rapidjson::kObjectType && embedded.HasMember("_temporary")) {
+				tmpObj.RemoveMember(tmpField);
+				numDeleted++;
+			} else {
+				tmpField++;
+			}
+			numFields++;
+		}
+		if (numDeleted == numFields) {
+			array.Erase(tmp);
+		} else {
+			tmp++;
+		}
 	}
 
 	result.AddMember("_result", array, result.GetAllocator());
 
 	// Create a timestamp
-	std::chrono::system_clock::time_point now = std::chrono::system_clock::now();
-	std::time_t now_c = std::chrono::system_clock::to_time_t(now);
-	std::stringstream timestamp;
-	//timestamp << std::put_time(std::localtime(&now_c), "%F %T");
-	timestamp << std::localtime(&now_c);
+	time_t rawtime;
+	struct tm * timeinfo;
+
+	time (&rawtime);
+	timeinfo = localtime (&rawtime);
+
+	char buffer[80];
+	strftime(buffer,80,"%F %X",timeinfo);
 
 	// Add timestamp to result
-	rapidjson::Value tstamp(timestamp.str().c_str(), result.GetAllocator());
+	rapidjson::Value tstamp(buffer, result.GetAllocator());
 	result.AddMember("_timestamp", tstamp, result.GetAllocator());
 
 	return result;
@@ -443,7 +646,7 @@ void execute(Parsing::Query &q, META &meta, INDICES &indices, FILESYSTEM &fs) {
 				meta.get(docsHash, docs);
 				rapidjson::Document docArray;
 				docArray.Parse(docs.c_str());
-				rapidjson::Document data = select(docArray, *q.fields, fs);
+				rapidjson::Document data = select(docArray, *q.fields, q.where, fs);
 				std::cout << toPrettyString(&data) << std::endl;
 			}
 		}
@@ -732,7 +935,6 @@ int main(int argc, char **argv) {
             break;
         }
         if (buf[0] != 0) {
-            std::cout << "Adding to history: " << buf << std::endl;
             add_history(buf);
         }
 
@@ -743,7 +945,6 @@ int main(int argc, char **argv) {
         Parsing::Parser p(q);
         Parsing::Query *query = p.parse();
         if (query) {
-            std::cout << "Buf: " << buf << std::endl;
             execute( *query, *meta, *indices, *fs);
         }
         std::cout << std::endl;
