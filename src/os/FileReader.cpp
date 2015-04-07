@@ -12,11 +12,11 @@ namespace os {
     }
 
     // Read all of the data in this file and return it.
-    std::string FileReader::readAll() {
-        char buff[file.size];
+    char* FileReader::readAll() {
+        char *buff = new char[file.size];
         uint64_t size = file.fs->read( file, file.size, buff );
         assert( file.size != 0 );
-        return std::string(buff, file.size);
+        return buff;
     }
 
     uint64_t FileReader::read( uint64_t length , char* buffer ) {

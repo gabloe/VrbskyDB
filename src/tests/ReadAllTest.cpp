@@ -1,13 +1,41 @@
-
-
-#include "../os/FileReader.h"
 #include <string>
 
-int main() {
-    os::FileSystem fs( "test.dat" );
-    os::File& f = fs.open( "TEST" );
+#include "../os/FileReader.h"
+
+const size_t DataSize 2 * 1024;
+
+char *genData() {
+    char *data = new char[DataSize];
+    for( size_t i = 0 ; i < DataSize; ++i ) data[i] = 'a' + (i % 'z');
+    return data;
+}
+
+void check( char *data) {
+    for( size_t i = 0 ; i < DataSize; ++i ) assert( data[i] == ('a' + (i % 'z')) );
+}
+
+void writeData() {
+    os::FileSystem fs( "test,data" );
+    os::File& file = fs.open( "TEST" );
+    os::FileWriter writer( file );
+    char *data = genData();
+    writer.write(DataSize,data);
+    assert(file.size == DataSize);
+    delete[] data;
+}
+
+void readAllTest()  {
+    os::FileSystem fs( "test,data" );
+    os::File& file = fs.open( "TEST" );
+    assert(file.size == DataSize);
     os::FileReader reader( f );
-    std::string data = reader.readAll();
-    std::cout << data << std::endl;
+    char *data = reader.readAll();
+    check(data);
+    delete[] data;
+}
+
+int main() {
+    writeData();
+    readAllTest();
     return 0;
 }

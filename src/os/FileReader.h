@@ -16,7 +16,7 @@ namespace os {
         public:
 
         FileReader(File& f);
-        std::string readAll();
+        char *readAll();
         uint64_t read( uint64_t , char* );
         void seek( uint64_t , FilePosition );
         uint64_t tell();
