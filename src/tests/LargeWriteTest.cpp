@@ -3,8 +3,9 @@
 
 #include "../os/FileSystem.h"
 #include "../os/File.h"
-
 #include "../os/FileWriter.h"
+
+#include "../assert/Assert.h"
 
 int main( void ) {
     const size_t Size = 2 * 1024;
@@ -22,7 +23,7 @@ int main( void ) {
 
     writer.write( Size , Data );
 
-    assert(file.size == Size);
+    Assert( "Test for equality failed" , file.size , Size , file.size == Size);
 
     writer.close();
     fs.shutdown();

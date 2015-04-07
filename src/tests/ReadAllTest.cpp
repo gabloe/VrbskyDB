@@ -1,8 +1,9 @@
 #include <string>
 
 #include "../os/FileReader.h"
+#include "../os/FileWriter.h"
 
-const size_t DataSize 2 * 1024;
+const size_t DataSize = 2 * 1024;
 
 char *genData() {
     char *data = new char[DataSize];
@@ -11,11 +12,14 @@ char *genData() {
 }
 
 void check( char *data) {
-    for( size_t i = 0 ; i < DataSize; ++i ) assert( data[i] == ('a' + (i % 'z')) );
+    for( size_t i = 0 ; i < DataSize; ++i ) {
+        char c = 'a' + i % 'z';
+        assert( data[i] == c );
+    }
 }
 
 void writeData() {
-    os::FileSystem fs( "test,data" );
+    os::FileSystem fs( "test.data" );
     os::File& file = fs.open( "TEST" );
     os::FileWriter writer( file );
     char *data = genData();
@@ -25,10 +29,10 @@ void writeData() {
 }
 
 void readAllTest()  {
-    os::FileSystem fs( "test,data" );
+    os::FileSystem fs( "test.data" );
     os::File& file = fs.open( "TEST" );
     assert(file.size == DataSize);
-    os::FileReader reader( f );
+    os::FileReader reader( file );
     char *data = reader.readAll();
     check(data);
     delete[] data;
