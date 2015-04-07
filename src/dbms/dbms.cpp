@@ -446,10 +446,10 @@ bool sameValues(rapidjson::Value &first, rapidjson::Value &second, rapidjson::Do
 	if (!validateSpecialCompare(specialCompare) || type != second.GetType()) {
 		return false;
 	}
-	condition = specialValue;
+	condition = rapidjson::Value(specialValue, allocator);
     } else {
 	type = first.GetType();
-	condition = first;
+	condition = rapidjson::Value(first, allocator);
     }
 
     switch (type) {
@@ -682,7 +682,7 @@ rapidjson::Document select(rapidjson::Document &docArray, rapidjson::Document &o
  *
  */
 
-void execute(Parsing::Query &q, META &meta, FILESYSTEM &fs) {
+void execute(Parsing::Query &q, META &meta, std::string meta_fname, FILESYSTEM &fs) {
     clock_t start, end;
     start = std::clock();
     switch (q.command) {
@@ -763,6 +763,7 @@ void execute(Parsing::Query &q, META &meta, FILESYSTEM &fs) {
     }
     end = std::clock();
     std::cout << "Done!  Took " << 1000 * (float)(end - start) / CLOCKS_PER_SEC << " milliseconds." << std::endl;
+    dumpToFile(meta_fname, meta);
 }
 
 /*
@@ -1013,13 +1014,12 @@ int main(int argc, char **argv) {
         Parsing::Parser p(q);
         Parsing::Query *query = p.parse();
         if (query) {
-            execute( *query, *meta, *fs);
+            execute( *query, *meta, meta_fname, *fs);
         }
         std::cout << std::endl;
     }
     std::cout << "Goodbye!" << std::endl;
     free(buf);
-    dumpToFile(meta_fname, *meta);
     fs->shutdown();
 
     return 0;
