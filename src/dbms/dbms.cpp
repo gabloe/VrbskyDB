@@ -511,12 +511,14 @@ bool sameValues(rapidjson::Value &first, rapidjson::Value &second, rapidjson::Do
             }
         case rapidjson::kFalseType:
             {
+		//TODO: Maybe #eq should be supported here
 		if (foundSpecial) return false;
                 return true;
                 break;
             }
         case rapidjson::kTrueType:
             {
+		//TODO: Maybe #eq should be supported here
 		if (foundSpecial) return false;
                 return true;
                 break;
@@ -537,6 +539,7 @@ bool sameValues(rapidjson::Value &first, rapidjson::Value &second, rapidjson::Do
             }
         case rapidjson::kArrayType:
             {
+		// TODO: should the special comparisons work on arrays somehow?
 		if (foundSpecial) return false;
                 if (condition.Size() != second.Size()) {
                     return false;
