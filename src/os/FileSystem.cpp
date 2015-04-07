@@ -111,8 +111,6 @@ namespace os {
         char *start = reinterpret_cast<char*>(&tmp);
         char *end = start + sizeof(tmp);
 
-        printFile( f , true );
-
         tmp = f.name.size();
         std::copy(start, end, buffer.begin() + pos);
         pos += sizeof(tmp);
@@ -688,8 +686,6 @@ namespace os {
     uint64_t FileSystem::read( File &file , uint64_t length , char* buffer ) {
         l.enter( "READ" );
 
-        printFile( file , true );
-
         assertStream( stream );
 
         uint64_t requested = length;
@@ -708,7 +704,6 @@ namespace os {
                 ++file.block_position;
                 ++file.disk_position;
                 if( file.block_position  == current.length ) {
-                    printBlock( current , true );
                     if( current.next != 0 ) {
                         file.disk_position += Block_Size - current.length;
                         current = load( current.next );
