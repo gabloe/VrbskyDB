@@ -11,7 +11,9 @@ class Log {
         bool working = true;
 
         void tabs() {
-            for( int i = 0 ; i < depth ; ++i ) output << "\t";
+            if( enabled && methodEnabled ) {
+              for( int i = 0 ; i < depth ; ++i ) output << "\t";
+            }
         }
     public:
         Log( std::ostream& out ) : output(out) {
@@ -19,7 +21,7 @@ class Log {
         }
 
         void toggleOutput() {
-            working = !working;
+            enabled = !enabled;
         }
 
         void enable() {
@@ -40,33 +42,29 @@ class Log {
 
         template<class T>
             void log( T t , bool force = false ) {
-                if( working ) {
-                    if( enabled || force ) {
-                        tabs();
-                        output << "Log: " << t << std::endl;
-                    }
+                if( enabled || force ) {
+                    tabs();
+                    output << "Log: " << t << std::endl;
                 }
             }
 
         template<class K,class V>
             void log( K k , V v , bool force = false ) {
-                if( working ) {
-                    if( enabled || force ) {
-                        tabs();
-                        output << k << ": " << v << std::endl;
-                    }
+                if( enabled || force ) {
+                    tabs();
+                    output << k << ": " << v << std::endl;
                 }
             }
 
         void enter( std::string method ) {
-            if( methodEnabled ) {
+            if( enabled && methodEnabled ) {
                 log( method , true );
                 ++depth;
             }
         }
 
         void leave( std::string method ) {
-            if( methodEnabled ) {
+            if( enabled && methodEnabled ) {
                 --depth;
                 log( method , true );
             }

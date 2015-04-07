@@ -33,7 +33,11 @@ $(OBJECTS):
 	mkdir -p $(OBJECTS)
 
 clean:
-	cd ./tests && $(MAKE) clean
+	make -C parsing clean
+	make -C os clean
+	make -C dbms clean
+	make -C tests clean
+
 	rm -rf $(OBJECTS)
 	rm -rf $(OUT)
 

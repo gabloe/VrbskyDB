@@ -23,6 +23,7 @@ int main( void ) {
 
     writer.write( Size , Data );
 
+    // We have written, check to see what is reported
     Assert( "Test for equality failed" , file.size , Size , file.size == Size);
 
     writer.close();

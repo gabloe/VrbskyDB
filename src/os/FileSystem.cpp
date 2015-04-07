@@ -189,7 +189,6 @@ namespace os {
         ret.status = FULL;
         ret.block = stream.tellp() / Total_Size_Block;
 
-        l.log( "About to read block" , ret.block );
         assertStream( stream );
 
         lock( READ );
@@ -258,17 +257,12 @@ namespace os {
                 l.disableMethod();
                 uint64_t str_len,f_position = metaReader->tell(); 
                 metaReader->read( sizeof(uint64_t) , reinterpret_cast<char*>(&str_len) );
-                l.log( "str_len" , str_len );
                 metaReader->read( str_len , buff.data() );
                 metaReader->read( sizeof(uint64_t) , reinterpret_cast<char*>(&(f.disk_usage)) );
                 metaReader->read( sizeof(uint64_t) , reinterpret_cast<char*>(&(f.size)));
-                l.log( "Size" , f.size , true );
                 metaReader->read( sizeof(uint64_t) , reinterpret_cast<char*>(&(f.start)));
-                l.log( "Start" , f.start , true );
                 metaReader->read( sizeof(uint64_t) , reinterpret_cast<char*>(&(f.end)));
-                l.log( "End" , f.end , true );
                 metaReader->read( sizeof(uint64_t) , reinterpret_cast<char*>(&(f.metadata)));
-                l.log( "Meta" , f.metadata , true );
                 l.enableMethod();
 
                 f.fs = this;
@@ -459,6 +453,8 @@ namespace os {
             if( buffer != Zero ) {
                 buffer += Block_Size;
                 curr.length = Block_Size;
+            }else {
+                curr.length = 0;
             }
             writeBlock( curr );
 
@@ -477,7 +473,7 @@ namespace os {
         if( buffer == Zero ) {
             curr.length = 0;
         }else {
-        curr.length = bytes;
+            curr.length = bytes;
         }
         std::copy( buffer , buffer + bytes , curr.data.begin() );
         std::copy( Zero + bytes , Zero + Block_Size , curr.data.begin() + bytes );
@@ -747,22 +743,17 @@ namespace os {
     uint64_t FileSystem::write( File &file , uint64_t length , const char* buffer ) {
         l.enter( "WRITE" );
 
-        l.log( "Filename" , file.name , true );
-        l.log( "File Position" , file.position , true );
-        l.log( "File Size" , file.size , true );
-        l.log( "Length to write" , length , true );
-
         // Going to fill up rest of the file
         if( length + file.disk_position > file.disk_usage ) {
             // Calculate how much extra space we need
-            uint64_t growBy = length - (file.disk_usage - file.disk_position);
+            uint64_t growBy = round<Block_Size>(length - (file.disk_usage - file.disk_position));
 
             // Load for reconnection
             Block oldBlock = lazyLoad( file.end );
-            Block newBlock = grow( growBy , NULL );
+            Block newBlock = grow(growBy , NULL);
 
             // Update/Reconnect
-            file.disk_usage += round<Block_Size>( growBy );
+            file.disk_usage += growBy;
             file.end = newBlock.prev;
             oldBlock.next = newBlock.block;
             newBlock.prev = oldBlock.block;
@@ -770,7 +761,6 @@ namespace os {
             flush( oldBlock );
 
             // Save file data
-            file.disk_usage += growBy; 
             bytes_allocated += growBy;
 
         }
@@ -787,29 +777,29 @@ namespace os {
         }
 
         // While we have not written everything
+        uint64_t remaining = length;
         while( written < length ) {
-
-            l.log( "In the loop" , true );
 
             // Go to the current block
             file.current = curr;
             Block b = load( curr );
 
             // How much room is there to write our data
-            uint64_t len = std::min( Block_Size - file.block_position , length );
-            l.log( "Length is" , len , true );
-            // How much data will we actually overwrite
-            overwritten += b.length + file.block_position;
+            uint64_t len = std::min( (Block_Size - file.block_position) , remaining );
 
-            std::copy( buffer + written , buffer + len + written , b.data.data() + file.block_position );
+            // How much data will we actually overwrite
+            overwritten += (b.length + file.block_position);
+
+            std::copy( buffer + written , buffer + written + len , b.data.data() + file.block_position );
             b.length = file.block_position + len;
             assert( b.status == FULL );
             flush( b );
 
             written += len;
+            remaining -= len;
 
             file.position += len;
-            file.block_position = b.length % Block_Size;
+            file.block_position = 0;
             file.disk_position += len;
 
             curr = b.next;
@@ -817,10 +807,8 @@ namespace os {
 
         // Need to move blocks around
         if( overwritten < to_overwrite ) {
-            l.log( overwritten , to_overwrite , true );
             assert( false && "TODO: Handle case 'overwritten < length'"  );
         }else if( file.position > file.size  ) {
-            l.log( "File has grown" , file.position - file.size , true );
             bytes_used += file.position - file.size;
             file.size += file.position - file.size;
             bytes_used += file.position - file.size;;
@@ -967,7 +955,6 @@ namespace os {
             done = true;
             saveHeader();
             for( auto file = openFiles.begin() ; file != openFiles.end() ; ++file ) {
-                l.log( "Closing a file" , true );
                 if( (*file)->status == OPEN ) {
                     insertFile( **file );
                     (*file)->status = CLOSED;
@@ -1080,8 +1067,6 @@ namespace os {
             stream.open( filename , std::fstream::binary | std::fstream::trunc | std::fstream::out );
             stream.close();
             stream.open( filename , std::fstream::in |  std::fstream::out | std::fstream::binary );
-
-            l.log( "The file does not exist, so we are creating it" );
 
             // Make room for everything
             stream.seekp( Total_Size_Block * 2 - 1 );

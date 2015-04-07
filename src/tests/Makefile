@@ -45,7 +45,7 @@ $(OUT)ParserTest: ./ParserTest.cpp
 $(OUT)UUIDTest: ./uuidtest.cpp
 	$(CC) $(CFLAGS) $(INCLUDES) -luuid ./uuidtest.cpp -o $(OUT)UUIDTest
 
-$(OUT)WriteReadTest: $(OUT) ./WriteReadTest.cpp
+$(OUT)WriteReadTest: ./WriteReadTest.cpp
 	$(CC) $(CFLAGS) $(INCLUDES) $(OS_OBJS) ./WriteReadTest.cpp -o $(OUT)WriteReadTest
 
 $(OUT)EndianTest: ./EndianTest.cpp
