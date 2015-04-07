@@ -6,7 +6,7 @@
 #include "../os/FileWriter.h"
 
 int main( void ) {
-    const int Size = 100 * 1024;
+    const int Size = 2 * 1024;
     char *Data = new char[Size];
     char c = 'a';
     for( int i = 0 ; i < Size; ++i ) {

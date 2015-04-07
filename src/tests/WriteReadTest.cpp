@@ -10,7 +10,7 @@
 int main(void) {
     char data[] = {"Hello"};
     char test[] = {"     "};
-    os::FileSystem fs( "database.db" );
+    os::FileSystem fs( "test.dat" );
 
     os::File &first = fs.open( "TEST" );
     os::FileWriter out( first );
