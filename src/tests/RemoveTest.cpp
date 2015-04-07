@@ -13,7 +13,7 @@ int main( void ) {
     os::File &file = fs.open( "TEST" );
     os::FileWriter writer( file );
     writer.write( sizeof( MyData ) , MyData );
-    assert( file.size == sizeof(MyData));
+    assert( file.size == sizeof( MyData ) );
     writer.close();
 
     fs.shutdown();
