@@ -421,9 +421,22 @@ rapidjson::Value processAggregate(rapidjson::Value *src, const rapidjson::Value 
     return obj;
 }
 
-bool validateSpecialCompare(std::string val) {
-	if (val.compare("#gt") == 0 || val.compare("#lt") == 0 || val.compare("#eq") == 0) {
-		return true;
+bool validateSpecialValueCompare(std::string val) {
+	int numSpecials = sizeof(SpecialValueComparisons) / sizeof(SpecialValueComparisons[0]);
+	for (int i=0; i<numSpecials; ++i) {
+		if (SpecialValueComparisons[i].compare(val) == 0) {
+			return true;
+		}
+	}
+	return false;
+}
+
+bool validateSpecialKeyCompare(std::string val) {
+	int numSpecials = sizeof(SpecialKeyComparisons) / sizeof(SpecialKeyComparisons[0]);
+	for (int i=0; i<numSpecials; ++i) {
+		if (SpecialKeyComparisons[i].compare(val) == 0) {
+			return true;
+		}
 	}
 	return false;
 }
@@ -433,6 +446,7 @@ bool sameValues(rapidjson::Value &first, rapidjson::Value &second, rapidjson::Do
     bool foundSpecial = false;
     std::string specialCompare;
     rapidjson::Value specialValue;
+
     // Could be a special condition.
     if (first.GetType() == rapidjson::kObjectType && second.GetType() != rapidjson::kObjectType) {
 	for (rapidjson::Value::MemberIterator it = first.MemberBegin(); it != first.MemberEnd(); ++it) {
@@ -455,8 +469,9 @@ bool sameValues(rapidjson::Value &first, rapidjson::Value &second, rapidjson::Do
     rapidjson::Value condition;
     rapidjson::Type type;
     if (foundSpecial) {
+
 	type = specialValue.GetType();
-	if (!validateSpecialCompare(specialCompare) || type != second.GetType()) {
+	if (!validateSpecialValueCompare(specialCompare) || type != second.GetType()) {
 		return false;
 	}
 	condition = rapidjson::Value(specialValue, allocator);
@@ -565,15 +580,82 @@ bool sameValues(rapidjson::Value &first, rapidjson::Value &second, rapidjson::Do
 bool documentMatchesConditions(rapidjson::Document &doc, rapidjson::Document &conditions) {
     for (rapidjson::Value::ConstMemberIterator condIt = conditions.MemberBegin(); condIt != conditions.MemberEnd(); ++condIt) {
         std::string condKey = condIt->name.GetString();
-        if (!doc.HasMember(condKey.c_str())) {
-            return false;
-        }
+	// Special case for special key comparisons
+	if (validateSpecialKeyCompare(condKey)) {
+		rapidjson::Value &v = conditions[condKey.c_str()];
+		if (v.GetType() != rapidjson::kObjectType) {
+			return false;
+		}
+		std::string key = v.MemberBegin()->name.GetString();
+		rapidjson::Value &ve = v[key.c_str()];
 
-        rapidjson::Value &condVal = conditions[condKey.c_str()];
-        rapidjson::Value &docVal = doc[condKey.c_str()];
-        if (!sameValues(condVal, docVal, conditions.GetAllocator())) {
-            return false;
-        }
+		// Special case fot exists... 
+		if (condKey.compare("#exists") == 0) {
+			if (!doc.HasMember(key.c_str()) && ve.GetType() == rapidjson::kTrueType) {
+				return false;
+			} else if (doc.HasMember(key.c_str()) && ve.GetType() == rapidjson::kFalseType) {
+				return false;
+			} else {
+				continue;
+			}
+		}
+
+		// Everything else relies on the existence of the key
+		if (doc.HasMember(key.c_str())) {
+			rapidjson::Value &specVal = doc[key.c_str()];
+			std::cout << "checking for " << condKey << " on " << toString(&specVal) << std::endl;
+			if (condKey.compare("#isnull") == 0) {
+				if (specVal.GetType() == rapidjson::kNullType && ve.GetType() == rapidjson::kFalseType) {
+					return false;
+				} else if (specVal.GetType() != rapidjson::kNullType && ve.GetType() == rapidjson::kTrueType) {
+					return false;
+				}
+			} else if (condKey.compare("#isstr") == 0) {
+				if (specVal.GetType() == rapidjson::kStringType && ve.GetType() == rapidjson::kFalseType) {
+					return false;
+				} else if (specVal.GetType() != rapidjson::kStringType && ve.GetType() == rapidjson::kTrueType) {
+					return false;
+				}
+			} else if (condKey.compare("#isnum") == 0) {
+				if (specVal.GetType() == rapidjson::kNumberType && ve.GetType() == rapidjson::kFalseType) {
+					return false;
+				} else if (specVal.GetType() != rapidjson::kNumberType && ve.GetType() == rapidjson::kTrueType) {
+					return false;
+				}
+			} else if (condKey.compare("#isbool") == 0) {
+				if ((specVal.GetType() == rapidjson::kFalseType || specVal.GetType() == rapidjson::kTrueType) && 
+				     ve.GetType() == rapidjson::kFalseType) {
+					return false;
+				} else if ((specVal.GetType() != rapidjson::kFalseType && specVal.GetType() != rapidjson::kTrueType) && 
+				     ve.GetType() == rapidjson::kTrueType) {
+					return false;
+				}
+			} else if (condKey.compare("#isobj") == 0) {
+				if (specVal.GetType() == rapidjson::kObjectType && ve.GetType() == rapidjson::kFalseType) {
+					return false;
+				} else if (specVal.GetType() != rapidjson::kObjectType && ve.GetType() == rapidjson::kTrueType) {
+					return false;
+				}
+			} else if (condKey.compare("#isarray") == 0) {
+				if (specVal.GetType() == rapidjson::kArrayType && ve.GetType() == rapidjson::kFalseType) {
+					return false;
+				} else if (specVal.GetType() != rapidjson::kArrayType && ve.GetType() == rapidjson::kTrueType) {
+					return false;
+				}
+			}
+		} else {
+			return false;
+		}
+	} else {
+		if (!doc.HasMember(condKey.c_str())) {
+		    return false;
+		}
+		rapidjson::Value &condVal = conditions[condKey.c_str()];
+		rapidjson::Value &docVal = doc[condKey.c_str()];
+		if (!sameValues(condVal, docVal, conditions.GetAllocator())) {
+		    return false;
+		}
+	}
     }
     return true;
 }
@@ -996,7 +1078,6 @@ int start_readline(void) {
 }
 
 int main(int argc, char **argv) {
-    std::cout << fmod(5.3,1) << std::endl;
     std::string meta_fname("meta.lht");
     std::string data_fname("data.db");
     if (argc > 1) {
