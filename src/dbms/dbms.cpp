@@ -4,6 +4,7 @@
 #include <cstddef>
 #include <time.h>
 #include <map>
+#include <math.h>
 
 #include "dbms.h"
 #include "../hashing/Hash.h"
@@ -366,6 +367,12 @@ void aggregateField(rapidjson::Value *result, rapidjson::Value *data, std::strin
         { "MAX", maxAggregate}
     };
     funcMap[function.c_str()](data, *result);
+    double x = result->GetDouble();
+
+    // Convert the result to an integer if it should be.
+    if (fmod(x, 1) == 0.0) {
+	*result = rapidjson::Value((int)x);
+    }
 }
 
 // For each result in src, apply aggregate function.  Return value.
@@ -629,7 +636,6 @@ rapidjson::Document select(rapidjson::Document &docArray, rapidjson::Document &o
         // Iterate over the desired fields
         if (selectAll) {
             // Add every field of the document to the result
-	    std::cout << "doc is : " << toString(&doc) << std::endl;
             count += selectAllFields(&doc, &docVal, result.GetAllocator());
         } else {
             count += projectFields(&doc, &docVal, &fields, result.GetAllocator());
@@ -990,6 +996,7 @@ int start_readline(void) {
 }
 
 int main(int argc, char **argv) {
+    std::cout << fmod(5.3,1) << std::endl;
     std::string meta_fname("meta.lht");
     std::string data_fname("data.db");
     if (argc > 1) {
