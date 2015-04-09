@@ -497,6 +497,21 @@ bool sameValues(rapidjson::Value &first, rapidjson::Value &second, rapidjson::Do
                 		return secondStr.compare(firstStr) < 0;
 			} else if (!specialCompare.compare("#eq")) {
                 		return firstStr.compare(secondStr) == 0;
+			} else if (!specialCompare.compare("#contains")) {
+				return secondStr.find(firstStr) != std::string::npos;
+			} else if (!specialCompare.compare("#starts")) {
+				if (secondStr.length() < firstStr.length()) {
+					return false;
+				} else {
+					return secondStr.compare(0, firstStr.length(), firstStr) == 0;
+				}
+			} else if (!specialCompare.compare("#ends")) {
+				if (secondStr.length() < firstStr.length()) {
+					return false;
+				} else {
+					return secondStr.compare(secondStr.length() - firstStr.length(), firstStr.length(), firstStr) == 0;
+				}
+
 			}
 		} else {
                 	return firstStr.compare(secondStr) == 0;
@@ -510,7 +525,7 @@ bool sameValues(rapidjson::Value &first, rapidjson::Value &second, rapidjson::Do
                 if (condition.IsInt()) {
                     firstNum = (double)condition.GetInt();
                 } else {
-                    firstNum = first.GetDouble();
+                    firstNum = condition.GetDouble();
                 }
                 if (second.IsInt()) {
                     secondNum = (double)second.GetInt();
@@ -822,6 +837,7 @@ void execute(Parsing::Query &q, META &meta, std::string meta_fname, FILESYSTEM &
 					std::cout << "Result Empty!" << std::endl;	
 				} else {
                         		std::cout << toPrettyString(&data) << std::endl;
+					std::cout << array.Size() << " records returned." << std::endl; 
 				}
 			} else {
 				// Not sure how this would happen...

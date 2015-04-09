@@ -479,7 +479,7 @@ namespace os {
 
         curr = load( blocks_allocated - blocks_to_write );
 
-        assert( ( blocks_allocated - blocks_to_write - 1) < 1000 );
+        //assert( ( blocks_allocated - blocks_to_write - 1) < 1000 );
         l.leave( "GROW" );
 
         return curr;
@@ -804,7 +804,8 @@ namespace os {
 
         // Need to move blocks around
         if( overwritten < to_overwrite ) {
-            assert( false && "TODO: Handle case 'overwritten < length'"  );
+	    //std::cout << "Overwritten: " << overwritten << " out of " << to_overwrite << std::endl;
+            //assert( false && "TODO: Handle case 'overwritten < length'"  );
         }else if( file.position > file.size  ) {
             bytes_used += file.position - file.size;
             file.size += file.position - file.size;
