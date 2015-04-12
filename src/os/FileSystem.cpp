@@ -802,6 +802,8 @@ namespace os {
             curr = b.next;
         }
 
+	file.size = to_overwrite;
+
         // Need to move blocks around
         if( overwritten < to_overwrite ) {
 	    //std::cout << "Overwritten: " << overwritten << " out of " << to_overwrite << std::endl;
