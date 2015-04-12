@@ -675,6 +675,80 @@ bool documentMatchesConditions(rapidjson::Document &doc, rapidjson::Document &co
     return true;
 }
 
+void deleteFields(rapidjson::Document *doc, rapidjson::Document *fields) {
+	assert(fields->GetType() == rapidjson::kArrayType);
+	assert(doc->GetType() == rapidjson::kObjectType);
+
+	for (rapidjson::Value::ConstValueIterator it = fields->Begin(); it != fields->End(); it++) {
+		const rapidjson::Value &field = *it;
+		if (doc->HasMember(field.GetString())) {
+			doc->RemoveMember(field.GetString());
+		}
+	}
+}
+
+// Delete the fields from the array of documents
+void ddelete(rapidjson::Document &docArray, rapidjson::Document &origFields, rapidjson::Document *where, FILESYSTEM &fs) {
+    assert(docArray.GetType() == rapidjson::kArrayType);
+    assert(origFields.GetType() == rapidjson::kArrayType);
+
+    bool selectAll = false;
+
+    rapidjson::Document aggregates = extractAggregates(origFields);
+    rapidjson::Document fields = processFields(origFields, aggregates);
+
+    // Check for *
+    for (rapidjson::Value::ConstValueIterator it = fields.Begin(); it != fields.End(); ++it) {
+        if (it->GetType() != rapidjson::kStringType) continue;
+        std::string val = it->GetString();
+        if (val.compare("*") == 0) {
+            selectAll = true;
+        }
+    }
+
+    // Iterate over every document
+    for (rapidjson::Value::ConstValueIterator docID = docArray.Begin(); docID != docArray.End(); ++docID) {
+        // Open the document
+        std::string dID = docID->GetString();
+        os::File &file1 = fs.open(dID);
+        os::FileReader reader(file1);
+        char *c = reader.readAll();
+        std::string docTxt = std::string(c,file1.size);
+	std::cout << "Read: " << docTxt << std::endl;
+        delete[] c;
+        reader.close();
+
+        // Parse the document
+        rapidjson::Document doc;
+        doc.Parse(docTxt.c_str());
+
+	assert(!doc.HasParseError());
+
+        if (where) {
+            rapidjson::Document &whereDoc = *where;
+            // Check if the document contains the values specified in where clause.
+            // If not, move on to the next document.
+            if (!documentMatchesConditions(doc, whereDoc)) {
+                continue;       
+            }
+        }
+
+        // Iterate over the desired fields
+        if (selectAll) {
+            // Delete document 
+	    file1.unlink();
+        } else {
+            deleteFields(&doc, &fields);
+	    std::string newData = toString(&doc);
+	    os::File &file2 = fs.open(dID);
+	    os::FileWriter writer(file2);
+	    writer.write(newData.size(), newData.c_str());
+	    writer.close();
+	    std::cout << "New doc: " << newData << std::endl;
+        }
+    }
+}
+
 rapidjson::Document select(rapidjson::Document &docArray, rapidjson::Document &origFields, rapidjson::Document *where, FILESYSTEM &fs) {
     rapidjson::Document result;
     result.SetObject();
@@ -710,6 +784,8 @@ rapidjson::Document select(rapidjson::Document &docArray, rapidjson::Document &o
         std::string docTxt = std::string(c,file.size);
         delete[] c;
         reader.close();
+
+	std::cout << "Read: " << docTxt << std::endl;
 
         // Parse the document
         rapidjson::Document doc;
@@ -851,7 +927,22 @@ void execute(Parsing::Query &q, META &meta, std::string meta_fname, FILESYSTEM &
             }
         case Parsing::DELETE:
             {
-                q.print();
+	        std::string project = *q.project;
+                uint64_t pHash = hash(project, project.size());
+                if (meta.contains(pHash)) {
+                    std::string pid;
+                    meta.get(pHash, pid);
+                    uint64_t docsHash = hash(pid, pid.size());
+                    if (meta.contains(docsHash)) {
+                        std::string docs;
+                        meta.get(docsHash, docs);
+                        rapidjson::Document docArray;
+                        docArray.Parse(docs.c_str());
+                        ddelete(docArray, *q.fields, q.where, fs);
+                    }
+                } else {
+			std::cout << "Project '" << project << "' does not exist!" << std::endl;
+		}
                 break;
             }
         case Parsing::SHOW:

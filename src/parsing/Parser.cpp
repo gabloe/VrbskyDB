@@ -172,6 +172,10 @@ bool Parsing::Parser::select(Parsing::Query &q) {
 
 bool Parsing::Parser::ddelete(Parsing::Query &q) {
 	q.command = DELETE;
+	q.fields = fieldList();
+	if (!q.fields) {
+		return false;
+	}
 	std::string from = toLower(Parsing::Parser::sc.nextToken());
 	if (from.compare("from")) {
 		std::cout << "PARSING ERROR: Expected 'from', found " << from << "." << std::endl;
@@ -179,16 +183,16 @@ bool Parsing::Parser::ddelete(Parsing::Query &q) {
 	}
 	q.project = new std::string(Parsing::Parser::sc.nextToken());
 	std::string where = toLower(Parsing::Parser::sc.nextToken());
-	if (where.compare("where")) {
-		std::cout << "PARSING ERROR: Expected 'where', found " << where << "." << std::endl;
-		return false;
-	}
-	std::string whereJSON = Parsing::Parser::sc.nextJSON();
-	q.where = new rapidjson::Document();
-	q.where->Parse(whereJSON.c_str());
-	if (q.where->HasParseError()) {
-		std::cout << "PARSING ERROR: Invalid JSON." << std::endl;
-		return false;
+	if (!where.compare("where")) {
+		std::string whereJSON = Parsing::Parser::sc.nextJSON();
+		q.where = new rapidjson::Document();
+		q.where->Parse(whereJSON.c_str());
+		if (q.where->HasParseError()) {
+			std::cout << "PARSING ERROR: Invalid JSON." << std::endl;
+			return false;
+		}
+	} else {
+		Parsing::Parser::sc.push_back(where);
 	}
 	if (limitPending()) {
 		q.limit = Parsing::Parser::sc.nextInt();
