@@ -224,15 +224,13 @@ void insertDocuments(rapidjson::Document &docs, std::string pname, META &meta, F
 
     updateProjectList(pname, meta);
 
-    // If it't an array of documents.  Iterate over them and insert each document.
+    // If it's an array of documents.  Iterate over them and insert each document.
     if (docs.GetType() == rapidjson::kArrayType) {
         for (rapidjson::SizeType i = 0; i < docs.Size(); ++i) {
             insertDocument(docs[i], uuidHash, meta, fs);
-	    std::cout << toString(&docs[i]) << std::endl;
         }
     } else if (docs.GetType() == rapidjson::kObjectType) {
         insertDocument(docs, uuidHash, meta, fs);
-	std::cout << toString(&docs) << std::endl;
     }
 
 }
@@ -618,7 +616,6 @@ bool documentMatchesConditions(rapidjson::Document &doc, rapidjson::Document &co
 		// Everything else relies on the existence of the key
 		if (doc.HasMember(key.c_str())) {
 			rapidjson::Value &specVal = doc[key.c_str()];
-			std::cout << "checking for " << condKey << " on " << toString(&specVal) << std::endl;
 			if (condKey.compare("#isnull") == 0) {
 				if (specVal.GetType() == rapidjson::kNullType && ve.GetType() == rapidjson::kFalseType) {
 					return false;
@@ -687,10 +684,74 @@ void deleteFields(rapidjson::Document *doc, rapidjson::Document *fields) {
 	}
 }
 
+// Update the fields of the array of documents
+void update(rapidjson::Document &docArray, rapidjson::Document &updates, rapidjson::Document *where, int limit, FILESYSTEM &fs) {
+    assert(docArray.GetType() == rapidjson::kArrayType);
+    assert(updates.GetType() == rapidjson::kObjectType);
+
+    if (limit == 0) return;
+
+    int num = 0;
+
+    // Iterate over every document
+    for (rapidjson::Value::ConstValueIterator docID = docArray.Begin(); docID != docArray.End(); ++docID) {
+        // Open the document
+        std::string dID = docID->GetString();
+        os::File &file1 = fs.open(dID);
+        os::FileReader reader(file1);
+        char *c = reader.readAll();
+        std::string docTxt = std::string(c,file1.size);
+        delete[] c;
+        reader.close();
+
+        // Parse the document
+        rapidjson::Document doc;
+        doc.Parse(docTxt.c_str());
+
+	assert(!doc.HasParseError());
+
+        if (where) {
+            rapidjson::Document &whereDoc = *where;
+            // Check if the document contains the values specified in where clause.
+            // If not, move on to the next document.
+            if (!documentMatchesConditions(doc, whereDoc)) {
+                continue;
+            }
+        }
+	
+	// Insert or update the fields
+	for (rapidjson::Value::ConstMemberIterator update = updates.MemberBegin(); update != updates.MemberEnd(); ++update) {
+		std::string key = update->name.GetString();
+		if (doc.HasMember(key.c_str())) {
+			doc.RemoveMember(key.c_str());
+		}
+		rapidjson::Value k(key.c_str(), doc.GetAllocator());
+		rapidjson::Value &v_tmp = updates[key.c_str()];
+		rapidjson::Value v(v_tmp, doc.GetAllocator());
+		doc.AddMember(k,v, doc.GetAllocator());
+	}
+	os::File &file2 = fs.open(dID);
+	os::FileWriter writer(file2);
+	std::string data = toString(&doc);
+	writer.write(data.size(), data.c_str());
+	writer.close();
+
+	// In case a limit is being used, pre-empt may be necessary
+	if (limit > 0 && ++num == limit) {
+		break;
+	}
+    }
+}
+
+
 // Delete the fields from the array of documents
-void ddelete(rapidjson::Document &docArray, rapidjson::Document &origFields, rapidjson::Document *where, FILESYSTEM &fs) {
+void ddelete(rapidjson::Document &docArray, rapidjson::Document &origFields, rapidjson::Document *where, int limit, FILESYSTEM &fs) {
     assert(docArray.GetType() == rapidjson::kArrayType);
     assert(origFields.GetType() == rapidjson::kArrayType);
+
+    if (limit == 0) return;
+
+    int num = 0;
 
     bool selectAll = false;
 
@@ -714,7 +775,6 @@ void ddelete(rapidjson::Document &docArray, rapidjson::Document &origFields, rap
         os::FileReader reader(file1);
         char *c = reader.readAll();
         std::string docTxt = std::string(c,file1.size);
-	std::cout << "Read: " << docTxt << std::endl;
         delete[] c;
         reader.close();
 
@@ -744,17 +804,24 @@ void ddelete(rapidjson::Document &docArray, rapidjson::Document &origFields, rap
 	    os::FileWriter writer(file2);
 	    writer.write(newData.size(), newData.c_str());
 	    writer.close();
-	    std::cout << "New doc: " << newData << std::endl;
         }
+
+	// If a limit is being used then we may need to pre-empt.
+	if (limit > 0 && ++num == limit) {
+		break;
+	}
     }
 }
 
-rapidjson::Document select(rapidjson::Document &docArray, rapidjson::Document &origFields, rapidjson::Document *where, FILESYSTEM &fs) {
+rapidjson::Document select(rapidjson::Document &docArray, rapidjson::Document &origFields, rapidjson::Document *where, int limit, FILESYSTEM &fs) {
     rapidjson::Document result;
     result.SetObject();
 
+    if (limit == 0) return result;
+
     rapidjson::Value array;
     array.SetArray();
+
     array.Reserve(docArray.Size(), result.GetAllocator());
 
     assert(docArray.GetType() == rapidjson::kArrayType);
@@ -774,6 +841,8 @@ rapidjson::Document select(rapidjson::Document &docArray, rapidjson::Document &o
         }
     }
 
+    int num = 0;
+
     // Iterate over every document
     for (rapidjson::Value::ConstValueIterator docID = docArray.Begin(); docID != docArray.End(); ++docID) {
         // Open the document
@@ -784,8 +853,6 @@ rapidjson::Document select(rapidjson::Document &docArray, rapidjson::Document &o
         std::string docTxt = std::string(c,file.size);
         delete[] c;
         reader.close();
-
-	std::cout << "Read: " << docTxt << std::endl;
 
         // Parse the document
         rapidjson::Document doc;
@@ -816,6 +883,11 @@ rapidjson::Document select(rapidjson::Document &docArray, rapidjson::Document &o
         if (count > 0) {
             array.PushBack(docVal, result.GetAllocator());
         }
+
+	// If a limit is being used then we may need to preempt.
+	if (limit > 0 && ++num == limit) {
+		break;
+	}
     }
 
     for (rapidjson::Value::ConstValueIterator agg = aggregates.Begin(); agg != aggregates.End(); ++agg) {
@@ -906,7 +978,7 @@ void execute(Parsing::Query &q, META &meta, std::string meta_fname, FILESYSTEM &
                         meta.get(docsHash, docs);
                         rapidjson::Document docArray;
                         docArray.Parse(docs.c_str());
-                        rapidjson::Document data = select(docArray, *q.fields, q.where, fs);
+                        rapidjson::Document data = select(docArray, *q.fields, q.where, q.limit, fs);
 			if (data.HasMember("_result")) {
 				rapidjson::Value &array = data["_result"];
 				if (array.Size() == 0) {
@@ -938,7 +1010,7 @@ void execute(Parsing::Query &q, META &meta, std::string meta_fname, FILESYSTEM &
                         meta.get(docsHash, docs);
                         rapidjson::Document docArray;
                         docArray.Parse(docs.c_str());
-                        ddelete(docArray, *q.fields, q.where, fs);
+                        ddelete(docArray, *q.fields, q.where, q.limit, fs);
                     }
                 } else {
 			std::cout << "Project '" << project << "' does not exist!" << std::endl;
@@ -964,7 +1036,23 @@ void execute(Parsing::Query &q, META &meta, std::string meta_fname, FILESYSTEM &
             }
         case Parsing::UPDATE:
             {
-                q.print();
+       	        std::string project = *q.project;
+                uint64_t pHash = hash(project, project.size());
+                if (meta.contains(pHash)) {
+                    std::string pid;
+                    meta.get(pHash, pid);
+                    uint64_t docsHash = hash(pid, pid.size());
+                    if (meta.contains(docsHash)) {
+                        std::string docs;
+                        meta.get(docsHash, docs);
+                        rapidjson::Document docArray;
+                        docArray.Parse(docs.c_str());
+			rapidjson::Document &updates = *q.with;
+                        update(docArray, updates, q.where, q.limit, fs);
+                    }
+                } else {
+			std::cout << "Project '" << project << "' does not exist!" << std::endl;
+		}
                 break;
             }
         default:
