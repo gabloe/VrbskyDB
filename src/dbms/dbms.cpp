@@ -768,7 +768,8 @@ void ddelete(rapidjson::Document &docArray, rapidjson::Document &origFields, rap
     }
 
     // Iterate over every document
-    for (rapidjson::Value::ConstValueIterator docID = docArray.Begin(); docID != docArray.End(); ++docID) {
+    rapidjson::Value::ConstValueIterator docID = docArray.Begin();
+    while (docID != docArray.End()) {
         // Open the document
         std::string dID = docID->GetString();
         os::File &file1 = fs.open(dID);
@@ -789,6 +790,7 @@ void ddelete(rapidjson::Document &docArray, rapidjson::Document &origFields, rap
             // Check if the document contains the values specified in where clause.
             // If not, move on to the next document.
             if (!documentMatchesConditions(doc, whereDoc)) {
+		++docID;
                 continue;       
             }
         }
@@ -797,6 +799,8 @@ void ddelete(rapidjson::Document &docArray, rapidjson::Document &origFields, rap
         if (selectAll) {
             // Delete document 
 	    file1.unlink();
+	    docArray.Erase(docID);
+	    continue;
         } else {
             deleteFields(&doc, &fields);
 	    std::string newData = toString(&doc);
@@ -805,6 +809,8 @@ void ddelete(rapidjson::Document &docArray, rapidjson::Document &origFields, rap
 	    writer.write(newData.size(), newData.c_str());
 	    writer.close();
         }
+
+	++docID;
 
 	// If a limit is being used then we may need to pre-empt.
 	if (limit > 0 && ++num == limit) {
@@ -1011,6 +1017,8 @@ void execute(Parsing::Query &q, META &meta, std::string meta_fname, FILESYSTEM &
                         rapidjson::Document docArray;
                         docArray.Parse(docs.c_str());
                         ddelete(docArray, *q.fields, q.where, q.limit, fs);
+			std::string newDocArray = toString(&docArray);
+			meta.put(docsHash, newDocArray);
                     }
                 } else {
 			std::cout << "Project '" << project << "' does not exist!" << std::endl;
