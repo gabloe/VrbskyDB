@@ -42,7 +42,7 @@ namespace os {
     static const uint64_t SignatureSize = 8;
     static const std::array<char,8> HeaderSignature = { {0xD , 0xE , 0xA , 0xD , 0xB , 0xE , 0xE , 0xF}  };
 
-    static const uint64_t Total_Size_Block = KB;
+    static const uint64_t Total_Size_Block = 128 * B;
     static const uint64_t Header_Size = Total_Size_Block;
     static const uint64_t Block_Size = Total_Size_Block - 3 * sizeof(uint64_t);
 

@@ -289,8 +289,8 @@ namespace os {
     }
 
     void FileSystem::readHeader() {
-        stream.seekp( SignatureSize , std::ios_base::beg );
-        assert( stream.tellp() == 8 );
+        stream.seekg( SignatureSize , std::ios_base::beg );
+        assert( stream.tellg() == 8 );
         read64( stream , bytes_allocated );
         read64( stream , bytes_used );
         read64( stream , blocks_allocated );
@@ -304,6 +304,21 @@ namespace os {
         read64( stream , metadata_files );
         read64( stream , metadata_start );
         read64( stream , metadata_end );
+
+        std::cout << "DATA IS HUR?" << std::endl;
+        std::cout << bytes_allocated  << std::endl;
+        std::cout << bytes_used  << std::endl;
+        std::cout << blocks_allocated  << std::endl;
+        std::cout << blocks_used  << std::endl;
+        std::cout << free_count  << std::endl;
+        std::cout << free_first  << std::endl;
+        std::cout << metadata_bytes_allocated  << std::endl;
+        std::cout << metadata_allocated_blocks  << std::endl;
+        std::cout << metadata_bytes_used  << std::endl;
+        std::cout << metadata_blocks_used  << std::endl;
+        std::cout << metadata_files  << std::endl;
+        std::cout << metadata_start  << std::endl;
+        std::cout << metadata_end  << std::endl;
 
     }
 
@@ -802,11 +817,11 @@ namespace os {
             curr = b.next;
         }
 
-	file.size = to_overwrite;
+        file.size = to_overwrite;
 
         // Need to move blocks around
         if( overwritten < to_overwrite ) {
-	    //std::cout << "Overwritten: " << overwritten << " out of " << to_overwrite << std::endl;
+            //std::cout << "Overwritten: " << overwritten << " out of " << to_overwrite << std::endl;
             //assert( false && "TODO: Handle case 'overwritten < length'"  );
         }else if( file.position > file.size  ) {
             bytes_used += file.position - file.size;
@@ -1022,12 +1037,12 @@ namespace os {
                 assert( (*file)->size != 0 );
                 insertFile( **file );
                 (*file)->status = CLOSED;
-		(*file)->position = 0;
-		(*file)->current = (*file)->start;
-		(*file)->block_position = 0;
-		(*file)->disk_position = 0;
-		openFiles.remove(*file);
-		break;
+                (*file)->position = 0;
+                (*file)->current = (*file)->start;
+                (*file)->block_position = 0;
+                (*file)->disk_position = 0;
+                openFiles.remove(*file);
+                break;
             }
         }
     }
@@ -1035,7 +1050,7 @@ namespace os {
     bool FileSystem::unlink( File &f ) {
         l.enter( "UNLINK:1" );
         l.leave( "UNLINK:1" );
-	return false;
+        return false;
     }
 
     //
