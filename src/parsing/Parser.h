@@ -44,6 +44,12 @@ namespace Parsing {
 		rapidjson::Document *fields;
 		int limit;
 		Query(): project(NULL), with(NULL), where(NULL), fields(NULL), limit(-1) {}
+		~Query() {
+			if (project) delete project;
+			if (with) delete with;
+			if (where) delete where;
+			if (fields) delete fields;
+		}
 		void print() {
 			std::cout << "Command: " << Commands[command] << std::endl;
 			if (project) {

@@ -10,6 +10,7 @@
 #include <string>
 #include <list>
 #include <array>
+#include <map>
 
 #include "../os/Constants.h"
 
@@ -42,7 +43,11 @@ namespace os {
     static const uint64_t SignatureSize = 8;
     static const std::array<char,8> HeaderSignature = { {0xD , 0xE , 0xA , 0xD , 0xB , 0xE , 0xE , 0xF}  };
 
+<<<<<<< HEAD
     static const uint64_t Total_Size_Block = 512 * B;
+=======
+    static const uint64_t Total_Size_Block = KB;
+>>>>>>> e766ffe947be9f7656142bae83ec6ff192100e5f
     static const uint64_t Header_Size = Total_Size_Block;
     static const uint64_t Block_Size = Total_Size_Block - 3 * sizeof(uint64_t);
 
@@ -78,8 +83,12 @@ namespace os {
             uint64_t metadata_end                = 1;
 
             // Pointers to open files
+	/*
             std::list<File*> openFiles;
             std::list<File*> allFiles;
+	*/
+	    std::map<const std::string, File*> openFilesMap;
+	    std::map<const std::string, File*> allFilesMap;
 
             FileWriter *metaWriter;
             FileReader *metaReader;

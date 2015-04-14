@@ -1,6 +1,6 @@
 OUT=../objects/
 CC=g++
-CFLAGS=--std=c++11 -O3 -Wall -Wextra
+CFLAGS=--std=c++11 -O3 -Wall -Wextra -g
 INCLUDES += -I../include/
 LIBS += 
 OBJS=$(OUT)Scanner.o $(OUT)Parser.o
