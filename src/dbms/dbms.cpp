@@ -113,20 +113,12 @@ void appendDocToProject(uint64_t projectHash, std::string doc, META &meta) {
  *
  */
 
-void insertDocument(rapidjson::Value &doc, uint64_t projHash, META &meta, FILESYSTEM &fs) {
+void insertDocument(rapidjson::Document &doc, uint64_t projHash, META &meta, FILESYSTEM &fs) {
     std::string docUUID = newUUID();
-    rapidjson::Document d;
-    d.SetObject();
 
-    for (rapidjson::Value::ConstMemberIterator itr = doc.MemberBegin(); itr < doc.MemberEnd(); ++itr) {
-        rapidjson::Value k(itr->name.GetString(), d.GetAllocator());
-        rapidjson::Value v(doc[itr->name.GetString()], d.GetAllocator());
-        d.AddMember(k, v, d.GetAllocator());
-    }
-
-    rapidjson::Value dID(docUUID.c_str(), d.GetAllocator());
-    d.AddMember("_doc", dID, d.GetAllocator());
-    std::string data = toString(&d);
+    rapidjson::Value dID(docUUID.c_str(), doc.GetAllocator());
+    doc.AddMember("_doc", dID, doc.GetAllocator());
+    std::string data = toString(&doc);
 
     // Insert this row into the DB
     os::File &file = fs.open(docUUID.c_str());
@@ -170,6 +162,7 @@ void updateProjectList(std::string pname, META &meta) {
         std::string val = itr->GetString();
         if (!val.compare(pname)) {
             found = true;
+	    break;
         }
     }
 
@@ -222,7 +215,10 @@ void insertDocuments(rapidjson::Document &docs, std::string pname, META &meta, F
     // If it's an array of documents.  Iterate over them and insert each document.
     if (docs.GetType() == rapidjson::kArrayType) {
         for (rapidjson::SizeType i = 0; i < docs.Size(); ++i) {
-            insertDocument(docs[i], uuidHash, meta, fs);
+	    rapidjson::Document d;
+	    std::string data = toString(&docs[i]);
+	    d.Parse(data.c_str());
+            insertDocument(d, uuidHash, meta, fs);
         }
     } else if (docs.GetType() == rapidjson::kObjectType) {
         insertDocument(docs, uuidHash, meta, fs);
