@@ -12,7 +12,7 @@ namespace os {
         return fs->unlink( *this );
     }
 
-    bool File::rename( const std::string newName ) {
+    bool File::rename( const std::string &newName ) {
         return fs->rename( *this , newName );
     }
 

@@ -43,7 +43,7 @@ namespace os {
     static const uint64_t SignatureSize = 8;
     static const std::array<char,8> HeaderSignature = { {0xD , 0xE , 0xA , 0xD , 0xB , 0xE , 0xE , 0xF}  };
 
-    static const uint64_t Total_Size_Block = KB;
+    static const uint64_t Total_Size_Block = 256 * B;
     static const uint64_t Header_Size = Total_Size_Block;
     static const uint64_t Block_Size = Total_Size_Block - 3 * sizeof(uint64_t);
 
@@ -97,7 +97,7 @@ namespace os {
             /* File management functions */
             void loadMetadata();
             uint64_t insertFile( File &f );
-            File& createNewFile( std::string );
+            File& createNewFile( const std::string& );
 
             /* Data management functions*/
             void saveHeader();
@@ -125,34 +125,34 @@ namespace os {
             uint64_t remove(    File& f, uint64_t length ); 
 
             bool unlink( File& );
-            bool rename( File& , const std::string );
+            bool rename( File& , const std::string& );
 
             FileSystem() = delete;
 
         public:
 
-            FileSystem( const std::string location );
+            FileSystem( const std::string& );
             FileSystem( const FileSystem &other ) = delete;
             FileSystem( FileSystem &other ) = delete;
             ~FileSystem();
 
-            bool moveFileSystem( const std::string newLocation );
+            bool moveFileSystem( const std::string& );
 
             std::list<File*> getFiles();
             std::list<File*> getOpenFiles();
             std::list<std::string> getFilenames();
 
             // Open a file for reading or modifiying.  If the file does not exist it is created.
-            File& open( const std::string );
-            void close( const std::string );
+            File& open( const std::string& );
+            void close( const std::string& );
 
             // Checks to see if a file exists
-            bool exists( const std::string ); 
+            bool exists( const std::string& ); 
 
             // Delete a file by name
-            bool unlink( const std::string );
+            bool unlink( const std::string& );
 
-            bool rename( const std::string oldName , const std::string newName );
+            bool rename( const std::string& oldName , const std::string& newName );
 
             void shutdown();
 

@@ -56,7 +56,7 @@ namespace os {
                 bool unlink();
 
                 // Rename the file
-                bool rename( const std::string newName );
+                bool rename( const std::string& newName );
 
                 // Get the current status
                 FileStatus getStatus() const;

@@ -147,7 +147,7 @@ namespace os {
 
     }
 
-    File& FileSystem::createNewFile( std::string name ) {
+    File& FileSystem::createNewFile( const std::string &name ) {
         l.enter( "CREATENEWFILE" );
 
         Block b = allocate( Block_Size , NULL );
@@ -367,7 +367,7 @@ namespace os {
      *  Low level filesystem functions
      */
 
-    bool FileSystem::rename( File &toRename , const std::string newName ) {
+    bool FileSystem::rename( File &toRename , const std::string &newName ) {
         l.enter( "RENAME" );
 	const std::string fname = toRename.getFilename();
 	if (openFilesMap.count(fname)) {
@@ -1010,7 +1010,7 @@ namespace os {
         return names;
     }
 
-    File& FileSystem::open( const std::string name) {
+    File& FileSystem::open( const std::string& name) {
         l.enter( "OPEN" );
 	if (allFilesMap.count(name)) {
 		File &file = *allFilesMap[name];
@@ -1040,7 +1040,7 @@ namespace os {
         return f;
     }
 
-    void FileSystem::close(const std::string name) {
+    void FileSystem::close(const std::string& name) {
         l.enter( "CLOSE" );
 	if (openFilesMap.count(name)) {
 		File &file = *openFilesMap[name];
@@ -1077,14 +1077,14 @@ namespace os {
     }
 
     //
-    bool FileSystem::unlink( const std::string filename ) {
+    bool FileSystem::unlink( const std::string& filename ) {
         l.enter( "UNLINK:2" );
         File& file = open(filename);
         l.leave( "UNLINK:2" );
         return file.unlink();
     }
 
-    bool FileSystem::exists( const std::string filename ) {
+    bool FileSystem::exists( const std::string& filename ) {
         l.enter( "EXISTS" );
         File& file = open(filename);
         l.leave( "EXISTS" );
@@ -1092,7 +1092,7 @@ namespace os {
     }
 
 
-    FileSystem::FileSystem( const std::string filename) {
+    FileSystem::FileSystem( const std::string& filename) {
         l.disable();
         l.enter( "FILESYSTEM" );
 

@@ -1,7 +1,7 @@
 OUT=../../bin/
 OBJECTS=../objects/
 CC=g++
-CFLAGS=--std=c++11 -O3 -Wall -Wextra -g
+CFLAGS=-std=c++11 -O3 -Wall -Wextra -g
 INCLUDE_DIR=../include/
 INCLUDES=-I$(INCLUDE_DIR)
 OS_OBJS=$(OBJECTS)File.o $(OBJECTS)FileSystem.o $(OBJECTS)FileReader.o $(OBJECTS)FileWriter.o
@@ -10,7 +10,8 @@ OUTPUT=$(OUT)LinearHashTest $(OUT)ParserTest $(OUT)UUIDTest $(OUT)EndianTest \
 	$(OUT)CreateTest $(OUT)FileTest $(OUT)WriteReadTest \
 	$(OUT)WriteTest \
 	$(OUT)LargeWriteTest $(OUT)LargeReadTest \
-	$(OUT)ReadAllTest $(OUT)ReplaceTest
+	$(OUT)ReadAllTest $(OUT)ReplaceTest	\
+	$(OUT)Insert
 
 all: $(OUT) PARSING OS $(OUTPUT)
 
@@ -71,6 +72,9 @@ $(OUT)FileTest: ./FileTest.cpp
 
 $(OUT)CreateTest: ./CreateTest.cpp
 	$(CC) $(CFLAGS) $(INCLUDES) $(OS_OBJS) ./CreateTest.cpp -o $(OUT)CreateTest
+
+$(OUT)Insert: ./Insert.cpp
+	$(CC) $(CFLAGS) $(INCLUDES) $(OS_OBJS) ./Insert.cpp -o $(OUT)Insert
 
 $(OUT):
 	mkdir -p $(OUT)
