@@ -9,7 +9,8 @@
 void execute(Parsing::Query &, Storage::LinearHash<std::string> &);
 
 typedef Storage::LinearHash<uint64_t> INDICES;
-typedef Storage::LinearHash<std::string> META;
+//typedef Storage::LinearHash<std::string> META;
+typedef std::map<uint64_t,std::string> META;
 typedef os::FileSystem FILESYSTEM;
 
 std::string SpecialValueComparisons[] = { "#gt", "#lt", "#eq", "#contains", "#starts", "#ends" };

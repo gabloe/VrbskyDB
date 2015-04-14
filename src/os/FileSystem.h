@@ -43,6 +43,7 @@ namespace os {
     static const uint64_t SignatureSize = 8;
     static const std::array<char,8> HeaderSignature = { {0xD , 0xE , 0xA , 0xD , 0xB , 0xE , 0xE , 0xF}  };
 
+    static const uint64_t Buffer_Size = 1024;               // How many extra blocks to allocate when growing
     static const uint64_t Total_Size_Block = 256 * B;
     static const uint64_t Header_Size = Total_Size_Block;
     static const uint64_t Block_Size = Total_Size_Block - 3 * sizeof(uint64_t);
@@ -109,13 +110,13 @@ namespace os {
             void writeBlock( Block &b );
 
             void split( Block& , uint64_t );
-            void flush( Block& );
             Block grow( uint64_t , const char *  );
             Block allocate( uint64_t , const char * );
             Block lazyLoad( uint64_t );
             Block load( uint64_t );
             Block locate( uint64_t , uint64_t& );
             Block reuse( uint64_t& , const char*& );
+            void initBlocks(uint64_t, uint64_t, uint64_t,const char*);
 
             void closing( File& );
 

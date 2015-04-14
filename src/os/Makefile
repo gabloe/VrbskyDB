@@ -21,4 +21,4 @@ $(OUT):
 	mkdir -p $(OUT)
 
 clean:
-	rm -f ../objects/FileSystem.o ../objects/File.o ../objects/FileReader.o ../objects/FileWriter.o
+	rm -f $(OUT)FileSystem.o $(OUT)File.o $(OUT)FileReader.o $(OUT)FileWriter.o

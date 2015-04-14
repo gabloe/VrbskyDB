@@ -3,7 +3,6 @@
 #include <sys/stat.h>
 #include <algorithm>
 #include <cstring>
-#include <cassert>
 
 #include <iomanip>
 
@@ -17,16 +16,17 @@
 #include "../os/FileReader.h"
 #include "../os/FileWriter.h"
 #include "../os/File.h"
+#include "../assert/Assert.h"
 
 static const char Zero[os::Block_Size] = {0};
 
 static Log l(std::cout);
 
-#define assertStream(stream) {              \
-    assert( stream );                       \
-    assert( stream.is_open() );             \
-    assert( stream.fail() == false );       \
-    assert( stream.bad() == false );        \
+#define assertStream(stream) {                          \
+    Assert( "Stream is not good", stream.good() );      \
+    Assert( "Stream is not open", stream.is_open() );   \
+    Assert( "Stream failed" , stream.fail() == false ); \
+    Assert( "Stream is bad" , stream.bad() == false );  \
 }
 
 
@@ -36,15 +36,6 @@ void write64( std::fstream& str , uint64_t t ) {
 
 void read64( std::fstream& str , uint64_t &t ) {
     str.read( reinterpret_cast<char*>( &t ) , sizeof(t) );
-}
-
-void gotoBlock( uint64_t block , uint64_t blockSize , std::fstream &stream ) {
-    assertStream( stream );
-
-    stream.seekp( block * blockSize );
-    stream.seekg( block * blockSize );
-
-    assertStream( stream );
 }
 
 void printFile( os::File &file , bool force = false ) {
@@ -139,7 +130,7 @@ namespace os {
         pos += sizeof(tmp);
 
         metaWriter->seek( f.metadata , BEG );
-        assert( metadata->position == f.metadata );
+        Assert( "We could not seek to the correct spot" , metadata->position == f.metadata );
         metaWriter->write( pos , buffer.data() );
 
         l.leave("INSERTFILE");
@@ -151,7 +142,7 @@ namespace os {
         l.enter( "CREATENEWFILE" );
 
         Block b = allocate( Block_Size , NULL );
-        assert( b.block != 0 );
+        Assert( "Block id is 0" , b.block != 0 );
 
         File &f = *(new File());
         f.name = name;
@@ -172,9 +163,9 @@ namespace os {
 
     void FileSystem::gotoBlock( uint64_t blockId ) {
         l.enter( "GOTOBLOCK" );
-        assert( blockId > 0 );
-        assert( blockId < blocks_allocated );
-        uint64_t offset = blockId * Total_Size_Block;
+
+        Assert( "blockId is 0" , blockId , blockId > 0 );
+        Assert( "Going out of range" , blockId, blocks_allocated, blockId < blocks_allocated );
 
         stream.seekp( blockId * Total_Size_Block );
         stream.seekg( blockId * Total_Size_Block );
@@ -209,7 +200,6 @@ namespace os {
         l.enter( "WRITEBLOCK" );
 
         gotoBlock( b.block );
-        assert( stream.tellp() == b.block * Total_Size_Block );
         assertStream( stream );
 
         lock( WRITE );
@@ -247,8 +237,8 @@ namespace os {
         if( metadata_files > 0 ) {
 
             metaReader->seek( 0 , BEG );
-            assert( metadata->position == 0 );
-            assert( metaReader->file.position == 0 );
+            Assert( "Shoudl be at beginning" , metadata->position == 0 );
+            Assert( "Should be at the beginning" , metaReader->file.position == 0 );
 
             for( int i = 0 ; i < metadata_files; ++i) {
                 File &f = *(new File());
@@ -290,7 +280,7 @@ namespace os {
 
     void FileSystem::readHeader() {
         stream.seekg( SignatureSize , std::ios_base::beg );
-        assert( stream.tellg() == 8 );
+        Assert( "Should have skipped signature", stream.tellg() == 8 );
         read64( stream , bytes_allocated );
         read64( stream , bytes_used );
         read64( stream , blocks_allocated );
@@ -313,7 +303,7 @@ namespace os {
         assertStream( stream );
 
         stream.seekp( SignatureSize , std::ios_base::beg );
-        assert( stream.tellp() == 8 );
+        Assert( "Should have skipped signature", stream.tellp() == 8 );
         write64( stream , bytes_allocated );
         write64( stream , bytes_used );
         write64( stream , blocks_allocated );
@@ -407,12 +397,96 @@ namespace os {
 
             b.length = offset;
 
-            flush( newBlock );
-            flush( b );
-            flush( next );
+            writeBlock( newBlock );
+            writeBlock( b );
+            writeBlock( next );
         }
         l.leave( "SPLIT" );
 
+    }
+
+
+    void FileSystem::initBlocks(uint64_t start, uint64_t blocks, uint64_t buff_length , const char *buffer) {
+        // Assertions
+        Assert( "Why is it 1" , start > 1 );
+
+        // Local variables
+        std::array<char,Total_Size_Block> blockBuffer;
+        uint64_t *previous;
+        uint64_t *next;
+        uint64_t *length;
+        char *data;
+
+        previous    = reinterpret_cast<uint64_t*>(blockBuffer.begin()   + 0 * sizeof(uint64_t));
+        next        = reinterpret_cast<uint64_t*>(blockBuffer.begin()   + 1 * sizeof(uint64_t));
+        length      = reinterpret_cast<uint64_t*>(blockBuffer.begin()   + 2 * sizeof(uint64_t));
+        data        = blockBuffer.begin()                               + 3 * sizeof(uint64_t);
+
+        // Save this for testing
+        uint64_t initLength = buff_length;
+
+        // Handle data
+        if( buffer == NULL ) {
+            initLength = 0;
+            *length = 0;
+            std::fill( data , data + Block_Size , 0 );
+        }else {
+            *length = Block_Size;
+        }
+
+        // Go to spot
+        stream.seekp( start * Total_Size_Block );
+        stream.seekg( start * Total_Size_Block );
+
+        // Initialize previous and next
+        *previous = start + blocks - 1;
+        *next = start + 1;
+
+        for( int i = 0 ; i < blocks - 1; ++i ) {
+
+            if( buffer != NULL ) {
+                std::copy( buffer , buffer + Block_Size , data );
+                buff_length -= Block_Size;
+            }
+
+            // Write
+            stream.write( blockBuffer.data() , Total_Size_Block );
+
+            // Update
+            *previous = *next - 1;
+            *next = *next + 1;
+        }
+
+        // Final block
+        *next = 0;
+        if( buffer != NULL ) {
+            *length = buff_length;
+            std::copy( buffer , buffer + buff_length , data );
+        }
+        stream.write( blockBuffer.begin() , Total_Size_Block );
+        stream.flush();
+
+        // Validate
+        /*
+        for( int i = 0 ; i < blocks ; ++i ) {
+            Block curr = lazyLoad( start + i );
+            // Our length should be min of Block_Size and initLength
+            Assert( "The length is not correct" , initLength , curr.length , curr.length == std::min( initLength , Block_Size) );
+            initLength -= curr.length;
+
+            if( i == 0 ) {
+                Assert( "Previous does not point to end" , curr.prev == start + blocks - 1 );
+            }else {
+                Assert( "Previous does not point to previous" , curr.block , curr.prev , curr.prev == (start + i - 1) );
+            }
+
+            if( i == blocks - 1 ) {
+                Assert( "Next is not 0" , curr.next == 0 );
+            }else {
+                Assert( "The next is 0" , curr.next != 0 );
+            }
+        }
+        */
     }
 
     //  grow    -   Grow the filesystem enough to support writing the number of bytes given
@@ -424,75 +498,30 @@ namespace os {
     Block FileSystem::grow( uint64_t bytes , const char *buffer ) {
         l.enter( "GROW" );
 
+        // Handle clients data needs
         uint64_t blocks_to_write = (bytes + Block_Size - 1) / Block_Size;
         uint64_t current = blocks_allocated;
 
-        if( buffer == NULL ) {
-            buffer = Zero;
-        }
+        free_first = blocks_allocated + blocks_to_write;
+        free_count = Buffer_Size;
 
         lock( WRITE );
         {
-            blocks_allocated += blocks_to_write;
-            bytes_allocated += bytes;
+            blocks_allocated += blocks_to_write + Buffer_Size;
+            bytes_allocated = Total_Size_Block * blocks_allocated;
 
-            stream.seekp( Total_Size_Block * blocks_allocated - 1 , std::ios_base::beg );
+            stream.seekp( Total_Size_Block * (blocks_allocated - 1) , std::ios_base::beg );
             stream.write( Zero , 1 );
             stream.flush();
 
-            saveHeader();
             assertStream( stream );
         }unlock( WRITE );
 
+        initBlocks( free_first , free_count , 0 , NULL );
+        initBlocks( current , blocks_to_write , bytes , buffer );
 
-        assert( current != 0 );
-        gotoBlock(current);
-
-        uint64_t previous = blocks_allocated - 1;
-        for( int i = 0 ; i < blocks_to_write - 1; ++i) {
-            Block curr;
-            curr.prev = previous;
-            curr.block = current; 
-            curr.next = current + 1;
-
-            uint64_t bytesM = std::min( Block_Size , bytes );
-            std::copy( buffer , buffer + Block_Size , curr.data.begin() );
-            if( buffer != Zero ) {
-                buffer += Block_Size;
-                curr.length = Block_Size;
-            }else {
-                curr.length = 0;
-            }
-            writeBlock( curr );
-
-            previous = current;
-            ++current;
-            bytes -= bytesM;
-        }
-
-        assert( bytes > 0 );
-
-        Block curr;
-        curr.status = FULL;
-        curr.prev = (previous == current) ? 0 : previous;
-        curr.block = current;
-        curr.next = 0;
-        if( buffer == Zero ) {
-            curr.length = 0;
-        }else {
-            curr.length = bytes;
-        }
-        std::copy( buffer , buffer + bytes , curr.data.begin() );
-        std::copy( Zero + bytes , Zero + Block_Size , curr.data.begin() + bytes );
-
-        flush( curr );
-
-        curr = load( blocks_allocated - blocks_to_write );
-
-        //assert( ( blocks_allocated - blocks_to_write - 1) < 1000 );
         l.leave( "GROW" );
-
-        return curr;
+        return load( current );
     }
 
 
@@ -504,9 +533,8 @@ namespace os {
     //
     Block FileSystem::load( uint64_t block ) {
         l.enter( "LOAD" );
-        assert( stream.bad() == false );
-        assert( stream.fail() == false );
-        assert( block > 0 );
+        assertStream(stream);
+        Assert( "Block should greater than 0" , block > 0 );
 
         gotoBlock( block );
         Block b = readBlock();
@@ -543,18 +571,6 @@ namespace os {
         return b;
     }
 
-    //  flush   -   Given a block we flush it to disk
-    //
-    //  b       -   The block, with its data, we want to save to disk
-    //  
-    //
-    void FileSystem::flush( Block &b ) {
-        l.enter( "FLUSH" );
-        gotoBlock( b.block );
-        writeBlock( b );
-        l.leave( "FLUSH" );
-    }
-
     //  reuse   -   Given some amount of bytes and data we try to load blocks from free list
     //
     //      length and buffer is modified as we use data.  If not enough free blocks exist
@@ -569,47 +585,51 @@ namespace os {
         l.enter( "REUSE" );
         Block head;
 
+        Assert( "Length is zero" , length > 0 );
         assertStream( stream );
 
         if( free_count > 0 ) {
             uint64_t prevBlock = 0,currBlock = free_first;
             Block current;
 
+            Assert( "Did I forget to change free_count or free_first" , currBlock , free_count , currBlock != 0 );
+
             head = lazyLoad( currBlock );
 
             do {
-                // Update free list
-                free_first = current.next;
-                --free_count;
 
                 // Currently we treat the free_first as a special file, so just use it as such
                 current = lazyLoad( currBlock );
                 current.status = FULL;
                 current.length = std::min( length , Block_Size );
                 uint64_t fillOffset = 0;
-                if( buffer != 0 ) {
+                if( buffer != NULL ) {
                     std::copy( buffer , buffer + current.length , current.data.data() );
                     fillOffset = Block_Size - current.length;
+                    buffer += current.length;
                 }
                 std::fill( current.data.begin() + fillOffset , current.data.begin() + Block_Size , 0 );
 
                 // Update input
-                buffer += current.length;
+                
                 length -= current.length;
 
                 // Write to disk
-                flush( current );
+                writeBlock( current );
+
+                // Update free list
+                free_first = current.next;
+                --free_count;
 
                 // Go to next
                 prevBlock = currBlock;
                 currBlock = free_first;
-
             } while ( free_count > 0 && length > 0 );
 
             current.next = 0;
             head.prev = prevBlock;
-            flush( current );
-            flush( head );
+            writeBlock( current );
+            writeBlock( head );
         }
 
         l.leave( "REUSE" );
@@ -629,15 +649,17 @@ namespace os {
 
         Block head;
         if( length == 0 ) {
-            assert( length != 0 );
             return head;
         }
 
         if( free_count > 0 ){
-            assert( free_count == 0 );
-            Block head = reuse( length , buffer );
+
+            head = reuse( length , buffer );
+
+            // If not enough room we have to grow
             if( length > 0 ) {
-                Block grown = grow( length , buffer );
+
+                Block grown = grow( length , buffer);
 
                 // The very end
                 uint64_t tmp = grown.prev;
@@ -723,7 +745,7 @@ namespace os {
                 }
             }
         }else {
-            assert( false );
+            Assert( "If you have reached here something is really wrong" , false );
         }
         // How much we read
 
@@ -746,14 +768,14 @@ namespace os {
     uint64_t FileSystem::write( File &file , uint64_t length , const char* buffer ) {
         l.enter( "WRITE" );
 
-        // Going to fill up rest of the file
+        // Grow internal file to be large enough
         if( length + file.disk_position > file.disk_usage ) {
             // Calculate how much extra space we need
             uint64_t growBy = round<Block_Size>(length - (file.disk_usage - file.disk_position));
 
             // Load for reconnection
             Block oldBlock = lazyLoad( file.end );
-            Block newBlock = grow(growBy , NULL);
+            Block newBlock = allocate( growBy , NULL);
 
             // Update/Reconnect
             file.disk_usage += growBy;
@@ -764,8 +786,8 @@ namespace os {
             }
             oldBlock.next = newBlock.block;
             newBlock.prev = oldBlock.block;
-            flush( newBlock );
-            flush( oldBlock );
+            writeBlock( newBlock );
+            writeBlock( oldBlock );
 
             // Save file data
             bytes_allocated += growBy;
@@ -783,6 +805,9 @@ namespace os {
             to_overwrite = std::min( length , file.size - file.position );
         }
 
+
+        Assert( "The block id is 0" , curr != 0 );
+
         // While we have not written everything
         uint64_t remaining = length;
         while( written < length ) {
@@ -799,8 +824,8 @@ namespace os {
 
             std::copy( buffer + written , buffer + written + len , b.data.data() + file.block_position );
             b.length = file.block_position + len;
-            assert( b.status == FULL );
-            flush( b );
+            Assert( "We must make things full" , b.status == FULL );
+            writeBlock( b );
 
             written += len;
             remaining -= len;
@@ -817,7 +842,7 @@ namespace os {
         // Need to move blocks around
         if( overwritten < to_overwrite ) {
             //std::cout << "Overwritten: " << overwritten << " out of " << to_overwrite << std::endl;
-            //assert( false && "TODO: Handle case 'overwritten < length'"  );
+            //Assert( false && "TODO: Handle case 'overwritten < length'"  );
         }else if( file.position > file.size  ) {
             bytes_used += file.position - file.size;
             file.size += file.position - file.size;
@@ -847,7 +872,6 @@ namespace os {
     //  @return -   The number of bytes written
     uint64_t FileSystem::insert( File &file , uint64_t length , const char* buffer ) {
         l.enter( "INSERT" );
-        assert( free_count == 0 );
         if( length > 0 ) {
             // Grow file if neccessary 
             if( file.position > file.size ) {
@@ -866,8 +890,8 @@ namespace os {
                 remaining.prev = oldEnd.block;
                 oldEnd.next = remaining.block;
 
-                flush( remaining );
-                flush( oldEnd );
+                writeBlock( remaining );
+                writeBlock( oldEnd );
             }
 
             Block b = locate( file.current , file.position );
@@ -882,11 +906,10 @@ namespace os {
             next.prev = b.block;
             b.next = next.block;
 
-            flush( next );
-            flush( end );
-            flush( b );
+            writeBlock( next );
+            writeBlock( end );
+            writeBlock( b );
 
-            // file.flush();
         }
         l.leave( "INSERT" );
         return length;
@@ -910,7 +933,6 @@ namespace os {
     //
     uint64_t FileSystem::remove( File &file ,uint64_t length ) {
         l.enter( "REMOVE" );
-        assert( free_count == 0 );
         uint64_t remaining = std::min( length , file.size - file.position );
 
         // Make sure can remove bytes
@@ -945,10 +967,9 @@ namespace os {
             file.position = 0;
 
             // Write to disk
-            flush( first );
-            flush( last );
+            writeBlock( first );
+            writeBlock( last );
 
-            // file.flush();
         }
         l.leave( "REMOVE" );
         return length - remaining;
@@ -1053,21 +1074,6 @@ namespace os {
 			openFilesMap.erase(name);
 		}
 	}
-/*
-        for( auto file = openFiles.begin() ; file != openFiles.end() ; ++file ) {
-            if( (*file)->getFilename() == name && (*file)->status == OPEN ) {
-                assert( (*file)->size != 0 );
-                insertFile( **file );
-                (*file)->status = CLOSED;
-                (*file)->position = 0;
-                (*file)->current = (*file)->start;
-                (*file)->block_position = 0;
-                (*file)->disk_position = 0;
-                openFiles.remove(*file);
-                break;
-            }
-        }
-*/
     }
 
     bool FileSystem::unlink( File &f ) {

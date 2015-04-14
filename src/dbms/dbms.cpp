@@ -8,7 +8,7 @@
 
 #include "dbms.h"
 #include "../hashing/Hash.h"
-#include "../storage/LinearHash.h"
+//#include "../storage/LinearHash.h"
 #include "../parsing/Parser.h"
 #include "../parsing/Scanner.h"
 #include "../os/FileSystem.h"
@@ -19,6 +19,54 @@
 #include <readline/history.h>
 #include <pretty.h>
 #include <UUID.h>
+
+void writeToFile( std::string fname , META &meta ) {
+    std::fstream output( fname , std::fstream::out | std::fstream::trunc | std::fstream::binary );
+
+    // Write how many
+    uint64_t len = meta.size();
+    output.write( reinterpret_cast<char*>( &len ) , sizeof(uint64_t));
+    
+    for( auto item = meta.begin() ; item != meta.end() ; ++item ) {
+        // Write key
+        output.write( reinterpret_cast<const char*>( &(item->first)) , sizeof(uint64_t));
+        // Write value length
+        len = item->second.size();
+        output.write( reinterpret_cast<const char*>( &len ) , sizeof(uint64_t) );
+        // Write value
+        output.write( reinterpret_cast<const char*>( item->second.c_str()) , sizeof(len));
+    }
+
+    output.flush();
+    output.close();
+}
+
+void readFromFile( std::string fname , META &meta ) {
+    std::fstream input( fname , std::fstream::in | std::fstream::binary );
+    input.seekg( 0 );
+
+    // Write how many
+    uint64_t count = 0;
+    input.read( reinterpret_cast<char*>( &count ) , sizeof(uint64_t));
+
+    std::array<char,1024> buffer;
+    
+    for( unsigned int i = 0 ; i < count ; ++ i ) {
+        uint64_t key,len;
+
+        // Read key
+        input.read( reinterpret_cast<char*>( &key) , sizeof(uint64_t));
+
+        // Read value length
+        input.read( reinterpret_cast<char*>( &len) , sizeof(uint64_t));
+        // Read value
+        input.read( reinterpret_cast<char*>(buffer.data()) , sizeof(len));
+
+        meta[key] = std::string( buffer.data() , len );
+    }
+
+    input.close();
+}
 
 // Add val to current value of result.
 void sumAggregate(rapidjson::Value *val, rapidjson::Value &result) {
@@ -81,10 +129,10 @@ void maxAggregate(rapidjson::Value *val, rapidjson::Value &result) {
  */
 
 void appendDocToProject(uint64_t projectHash, std::string doc, META &meta) {
-    if (meta.contains(projectHash)) {
+    if (meta.count(projectHash) > 0) {
         // Get the previous array of docs
         std::string data;
-        meta.get(projectHash, data);
+        data = meta[projectHash];
 
         // Parse the array and insert new document ID
         rapidjson::Document d;
@@ -95,7 +143,8 @@ void appendDocToProject(uint64_t projectHash, std::string doc, META &meta) {
 
         // Save the new array in meta
         std::string newData = toString(&d);
-        meta.put(projectHash, newData);
+        //meta.put(projectHash, newData);
+        meta[projectHash] = newData;
     }
 }
 
@@ -144,13 +193,14 @@ void insertDocument(rapidjson::Document &doc, uint64_t projHash, META &meta, FIL
 void updateProjectList(std::string pname, META &meta) {
     std::string key("__PROJECTS__");
     uint64_t keyHash = hash(key, key.size());
-    if (!meta.contains(keyHash)) {
-        meta.put(keyHash, "[]");
+    if (meta.count(keyHash) == 0) {
+        meta[keyHash] =  "[]";
     }
 
     // Get the array of project names
     std::string arr;
-    meta.get(keyHash, arr);
+    //meta.get(keyHash, arr);
+    arr = meta[keyHash];
 
     // Parse the array into a JSON object
     rapidjson::Document d;
@@ -176,7 +226,8 @@ void updateProjectList(std::string pname, META &meta) {
         d.PushBack(project, d.GetAllocator());
 
         // Update the metadata with the modified array
-        meta.put(keyHash, toString(&d));
+        //meta.put(keyHash, toString(&d));
+        meta[keyHash] = toString(&d);
     }
 }
 
@@ -195,18 +246,20 @@ void updateProjectList(std::string pname, META &meta) {
 void insertDocuments(rapidjson::Document &docs, std::string pname, META &meta, FILESYSTEM &fs) {
     uint64_t projectHash = hash(pname, pname.size());
     uint64_t uuidHash;
-    if (!meta.contains(projectHash)) {
+    if (meta.count(projectHash) == 0) {
         // project doesn't exist.  Create a UUID for it.
         std::string proj_uuid = newUUID();
-        meta.put(projectHash, proj_uuid);
+        //meta.put(projectHash, proj_uuid);
+        meta[projectHash] = proj_uuid;
 
         // Insert an empty array.  This array will eventuall contain document uuid's
         uuidHash = hash(proj_uuid, proj_uuid.size());
         std::string emptyArray("[]");
-        meta.put(uuidHash, emptyArray);
+        //meta.put(uuidHash, emptyArray);
+        meta[uuidHash] = emptyArray;
     } else {
         std::string proj_uuid;
-        meta.get(projectHash, proj_uuid);
+        proj_uuid = meta[projectHash];
         uuidHash = hash(proj_uuid, proj_uuid.size());
     }
 
@@ -944,63 +997,64 @@ void execute(Parsing::Query &q, META &meta, std::string meta_fname, FILESYSTEM &
             {
                 std::string project = *q.project;
                 uint64_t pHash = hash(project, project.size());
-                if (meta.contains(pHash)) {
+                if (meta.count(pHash) > 0) {
                     std::string pid;
-                    meta.get(pHash, pid);
+                    pid = meta[pHash];
                     uint64_t docsHash = hash(pid, pid.size());
-                    if (meta.contains(docsHash)) {
+                    if (meta.count(docsHash) > 0) {
                         std::string docs;
-                        meta.get(docsHash, docs);
+                        docs = meta[docsHash];
                         rapidjson::Document docArray;
                         docArray.Parse(docs.c_str());
                         rapidjson::Document data = select(docArray, *q.fields, q.where, q.limit, fs);
-			if (data.HasMember("_result")) {
-				rapidjson::Value &array = data["_result"];
-				if (array.Size() == 0) {
-					std::cout << "Result Empty!" << std::endl;	
-				} else {
-                        		std::cout << toPrettyString(&data) << std::endl;
-					std::cout << array.Size() << " records returned." << std::endl; 
-				}
-			} else {
-				// Not sure how this would happen...
-				std::cout << "Error occured during operation." << std::endl;
-			}
+                        if (data.HasMember("_result")) {
+                            rapidjson::Value &array = data["_result"];
+                            if (array.Size() == 0) {
+                                std::cout << "Result Empty!" << std::endl;	
+                            } else {
+                                std::cout << toPrettyString(&data) << std::endl;
+                                std::cout << array.Size() << " records returned." << std::endl; 
+                            }
+                        } else {
+                            // Not sure how this would happen...
+                            std::cout << "Error occured during operation." << std::endl;
+                        }
                     }
                 } else {
-			std::cout << "Project '" << project << "' does not exist!" << std::endl;
-		}
+                    std::cout << "Project '" << project << "' does not exist!" << std::endl;
+                }
                 break;
             }
         case Parsing::DELETE:
             {
-	        std::string project = *q.project;
+                std::string project = *q.project;
                 uint64_t pHash = hash(project, project.size());
-                if (meta.contains(pHash)) {
+                if (meta.count(pHash)) {
                     std::string pid;
-                    meta.get(pHash, pid);
+                    //meta.get(pHash, pid);
+                    pid = meta[pHash];
                     uint64_t docsHash = hash(pid, pid.size());
-                    if (meta.contains(docsHash)) {
+                    if (meta.count(docsHash)) {
                         std::string docs;
-                        meta.get(docsHash, docs);
+                        docs = meta[docsHash];
                         rapidjson::Document docArray;
                         docArray.Parse(docs.c_str());
                         ddelete(docArray, *q.fields, q.where, q.limit, fs);
-			std::string newDocArray = toString(&docArray);
-			meta.put(docsHash, newDocArray);
+                        std::string newDocArray = toString(&docArray);
+                        meta[docsHash] = newDocArray;
                     }
                 } else {
-			std::cout << "Project '" << project << "' does not exist!" << std::endl;
-		}
+                    std::cout << "Project '" << project << "' does not exist!" << std::endl;
+                }
                 break;
             }
         case Parsing::SHOW:
             {
                 std::string key("__PROJECTS__");
                 uint64_t keyHash = hash(key, key.size());
-                if (meta.contains(keyHash)) {
+                if (meta.count(keyHash)) {
                     std::string arr;
-                    meta.get(keyHash, arr);
+                    arr = meta[keyHash];
                     if (!arr.compare("[]")) {
                         std::cout << "No projects found!" << std::endl;
                     } else {
@@ -1013,33 +1067,36 @@ void execute(Parsing::Query &q, META &meta, std::string meta_fname, FILESYSTEM &
             }
         case Parsing::UPDATE:
             {
-       	        std::string project = *q.project;
+                std::string project = *q.project;
                 uint64_t pHash = hash(project, project.size());
-                if (meta.contains(pHash)) {
+                if (meta.count(pHash)) {
                     std::string pid;
-                    meta.get(pHash, pid);
+                    //meta.get(pHash, pid);
+                    pid = meta[pHash];
                     uint64_t docsHash = hash(pid, pid.size());
-                    if (meta.contains(docsHash)) {
+                    if (meta.count(docsHash)) {
                         std::string docs;
-                        meta.get(docsHash, docs);
+                        //meta.get(docsHash, docs);
+                        docs = meta[docsHash];
                         rapidjson::Document docArray;
                         docArray.Parse(docs.c_str());
-			rapidjson::Document &updates = *q.with;
+                        rapidjson::Document &updates = *q.with;
                         update(docArray, updates, q.where, q.limit, fs);
                     }
                 } else {
-			std::cout << "Project '" << project << "' does not exist!" << std::endl;
-		}
+                    std::cout << "Project '" << project << "' does not exist!" << std::endl;
+                }
                 break;
             }
         default:
             std::cout << "Command not recognized." << std::endl;
     }
     if (print) {
-    	end = std::clock();
-    	std::cout << "Done!  Took " << 1000 * (float)(end - start) / CLOCKS_PER_SEC << " milliseconds." << std::endl;
+        end = std::clock();
+        std::cout << "Done!  Took " << 1000 * (float)(end - start) / CLOCKS_PER_SEC << " milliseconds." << std::endl;
     }
-    dumpToFile(meta_fname, meta);
+    //dumpToFile(meta_fname, meta);
+    writeToFile( meta_fname, meta );
 }
 
 /*
@@ -1251,41 +1308,42 @@ int start_readline(void) {
     return 0;
 }
 
+
 int main(int argc, char **argv) {
     std::string meta_fname("meta.lht");
     std::string data_fname("data.db");
+    META meta;
     char *buf;
-    Storage::LinearHash<std::string> *meta;
     os::FileSystem *fs = new os::FileSystem(data_fname);
 
     if (file_exists(meta_fname)) {
-        meta = readFromFile<std::string>(meta_fname);
+        readFromFile(meta_fname , meta );
     } else {
-        meta = new Storage::LinearHash<std::string>(1025,2048);
+        //meta = new Storage::LinearHash<std::string>(1025,2048);
     }
 
     std::string line;
     int count = 0;
     if (argc > 1) {
-	std::ifstream dataFile;
-	dataFile.open(argv[1]);
-  	int total = std::count(std::istreambuf_iterator<char>(dataFile), 
-        		std::istreambuf_iterator<char>(), '\n');
-	dataFile.seekg(0);
-	double percent = 0;
-	while (dataFile.good()) {
-		line.clear();
-		std::getline(dataFile, line);
-		Parsing::Parser p(line);
-        	Parsing::Query *query = p.parse();
-		if (query) {
-		    execute( *query, *meta, meta_fname, *fs, false);
-		    count++;
-		    percent = (double)count / total;
-		    delete query;
-		}
-		printf("%.1f%% done.\r", percent*100);
-	}
+        std::ifstream dataFile;
+        dataFile.open(argv[1]);
+        int total = std::count(std::istreambuf_iterator<char>(dataFile), 
+                std::istreambuf_iterator<char>(), '\n');
+        dataFile.seekg(0);
+        double percent = 0;
+        while (dataFile.good()) {
+            line.clear();
+            std::getline(dataFile, line);
+            Parsing::Parser p(line);
+            Parsing::Query *query = p.parse();
+            if (query) {
+                execute( *query, meta, meta_fname, *fs, false);
+                count++;
+                percent = (double)count / total;
+                delete query;
+            }
+            printf("%.1f%% done.\r", percent*100);
+        }
     }
 
     std::cout << "\n";
@@ -1310,18 +1368,18 @@ int main(int argc, char **argv) {
         Parsing::Parser p(q);
         Parsing::Query *query = p.parse();
         if (query) {
-            execute( *query, *meta, meta_fname, *fs);
-	    delete query;
+            execute( *query, meta, meta_fname, *fs);
+            delete query;
         }
         std::cout << std::endl;
     }
     std::cout << "Goodbye!" << std::endl;
     free(buf);
-    dumpToFile(meta_fname, *meta);
+    //dumpToFile(meta_fname, *meta);
+    writeToFile( meta_fname , meta );
     fs->shutdown();
 
     delete fs;
-    delete meta;
 
     return 0;
 }
