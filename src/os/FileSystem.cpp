@@ -305,21 +305,6 @@ namespace os {
         read64( stream , metadata_start );
         read64( stream , metadata_end );
 
-        std::cout << "DATA IS HUR?" << std::endl;
-        std::cout << bytes_allocated  << std::endl;
-        std::cout << bytes_used  << std::endl;
-        std::cout << blocks_allocated  << std::endl;
-        std::cout << blocks_used  << std::endl;
-        std::cout << free_count  << std::endl;
-        std::cout << free_first  << std::endl;
-        std::cout << metadata_bytes_allocated  << std::endl;
-        std::cout << metadata_allocated_blocks  << std::endl;
-        std::cout << metadata_bytes_used  << std::endl;
-        std::cout << metadata_blocks_used  << std::endl;
-        std::cout << metadata_files  << std::endl;
-        std::cout << metadata_start  << std::endl;
-        std::cout << metadata_end  << std::endl;
-
     }
 
     void FileSystem::saveHeader() {
