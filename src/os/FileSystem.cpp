@@ -266,7 +266,7 @@ namespace os {
                 f.name = std::string( buff.data() , str_len );
                 f.current = f.start;
 
-                allFiles.push_back( &f );
+                allFilesMap[f.name] = &f;
             }
         }
         l.leave("LOADMETADATA");
@@ -384,6 +384,15 @@ namespace os {
 
     bool FileSystem::rename( File &toRename , const std::string newName ) {
         l.enter( "RENAME" );
+	const std::string fname = toRename.getFilename();
+	if (openFilesMap.count(fname)) {
+		File &file = *openFilesMap[fname];
+		file.name = newName;
+		toRename.name = newName;
+		return true;
+	}	
+	return false;
+/*
         for( auto file = openFiles.begin() ; file != openFiles.end() ; ++file ) {
             File &f = *(*file);
             if( f.getFilename() == toRename.getFilename() ) {
@@ -392,6 +401,7 @@ namespace os {
                 return true;
             }
         }
+*/
         l.leave( "RENAME" );
         return false;
     }
@@ -817,7 +827,7 @@ namespace os {
             curr = b.next;
         }
 
-        file.size = to_overwrite;
+        //file.size = to_overwrite;
 
         // Need to move blocks around
         if( overwritten < to_overwrite ) {
@@ -969,10 +979,11 @@ namespace os {
         if( !done ) { 
             done = true;
             saveHeader();
-            for( auto file = openFiles.begin() ; file != openFiles.end() ; ++file ) {
-                if( (*file)->status == OPEN ) {
-                    insertFile( **file );
-                    (*file)->status = CLOSED;
+            for( std::map<const std::string, File*>::iterator it = openFilesMap.begin() ; it != openFilesMap.end() ; ++it ) {
+		File &file = *it->second;
+                if( file.status == OPEN ) {
+                    insertFile( file );
+                    file.status = CLOSED;
                 }
             }
             stream.flush();
@@ -984,8 +995,9 @@ namespace os {
     std::list<File*> FileSystem::getFiles() {
         l.enter( "GETFILES" );
         std::list<File*> ret;
-        for( auto file = allFiles.begin() ; file != allFiles.end() ; ++file ) {
-            ret.push_back(*file);
+        for( std::map<const std::string, File*>::iterator it = allFilesMap.begin() ; it != allFilesMap.end() ; ++it ) {
+	    File *file = it->second;
+            ret.push_back(file);
         }
         l.leave( "GETFILES" );
         return ret;
@@ -994,8 +1006,9 @@ namespace os {
     std::list<File*> FileSystem::getOpenFiles() {
         l.enter( "GETOPENFILES" );
         std::list<File*> ret;
-        for( auto file = openFiles.begin() ; file != openFiles.end() ; ++file ) {
-            ret.push_back(*file);
+        for( std::map<const std::string, File*>::iterator it = openFilesMap.begin() ; it != openFilesMap.end() ; ++it ) {
+	    File *file = it->second;
+            ret.push_back(file);
         }
         return ret;
         l.leave( "GETOPENFILES" );
@@ -1004,8 +1017,9 @@ namespace os {
     std::list<std::string> FileSystem::getFilenames() {
         l.enter( "GETFILENAMES" );
         std::list<std::string> names;
-        for( auto file = allFiles.begin() ; file != allFiles.end() ; ++file ) {
-            names.push_back( (*file)->getFilename() );
+        for( std::map<const std::string, File*>::iterator it = allFilesMap.begin() ; it != allFilesMap.end() ; ++it ) {
+	    File *file = it->second;
+            names.push_back( file->getFilename() );
         } 
         l.leave( "GETFILENAMES" );
         return names;
@@ -1013,6 +1027,14 @@ namespace os {
 
     File& FileSystem::open( const std::string name) {
         l.enter( "OPEN" );
+	if (allFilesMap.count(name)) {
+		File &file = *allFilesMap[name];
+		openFilesMap[name] = &file;
+		file.status = OPEN;
+		l.leave("OPEN");
+		return file;
+	}
+/*
         for( auto file = allFiles.begin() ; file != allFiles.end() ; ++file ) {
             if( (*file)->getFilename() == name ) {
                 openFiles.push_back( *file );
@@ -1021,17 +1043,32 @@ namespace os {
                 return **file;
             }
         } 
+*/
         // Create new file
         File &f = createNewFile( name );
         f.status = OPEN;
-        allFiles.push_back( &f );
-        openFiles.push_back( &f );
+	allFilesMap[name] = &f;
+	openFilesMap[name] = &f;
+//        allFiles.push_back( &f );
+//        openFiles.push_back( &f );
         l.leave( "OPEN" );
         return f;
     }
 
     void FileSystem::close(const std::string name) {
         l.enter( "CLOSE" );
+	if (openFilesMap.count(name)) {
+		File &file = *openFilesMap[name];
+		if (file.status == OPEN) {
+			file.status = CLOSED;
+			file.position = 0;
+			file.current = file.start;
+			file.block_position = 0;
+			file.disk_position = 0;
+			openFilesMap.erase(name);
+		}
+	}
+/*
         for( auto file = openFiles.begin() ; file != openFiles.end() ; ++file ) {
             if( (*file)->getFilename() == name && (*file)->status == OPEN ) {
                 assert( (*file)->size != 0 );
@@ -1045,6 +1082,7 @@ namespace os {
                 break;
             }
         }
+*/
     }
 
     bool FileSystem::unlink( File &f ) {
@@ -1123,10 +1161,10 @@ namespace os {
 
     void FileSystem::closing( File& fp ) {
         l.enter( "CLOSING" );
-        for( auto file = openFiles.begin(); file != openFiles.end(); ++file ) {
-            File &f = *(*file);
+        for( std::map<const std::string, File*>::iterator it = openFilesMap.begin(); it != openFilesMap.end(); ++it ) {
+            File &f = *it->second;
             if( f.getFilename() == fp.getFilename() ) {
-                openFiles.erase(file);
+                openFilesMap.erase(it);
                 break;
             }
         }

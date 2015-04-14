@@ -89,7 +89,6 @@ void appendDocToProject(uint64_t projectHash, std::string doc, META &meta) {
         // Parse the array and insert new document ID
         rapidjson::Document d;
         d.Parse(data.c_str());
-        assert(d.GetType() == rapidjson::kArrayType);
         rapidjson::Value v;
         v.SetString(doc.c_str(), d.GetAllocator());
         d.PushBack(v, d.GetAllocator());
@@ -115,7 +114,6 @@ void appendDocToProject(uint64_t projectHash, std::string doc, META &meta) {
  */
 
 void insertDocument(rapidjson::Value &doc, uint64_t projHash, META &meta, FILESYSTEM &fs) {
-    assert(doc.GetType() == rapidjson::kObjectType);
     std::string docUUID = newUUID();
     rapidjson::Document d;
     d.SetObject();
@@ -136,6 +134,7 @@ void insertDocument(rapidjson::Value &doc, uint64_t projHash, META &meta, FILESY
     // START DEBUGGING
     size_t test = writer.write(data.size(), data.c_str());
     size_t len = data.size();
+
     Assert( "Data size" , len , test , test == 0 );
     // END DEBUGGING
     writer.close();
@@ -165,13 +164,9 @@ void updateProjectList(std::string pname, META &meta) {
     rapidjson::Document d;
     d.Parse(arr.c_str());
 
-    // Ensure that it is, in fact an array
-    assert(d.GetType() == rapidjson::kArrayType);
-
     // Check if the project already exists
     bool found = false;
     for (rapidjson::Value::ConstValueIterator itr = d.Begin(); itr != d.End(); ++itr) {
-        assert(itr->GetType() == rapidjson::kStringType);
         std::string val = itr->GetString();
         if (!val.compare(pname)) {
             found = true;
@@ -237,8 +232,6 @@ void insertDocuments(rapidjson::Document &docs, std::string pname, META &meta, F
 
 // Assume doc is an array or an object.
 rapidjson::Document processFields(rapidjson::Document &doc, rapidjson::Document &aggregates) {
-    assert(doc.GetType() == rapidjson::kArrayType);
-    assert(aggregates.GetType() == rapidjson::kArrayType);
     rapidjson::Document newDoc;
     newDoc.SetArray();
 
@@ -263,7 +256,6 @@ rapidjson::Document processFields(rapidjson::Document &doc, rapidjson::Document 
 
     // Iterate over aggregate objects and check if the field is missing from the selected fields
     for (rapidjson::Value::ConstValueIterator agg = aggregates.Begin(); agg != aggregates.End(); ++agg) {
-        assert(agg->GetType() == rapidjson::kObjectType);
         bool found = false;
         const rapidjson::Value &obj = *agg;
         std::string aggVal = obj["field"].GetString();
@@ -289,7 +281,6 @@ rapidjson::Document processFields(rapidjson::Document &doc, rapidjson::Document 
 }
 
 rapidjson::Document extractAggregates(rapidjson::Document &fields) {
-    assert(fields.GetType() == rapidjson::kArrayType);
 
     rapidjson::Document newArray;
     newArray.SetArray();
@@ -386,7 +377,6 @@ rapidjson::Value processAggregate(rapidjson::Value *src, const rapidjson::Value 
     int count = 0;
     for (rapidjson::Value::ValueIterator it = array.Begin(); it != array.End(); ++it) {
         rapidjson::Value &obj = *it;
-        assert(obj.GetType() == rapidjson::kObjectType);
 
         if (obj.HasMember(field.c_str())) {
             rapidjson::Value embValue;
@@ -673,9 +663,6 @@ bool documentMatchesConditions(rapidjson::Document &doc, rapidjson::Document &co
 }
 
 void deleteFields(rapidjson::Document *doc, rapidjson::Document *fields) {
-	assert(fields->GetType() == rapidjson::kArrayType);
-	assert(doc->GetType() == rapidjson::kObjectType);
-
 	for (rapidjson::Value::ConstValueIterator it = fields->Begin(); it != fields->End(); it++) {
 		const rapidjson::Value &field = *it;
 		if (doc->HasMember(field.GetString())) {
@@ -686,9 +673,6 @@ void deleteFields(rapidjson::Document *doc, rapidjson::Document *fields) {
 
 // Update the fields of the array of documents
 void update(rapidjson::Document &docArray, rapidjson::Document &updates, rapidjson::Document *where, int limit, FILESYSTEM &fs) {
-    assert(docArray.GetType() == rapidjson::kArrayType);
-    assert(updates.GetType() == rapidjson::kObjectType);
-
     if (limit == 0) return;
 
     int num = 0;
@@ -707,8 +691,6 @@ void update(rapidjson::Document &docArray, rapidjson::Document &updates, rapidjs
         // Parse the document
         rapidjson::Document doc;
         doc.Parse(docTxt.c_str());
-
-	assert(!doc.HasParseError());
 
         if (where) {
             rapidjson::Document &whereDoc = *where;
@@ -746,9 +728,6 @@ void update(rapidjson::Document &docArray, rapidjson::Document &updates, rapidjs
 
 // Delete the fields from the array of documents
 void ddelete(rapidjson::Document &docArray, rapidjson::Document &origFields, rapidjson::Document *where, int limit, FILESYSTEM &fs) {
-    assert(docArray.GetType() == rapidjson::kArrayType);
-    assert(origFields.GetType() == rapidjson::kArrayType);
-
     if (limit == 0) return;
 
     int num = 0;
@@ -782,8 +761,6 @@ void ddelete(rapidjson::Document &docArray, rapidjson::Document &origFields, rap
         // Parse the document
         rapidjson::Document doc;
         doc.Parse(docTxt.c_str());
-
-	assert(!doc.HasParseError());
 
         if (where) {
             rapidjson::Document &whereDoc = *where;
@@ -831,9 +808,6 @@ rapidjson::Document select(rapidjson::Document &docArray, rapidjson::Document &o
 
     array.Reserve(docArray.Size(), result.GetAllocator());
 
-    assert(docArray.GetType() == rapidjson::kArrayType);
-    assert(origFields.GetType() == rapidjson::kArrayType);
-
     bool selectAll = false;
 
     rapidjson::Document aggregates = extractAggregates(origFields);
@@ -864,8 +838,6 @@ rapidjson::Document select(rapidjson::Document &docArray, rapidjson::Document &o
         // Parse the document
         rapidjson::Document doc;
         doc.Parse(docTxt.c_str());
-
-	assert(!doc.HasParseError());
 
         rapidjson::Value docVal;
         docVal.SetObject();
@@ -956,9 +928,7 @@ rapidjson::Document select(rapidjson::Document &docArray, rapidjson::Document &o
 
 void execute(Parsing::Query &q, META &meta, std::string meta_fname, FILESYSTEM &fs, bool print = true) {
     clock_t start, end;
-    if (print) {
-    	start = std::clock();
-    }
+    start = std::clock();
     switch (q.command) {
         case Parsing::CREATE:
             {
@@ -1299,20 +1269,30 @@ int main(int argc, char **argv) {
     }
 
     std::string line;
-
+    int count = 0;
     if (argc > 1) {
 	std::ifstream dataFile;
 	dataFile.open(argv[1]);
-	while (!dataFile.eof()) {
+  	int total = std::count(std::istreambuf_iterator<char>(dataFile), 
+        		std::istreambuf_iterator<char>(), '\n');
+	dataFile.seekg(0);
+	double percent = 0;
+	while (dataFile.good()) {
 		line.clear();
 		std::getline(dataFile, line);
 		Parsing::Parser p(line);
         	Parsing::Query *query = p.parse();
 		if (query) {
 		    execute( *query, *meta, meta_fname, *fs, false);
+		    count++;
+		    percent = (double)count / total;
+		    delete query;
 		}
+		printf("%.1f%% done.\r", percent*100);
 	}
     }
+
+    std::cout << "\n";
 
     rl_startup_hook = start_readline;
 
@@ -1335,6 +1315,7 @@ int main(int argc, char **argv) {
         Parsing::Query *query = p.parse();
         if (query) {
             execute( *query, *meta, meta_fname, *fs);
+	    delete query;
         }
         std::cout << std::endl;
     }
@@ -1342,6 +1323,9 @@ int main(int argc, char **argv) {
     free(buf);
     dumpToFile(meta_fname, *meta);
     fs->shutdown();
+
+    delete fs;
+    delete meta;
 
     return 0;
 }
