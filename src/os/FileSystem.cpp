@@ -175,20 +175,34 @@ namespace os {
 
     Block FileSystem::readBlock( ) {
         l.enter( "READBLOCK" );
+
         Block ret;
         ret.status = FULL;
         ret.block = stream.tellp() / Total_Size_Block;
+
+        std::array<char,Total_Size_Block> blockBuffer;
+        uint64_t *previous;
+        uint64_t *next;
+        uint64_t *length;
+        char *data;
+
+        previous    = reinterpret_cast<uint64_t*>(blockBuffer.begin()   + 0 * sizeof(uint64_t));
+        next        = reinterpret_cast<uint64_t*>(blockBuffer.begin()   + 1 * sizeof(uint64_t));
+        length      = reinterpret_cast<uint64_t*>(blockBuffer.begin()   + 2 * sizeof(uint64_t));
+        data        = blockBuffer.begin()                               + 3 * sizeof(uint64_t);
 
         assertStream( stream );
 
         lock( READ );
         {
-            stream.read( reinterpret_cast<char*>( &ret.prev ) , sizeof( ret.prev ) );
-            stream.read( reinterpret_cast<char*>( &ret.next ) , sizeof( ret.next ) );
-            stream.read( reinterpret_cast<char*>( &ret.length ) , sizeof( ret.length ) );
-            stream.read( ret.data.data() , ret.length );
+            stream.read( blockBuffer.data() , Total_Size_Block );
         }
         unlock( READ );
+
+        ret.length = *length;
+        ret.prev = *previous;
+        ret.next = *next;
+        std::copy( data , data + Block_Size , ret.data.begin() );
 
         assertStream( stream );
         l.leave( "READBLOCK" );
@@ -199,17 +213,31 @@ namespace os {
     void FileSystem::writeBlock( Block &b ) {
         l.enter( "WRITEBLOCK" );
 
-        gotoBlock( b.block );
-        assertStream( stream );
+
+        std::array<char,Total_Size_Block> blockBuffer;
+        uint64_t *previous;
+        uint64_t *next;
+        uint64_t *length;
+        char *data;
+
+        previous    = reinterpret_cast<uint64_t*>(blockBuffer.begin()   + 0 * sizeof(uint64_t));
+        next        = reinterpret_cast<uint64_t*>(blockBuffer.begin()   + 1 * sizeof(uint64_t));
+        length      = reinterpret_cast<uint64_t*>(blockBuffer.begin()   + 2 * sizeof(uint64_t));
+        data        = blockBuffer.begin()                               + 3 * sizeof(uint64_t);
+
+        uint64_t toWrite = sizeof(uint64_t) * 3;
+        *previous = b.prev;
+        *next = b.next;
+        *length = b.length;
+        if( b.status == FULL ) {
+            toWrite = Total_Size_Block - (Block_Size - b.length);
+            std::copy( b.data.begin() , b.data.begin() + b.length , data );
+        }
 
         lock( WRITE );
         {
-            stream.write( reinterpret_cast<char*>( &(b.prev) ) , sizeof( b.prev ) );
-            stream.write( reinterpret_cast<char*>( &(b.next) ) , sizeof( b.next ) );
-            stream.write( reinterpret_cast<char*>( &(b.length) ) , sizeof( b.length ) );
-            if( b.status == FULL ) {
-                stream.write( b.data.data() , b.length );
-            }
+            gotoBlock( b.block );
+            stream.write( blockBuffer.data() , toWrite );
             stream.flush();
         }
         unlock( WRITE );
@@ -502,19 +530,21 @@ namespace os {
         uint64_t blocks_to_write = (bytes + Block_Size - 1) / Block_Size;
         uint64_t current = blocks_allocated;
 
+        // Handle free list
         free_first = blocks_allocated + blocks_to_write;
         free_count = Buffer_Size;
 
+        // Grow base file
         lock( WRITE );
         {
-            blocks_allocated += blocks_to_write + Buffer_Size;
-            bytes_allocated = Total_Size_Block * blocks_allocated;
-
             stream.seekp( Total_Size_Block * (blocks_allocated - 1) , std::ios_base::beg );
             stream.write( Zero , 1 );
             stream.flush();
 
             assertStream( stream );
+
+            blocks_allocated += blocks_to_write + Buffer_Size;
+            bytes_allocated = Total_Size_Block * blocks_allocated;
         }unlock( WRITE );
 
         initBlocks( free_first , free_count , 0 , NULL );
