@@ -64,8 +64,9 @@ namespace os {
         // While we have more disk space and we have not reached the position 
         while( file.disk_position < file.disk_usage && file.position < position ) {
             // Load block
+            Block b;
             file.current = current;
-            Block b = file.fs->lazyLoad( current );
+            file.fs->lazyLoad( current , &b );
 
             // Minimum of remaining bytes in current block
             // and distance to position requested

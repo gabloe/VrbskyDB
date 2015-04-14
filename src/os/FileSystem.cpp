@@ -141,7 +141,7 @@ namespace os {
     File& FileSystem::createNewFile( const std::string &name ) {
         l.enter( "CREATENEWFILE" );
 
-        Block b = allocate( Block_Size , NULL );
+        Block &b = *allocate( Block_Size , NULL );
         Assert( "Block id is 0" , b.block != 0 );
 
         File &f = *(new File());
@@ -158,6 +158,7 @@ namespace os {
         saveHeader();
 
         l.leave( "CREATENEWFILE" );
+        delete &b;
         return f;
     }
 
@@ -173,12 +174,14 @@ namespace os {
         l.leave( "GOTOBLOCK" );
     }
 
-    Block FileSystem::readBlock( ) {
+    Block *FileSystem::readBlock( Block *ret ) {
         l.enter( "READBLOCK" );
 
-        Block ret;
-        ret.status = FULL;
-        ret.block = stream.tellp() / Total_Size_Block;
+        if( ret == NULL ) {
+            ret = new Block();
+        }
+        ret->status = FULL;
+        ret->block = stream.tellp() / Total_Size_Block;
 
         std::array<char,Total_Size_Block> blockBuffer;
         uint64_t *previous;
@@ -199,10 +202,10 @@ namespace os {
         }
         unlock( READ );
 
-        ret.length = *length;
-        ret.prev = *previous;
-        ret.next = *next;
-        std::copy( data , data + Block_Size , ret.data.begin() );
+        ret->length = *length;
+        ret->prev = *previous;
+        ret->next = *next;
+        std::copy( data , data + Block_Size , ret->data.begin() );
 
         assertStream( stream );
         l.leave( "READBLOCK" );
@@ -414,8 +417,8 @@ namespace os {
         l.enter( "SPLIT" );
         if( offset != b.length ) {
 
-            Block newBlock = allocate( b.length - offset , b.data.begin() + offset );
-            Block next = lazyLoad( b.next );
+            Block &newBlock = *allocate( b.length - offset , b.data.begin() + offset );
+            Block &next = *lazyLoad( b.next );
 
             newBlock.prev = b.block;
             newBlock.next = next.block;
@@ -428,6 +431,9 @@ namespace os {
             writeBlock( newBlock );
             writeBlock( b );
             writeBlock( next );
+
+            delete &newBlock;
+            delete &next;
         }
         l.leave( "SPLIT" );
 
@@ -523,7 +529,7 @@ namespace os {
     //
     //  @return -   The first block of the new space
     //
-    Block FileSystem::grow( uint64_t bytes , const char *buffer ) {
+    Block *FileSystem::grow( uint64_t bytes , const char *buffer, Block* ret) {
         l.enter( "GROW" );
 
         // Handle clients data needs
@@ -551,7 +557,7 @@ namespace os {
         initBlocks( current , blocks_to_write , bytes , buffer );
 
         l.leave( "GROW" );
-        return load( current );
+        return load( current , ret );
     }
 
 
@@ -561,17 +567,17 @@ namespace os {
     //
     //  @return     -   Loaded block
     //
-    Block FileSystem::load( uint64_t block ) {
+    Block *FileSystem::load( uint64_t block , Block *ret ) {
         l.enter( "LOAD" );
         assertStream(stream);
         Assert( "Block should greater than 0" , block > 0 );
 
         gotoBlock( block );
-        Block b = readBlock();
+        ret = readBlock(ret);
 
         l.leave( "LOAD" );
 
-        return b;
+        return ret;
     }
 
     //  lazyLoad   - Given a block id only load meta-data
@@ -582,23 +588,30 @@ namespace os {
     //
     // TODO: Caching
     //
-    Block FileSystem::lazyLoad( uint64_t block ) {
+    Block *FileSystem::lazyLoad( uint64_t block , Block *ret  ) {
         l.enter( "LAZYLOAD" );
-        Block b;
-        b.status = LAZY;
-        b.block = block;
-        gotoBlock( block );
+
+        if( ret == NULL ) {
+            ret = new Block();
+        }
+
+        ret->block = block;
+        ret->status = LAZY;
+
+        std::array<char,3*sizeof(uint64_t)> buff;
         lock( READ );
         {
-            stream.read( reinterpret_cast<char*>( &b.prev ) , sizeof(b.prev) );
-            stream.read( reinterpret_cast<char*>( &b.next ) , sizeof(b.next) );
-            stream.read( reinterpret_cast<char*>( &b.length ) , sizeof(b.length) );
+            gotoBlock( block );
+            stream.read( buff.data() , 3 * sizeof(uint64_t) );
         }
         unlock( READ );
 
+        ret->prev   = *reinterpret_cast<uint64_t*>(buff.begin() + 0 * sizeof(uint64_t) );
+        ret->next   = *reinterpret_cast<uint64_t*>(buff.begin() + 1 * sizeof(uint64_t) );
+        ret->length = *reinterpret_cast<uint64_t*>(buff.begin() + 2 * sizeof(uint64_t) );
         l.leave( "LAZYLOAD" );
 
-        return b;
+        return ret;
     }
 
     //  reuse   -   Given some amount of bytes and data we try to load blocks from free list
@@ -611,59 +624,54 @@ namespace os {
     //  buffer  -   data
     //
     //  @return -   The first block in the freelist
-    Block FileSystem::reuse( uint64_t &length , const char* &buffer ) {
+    Block *FileSystem::reuse( uint64_t &length , const char* &buffer , Block* ret ) {
         l.enter( "REUSE" );
-        Block head;
 
+        assert( free_count > 0 );
         Assert( "Length is zero" , length > 0 );
-        assertStream( stream );
+        Assert( "Did I forget to change free_count or free_first" , free_first , free_count , free_first != 0 );
 
-        if( free_count > 0 ) {
-            uint64_t prevBlock = 0,currBlock = free_first;
-            Block current;
+        uint64_t prevBlock = 0,currBlock = free_first;
+        Block current;
+        ret = lazyLoad( currBlock , ret );
 
-            Assert( "Did I forget to change free_count or free_first" , currBlock , free_count , currBlock != 0 );
+        do {
 
-            head = lazyLoad( currBlock );
+            // Currently we treat the free_first as a special file, so just use it as such
+            lazyLoad( currBlock , &current );
+            current.status = FULL;
+            current.length = std::min( length , Block_Size );
+            uint64_t fillOffset = 0;
+            if( buffer != NULL ) {
+                std::copy( buffer , buffer + current.length , current.data.data() );
+                fillOffset = Block_Size - current.length;
+                buffer += current.length;
+            }
+            std::fill( current.data.begin() + fillOffset , current.data.begin() + Block_Size , 0 );
 
-            do {
+            // Update input
+            
+            length -= current.length;
 
-                // Currently we treat the free_first as a special file, so just use it as such
-                current = lazyLoad( currBlock );
-                current.status = FULL;
-                current.length = std::min( length , Block_Size );
-                uint64_t fillOffset = 0;
-                if( buffer != NULL ) {
-                    std::copy( buffer , buffer + current.length , current.data.data() );
-                    fillOffset = Block_Size - current.length;
-                    buffer += current.length;
-                }
-                std::fill( current.data.begin() + fillOffset , current.data.begin() + Block_Size , 0 );
-
-                // Update input
-                
-                length -= current.length;
-
-                // Write to disk
-                writeBlock( current );
-
-                // Update free list
-                free_first = current.next;
-                --free_count;
-
-                // Go to next
-                prevBlock = currBlock;
-                currBlock = free_first;
-            } while ( free_count > 0 && length > 0 );
-
-            current.next = 0;
-            head.prev = prevBlock;
+            // Write to disk
             writeBlock( current );
-            writeBlock( head );
-        }
+
+            // Update free list
+            free_first = current.next;
+            --free_count;
+
+            // Go to next
+            prevBlock = currBlock;
+            currBlock = free_first;
+        } while ( free_count > 0 && length > 0 );
+
+        current.next = 0;
+        ret->prev = prevBlock;
+        writeBlock( current );
+        writeBlock( *ret );
 
         l.leave( "REUSE" );
-        return head;
+        return ret;
     }
 
     //  allocate    -   Allocate enough bytes to support writing the data given
@@ -673,41 +681,44 @@ namespace os {
     //
     //  @return     -   The first block which holds our data
     //
-    Block FileSystem::allocate( uint64_t length , const char *buffer ) {
+    Block *FileSystem::allocate( uint64_t length , const char *buffer , Block* ret ) {
         l.enter( "ALLOCATE" );
-        assertStream( stream );
 
-        Block head;
-        if( length == 0 ) {
-            return head;
-        }
+        Assert( "The length cannot be zero" , length > 0 );
+
+        assertStream( stream );
 
         if( free_count > 0 ){
 
-            head = reuse( length , buffer );
+            ret = reuse( length , buffer , ret );
 
             // If not enough room we have to grow
             if( length > 0 ) {
+                Block grown,b_tmp;
 
-                Block grown = grow( length , buffer);
+                grow( length , buffer , &grown );
 
                 // The very end
                 uint64_t tmp = grown.prev;
 
                 // Join in middle
-                Block b_tmp = lazyLoad( head.prev );
+                lazyLoad( ret->prev , &b_tmp );
                 b_tmp.next = grown.block;
-                grown.prev = head.prev;
+                grown.prev = ret->prev;
 
                 // Point to actual end
-                head.prev = tmp;
+                ret->prev = tmp;
 
+                // Save
+                writeBlock( b_tmp );
+                writeBlock( *ret );
+                writeBlock( grown );
             }
         }else {
-            head = grow( length , buffer );
+            ret = grow( length , buffer , ret );
         }
         l.leave( "ALLOCATE" );
-        return head;
+        return ret;
     }
 
 
@@ -719,20 +730,23 @@ namespace os {
     //
     //  @return     -   The block which holds the data pointed at by the offset
     //
-    Block FileSystem::locate( uint64_t start , uint64_t &offset ) {
+    Block *FileSystem::locate( uint64_t start , uint64_t &offset , Block *ret ) {
         l.enter( "LOCATE" );
 
-        Block b = lazyLoad( start );
-        while( offset >= b.length ) {
-            offset -= b.length;
-            if( b.next == 0 ) {
-                b = Block();
+        if( ret == NULL ) {
+            ret = new Block();
+        }
+
+        lazyLoad( start , ret );
+        while( offset >= ret->length ) {
+            offset -= ret->length;
+            if( ret->next == 0 ) {
                 break;
             }
-            b = lazyLoad( b.next );
+            lazyLoad(ret->next, ret);
         }
         l.leave( "LOCATE" );
-        return b;
+        return ret;
     }
 
     //  read    -   Read some given number of bytes starting at the offset and 
@@ -753,10 +767,11 @@ namespace os {
         length = std::min( length , file.size - file.position );
 
         if( length > 0 && buffer != 0 && file.position < file.size ) {
-            Block current = load( file.current );
+            Block current;
+            load( file.current, &current );
 
             uint64_t next = current.block;
-            current = load( next );
+            load( next , &current );
 
             for( int i = 0 ; i < length ; ++i ) {
                 buffer[i] = current.data[file.block_position];
@@ -766,7 +781,7 @@ namespace os {
                 if( file.block_position  == current.length ) {
                     if( current.next != 0 ) {
                         file.disk_position += Block_Size - current.length;
-                        current = load( current.next );
+                        load( current.next, &current );
                         file.block_position = 0;
                         file.current = current.block;
                     }else {
@@ -802,10 +817,11 @@ namespace os {
         if( length + file.disk_position > file.disk_usage ) {
             // Calculate how much extra space we need
             uint64_t growBy = round<Block_Size>(length - (file.disk_usage - file.disk_position));
+            Block oldBlock;
 
             // Load for reconnection
-            Block oldBlock = lazyLoad( file.end );
-            Block newBlock = allocate( growBy , NULL);
+            lazyLoad( file.end , &oldBlock );
+            Block &newBlock = *allocate( growBy , NULL);
 
             // Update/Reconnect
             file.disk_usage += growBy;
@@ -821,6 +837,8 @@ namespace os {
 
             // Save file data
             bytes_allocated += growBy;
+
+            delete &newBlock;
 
         }
 
@@ -844,7 +862,8 @@ namespace os {
 
             // Go to the current block
             file.current = curr;
-            Block b = load( curr );
+            Block b;
+            load( curr , &b );
 
             // How much room is there to write our data
             uint64_t len = std::min( (Block_Size - file.block_position) , remaining );
@@ -905,11 +924,13 @@ namespace os {
         if( length > 0 ) {
             // Grow file if neccessary 
             if( file.position > file.size ) {
-                // Actually allocate
-                Block remaining = allocate( file.position - file.size , NULL );
+                Block oldEnd, remaining;
 
                 // Grab the current end of file block
-                Block oldEnd = lazyLoad( file.end );
+                lazyLoad( file.end , &oldEnd );
+
+                // Actually allocate
+                allocate( file.position - file.size , NULL , &remaining );
 
                 // Update file
                 file.end = remaining.prev;
@@ -922,16 +943,19 @@ namespace os {
 
                 writeBlock( remaining );
                 writeBlock( oldEnd );
-            }
 
-            Block b = locate( file.current , file.position );
+                delete &remaining;
+            }
+            Block b,next,end;
+
+            locate( file.current , file.position , &b );
 
             // We might have to split
             split( b , file.position % Block_Size );
 
             // Now append to here
-            Block next = allocate( length , buffer );
-            Block end = lazyLoad( next.prev );
+            allocate( length , buffer , &next );
+            lazyLoad( next.prev , &end );
             end.next = b.next;
             next.prev = b.block;
             b.next = next.block;
@@ -967,9 +991,10 @@ namespace os {
 
         // Make sure can remove bytes
         if( remaining > 0 && (file.size > file.position) ) {
+            Block first,last;
 
             // Load first block we have to modify
-            Block first = locate( file.start , file.position );
+            locate( file.start , file.position, &first);
 
             // Calculate how much to remove from first
             uint64_t removeFromFirst = std::min( remaining , first.length - file.position );
@@ -977,8 +1002,8 @@ namespace os {
             remaining -= removeFromFirst;
 
             // Load final block
-            Block last = locate( first.next , remaining );
-            last = load( last.block );
+            locate( first.next , remaining , &last );
+            load( last.block , &last );
 
             // Compact blocks
             compact( first , file.current , removeFromFirst );
@@ -1016,7 +1041,7 @@ namespace os {
             done = true;
             saveHeader();
             for( std::map<const std::string, File*>::iterator it = openFilesMap.begin() ; it != openFilesMap.end() ; ++it ) {
-		File &file = *it->second;
+                File &file = *it->second;
                 if( file.status == OPEN ) {
                     insertFile( file );
                     file.status = CLOSED;

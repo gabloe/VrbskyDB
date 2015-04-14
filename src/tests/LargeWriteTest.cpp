@@ -29,7 +29,7 @@ int main( void ) {
     writer.close();
     fs.shutdown();
 
-    delete Data;
+    delete[] Data;
 
     return 0;
 }

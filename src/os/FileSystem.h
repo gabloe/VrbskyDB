@@ -84,8 +84,8 @@ namespace os {
             std::list<File*> openFiles;
             std::list<File*> allFiles;
 	*/
-	    std::map<const std::string, File*> openFilesMap;
-	    std::map<const std::string, File*> allFilesMap;
+            std::map<const std::string, File*> openFilesMap;
+            std::map<const std::string, File*> allFilesMap;
 
             FileWriter *metaWriter;
             FileReader *metaReader;
@@ -106,16 +106,16 @@ namespace os {
             void printHeader(bool);
 
             void gotoBlock( uint64_t );
-            Block readBlock();
+            Block *readBlock( Block* = NULL );
             void writeBlock( Block &b );
 
             void split( Block& , uint64_t );
-            Block grow( uint64_t , const char *  );
-            Block allocate( uint64_t , const char * );
-            Block lazyLoad( uint64_t );
-            Block load( uint64_t );
-            Block locate( uint64_t , uint64_t& );
-            Block reuse( uint64_t& , const char*& );
+            Block *grow( uint64_t , const char * , Block* = NULL );
+            Block *allocate( uint64_t , const char * , Block* = NULL );
+            Block *lazyLoad( uint64_t,Block* = NULL );
+            Block *load( uint64_t , Block* = NULL );
+            Block *locate( uint64_t , uint64_t& , Block* = NULL );
+            Block *reuse( uint64_t& , const char*&, Block* = NULL);
             void initBlocks(uint64_t, uint64_t, uint64_t,const char*);
 
             void closing( File& );
