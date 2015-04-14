@@ -16,7 +16,7 @@ inline std::string toString(const rapidjson::Value *val) {
 }
 
 // Convert a JSON object to a std::string
-inline std::string toString(rapidjson::Document *doc) {
+inline std::string toString(const rapidjson::Document *doc) {
     rapidjson::StringBuffer buffer;
     rapidjson::Writer<rapidjson::StringBuffer> writer(buffer);
     doc->Accept(writer);
@@ -24,14 +24,14 @@ inline std::string toString(rapidjson::Document *doc) {
     return str;
 }
 
-inline std::string toPrettyString(rapidjson::Document *doc) {
+inline std::string toPrettyString(const rapidjson::Document *doc) {
     rapidjson::StringBuffer out;
     rapidjson::PrettyWriter<rapidjson::StringBuffer> writer(out);
     doc->Accept(writer);
     return out.GetString();
 }
 
-inline std::string toPrettyString(std::string doc) {
+inline std::string toPrettyString(const std::string doc) {
     rapidjson::Document d;
     d.Parse(doc.c_str());
     return toPrettyString(&d);
