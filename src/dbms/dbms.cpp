@@ -800,7 +800,7 @@ void ddelete(rapidjson::Document &docArray, rapidjson::Document &origFields, rap
             // Delete document 
 	    file1.unlink();
 	    docArray.Erase(docID);
-	    continue;
+	    goto next;
         } else {
             deleteFields(&doc, &fields);
 	    std::string newData = toString(&doc);
@@ -812,6 +812,7 @@ void ddelete(rapidjson::Document &docArray, rapidjson::Document &origFields, rap
 
 	++docID;
 
+next:
 	// If a limit is being used then we may need to pre-empt.
 	if (limit > 0 && ++num == limit) {
 		break;
@@ -953,9 +954,11 @@ rapidjson::Document select(rapidjson::Document &docArray, rapidjson::Document &o
  *
  */
 
-void execute(Parsing::Query &q, META &meta, std::string meta_fname, FILESYSTEM &fs) {
+void execute(Parsing::Query &q, META &meta, std::string meta_fname, FILESYSTEM &fs, bool print = true) {
     clock_t start, end;
-    start = std::clock();
+    if (print) {
+    	start = std::clock();
+    }
     switch (q.command) {
         case Parsing::CREATE:
             {
@@ -1066,8 +1069,10 @@ void execute(Parsing::Query &q, META &meta, std::string meta_fname, FILESYSTEM &
         default:
             std::cout << "Command not recognized." << std::endl;
     }
-    end = std::clock();
-    std::cout << "Done!  Took " << 1000 * (float)(end - start) / CLOCKS_PER_SEC << " milliseconds." << std::endl;
+    if (print) {
+    	end = std::clock();
+    	std::cout << "Done!  Took " << 1000 * (float)(end - start) / CLOCKS_PER_SEC << " milliseconds." << std::endl;
+    }
     dumpToFile(meta_fname, meta);
 }
 
@@ -1283,12 +1288,6 @@ int start_readline(void) {
 int main(int argc, char **argv) {
     std::string meta_fname("meta.lht");
     std::string data_fname("data.db");
-    if (argc > 1) {
-        meta_fname = argv[1];
-    }
-    if (argc > 2) {
-        data_fname = argv[3];
-    }
     char *buf;
     Storage::LinearHash<std::string> *meta;
     os::FileSystem *fs = new os::FileSystem(data_fname);
@@ -1297,6 +1296,22 @@ int main(int argc, char **argv) {
         meta = readFromFile<std::string>(meta_fname);
     } else {
         meta = new Storage::LinearHash<std::string>(1025,2048);
+    }
+
+    std::string line;
+
+    if (argc > 1) {
+	std::ifstream dataFile;
+	dataFile.open(argv[1]);
+	while (!dataFile.eof()) {
+		line.clear();
+		std::getline(dataFile, line);
+		Parsing::Parser p(line);
+        	Parsing::Query *query = p.parse();
+		if (query) {
+		    execute( *query, *meta, meta_fname, *fs, false);
+		}
+	}
     }
 
     rl_startup_hook = start_readline;
