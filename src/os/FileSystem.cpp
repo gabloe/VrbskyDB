@@ -130,7 +130,6 @@ namespace os {
         pos += sizeof(tmp);
 
         metaWriter->seek( f.metadata , BEG );
-        Assert( "We could not seek to the correct spot" , metadata->position == f.metadata );
         metaWriter->write( pos , buffer.data() );
 
         l.leave("INSERTFILE");
