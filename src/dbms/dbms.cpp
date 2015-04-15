@@ -34,14 +34,19 @@ void writeToFile( std::string fname , META &meta ) {
         len = item->second.size();
         output.write( reinterpret_cast<const char*>( &len ) , sizeof(uint64_t) );
         // Write value
-        output.write( reinterpret_cast<const char*>( item->second.c_str()) , sizeof(len));
+        output.write( item->second.c_str() , len);
     }
-
     output.flush();
     output.close();
 }
 
 void readFromFile( std::string fname , META &meta ) {
+    // Read how many entries
+    // for each entry
+    //      read key
+    //      read length
+    //      read characters
+    // return
     std::fstream input( fname , std::fstream::in | std::fstream::binary );
     input.seekg( 0 );
 
@@ -49,8 +54,9 @@ void readFromFile( std::string fname , META &meta ) {
     uint64_t count = 0;
     input.read( reinterpret_cast<char*>( &count ) , sizeof(uint64_t));
 
-    std::array<char,1024> buffer;
-    
+    char *data = NULL;
+    uint64_t data_len = 0;
+
     for( unsigned int i = 0 ; i < count ; ++ i ) {
         uint64_t key,len;
 
@@ -60,10 +66,16 @@ void readFromFile( std::string fname , META &meta ) {
         // Read value length
         input.read( reinterpret_cast<char*>( &len) , sizeof(uint64_t));
         // Read value
-        input.read( reinterpret_cast<char*>(buffer.data()) , sizeof(len));
+        if( data_len < len ) {
+            data = (char*)realloc( data , len * 2 );
+            data_len = len * 2;
+        }
+        input.read( data , len);
 
-        meta[key] = std::string( buffer.data() , len );
+        meta[key] = std::string( data , len );
     }
+
+    if( data != NULL ) free(data);
 
     input.close();
 }
