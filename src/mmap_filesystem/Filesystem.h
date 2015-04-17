@@ -32,10 +32,11 @@ inline void *bsd_mremap(int, void *, size_t, size_t, int);
 #define mmap64 mmap
 #define MREMAP_MAYMOVE 0
 #else
+#define oldmremap mremap
 #define mremap t_mremap
 inline void *t_mremap(int fd, void *old_address, size_t old_size, size_t new_size, int flags) {
 	UNUSED(fd);
-	return mremap(old_address, old_size, new_size, flags);
+	return oldmremap(old_address, old_size, new_size, flags);
 }
 #endif
 
