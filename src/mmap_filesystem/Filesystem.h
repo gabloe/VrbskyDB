@@ -7,6 +7,8 @@
 
 #define BLOCK_SIZE 32
 #define BLOCKS_PER_PAGE 128
+#define PAGESIZE BLOCK_SIZE * BLOCKS_PER_PAGE
+
 
 struct Block {
 	uint64_t id;
@@ -19,7 +21,7 @@ struct File {
 	std::string name;
 	uint64_t block;
 	uint64_t size;
-	File(std::string name_): name(name_) {}
+	File(std::string name_, uint64_t block_, uint64_t size_): name(name_), block(block_), size(size_) {}
 };
 
 struct Metadata {
@@ -49,14 +51,12 @@ inline bool file_exists(std::string fname) {
 
 namespace Storage {
 	class Filesystem {
-	// Should be 4k
-	const uint64_t PAGESIZE = BLOCK_SIZE * BLOCKS_PER_PAGE;
 	public:
 		Filesystem(std::string, std::string);
 		void shutdown();
 		File load(std::string);
 		char *read(File*);
-		void write(File*, char*, uint64_t);
+		void write(File*, const char*, uint64_t);
 
 	protected:
 		Metadata metadata;
@@ -77,6 +77,8 @@ namespace Storage {
 		Block loadBlock(uint64_t);
 		void writeBlock(Block);
 		void growFilesystem();
+		void growMetadata();
+		uint64_t calculateSize(Block);
 	};
 }
 

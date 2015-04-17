@@ -28,29 +28,36 @@ Storage::Filesystem::Filesystem(std::string meta_, std::string data_): meta_fnam
 	initFilesystem(create_initial);
 }
 
-File Storage::Filesystem::load(std::string name) {
-	File file(name);
-	if (metadata.files.count(name)) {
-		file.block = metadata.files[name];	
-		file.size = 0;
-		Block b = loadBlock(file.block);
-		bool done = false;
-		while (!done) {
-			file.size += b.used_space;
-			uint64_t next = b.next;
-			if (next == 0) {
-				done = true;
-			} else {
-				b = loadBlock(next);
-			}
+uint64_t Storage::Filesystem::calculateSize(Block b) {
+	uint64_t size = 0;
+	bool done = false;
+	while (!done) {
+		size += b.used_space;
+		uint64_t next = b.next;
+		if (next == 0) {
+			done = true;
+		} else {
+			b = loadBlock(next);
 		}
-	} else {
-		file = createNewFile(name);
 	}
-	return file;
+	return size;
 }
 
-void Storage::Filesystem::write(File *file, char *data, uint64_t len) {
+// Load file metadata, size and first block location.
+File Storage::Filesystem::load(std::string name) {
+	if (metadata.files.count(name)) {
+		uint64_t block = metadata.files[name];
+		Block b = loadBlock(block);
+		uint64_t size = calculateSize(b);
+		File file(name, block, size);
+		return file;
+	} else {
+		return createNewFile(name);
+	}
+}
+
+// Write a file.
+void Storage::Filesystem::write(File *file, const char *data, uint64_t len) {
 	uint64_t to_write = len;
 	uint64_t pos = 0;
 	Block block = loadBlock(file->block);
@@ -82,11 +89,10 @@ char *Storage::Filesystem::read(File *file) {
 	uint64_t size = BLOCK_SIZE;
 	char *buffer = (char*)malloc(size);
 	uint64_t read_size = 0;
-	uint64_t pos = 0;
 	Block block = loadBlock(file->block);
 	bool done = false;
 	while (!done) {
-		memcpy(buffer + pos, block.buffer + pos, block.used_space);
+		memcpy(buffer + read_size, block.buffer, block.used_space);
 		read_size += block.used_space;
 		if (block.next != 0) {
 			block = loadBlock(block.next);
@@ -102,9 +108,7 @@ char *Storage::Filesystem::read(File *file) {
 }
 
 File Storage::Filesystem::createNewFile(std::string name) {
-	File file(name);
-	file.block = getBlock();
-	file.size = 0;
+	File file(name, getBlock(), 0);
 	metadata.files[name] = file.block;
 	writeMetadata();
 	return file;
@@ -134,9 +138,18 @@ void Storage::Filesystem::writeBlock(Block block) {
 }
 
 void Storage::Filesystem::growFilesystem() {
+	posix_fallocate(filesystem.fd, PAGESIZE * filesystem.numPages, PAGESIZE);
 	filesystem.data = (char*)mremap(filesystem.data,
 					PAGESIZE * filesystem.numPages, 
 					PAGESIZE * ++filesystem.numPages,
+					MREMAP_MAYMOVE);
+}
+
+void Storage::Filesystem::growMetadata() {
+	posix_fallocate(metadata.fd, PAGESIZE * metadata.numPages, PAGESIZE);
+	filesystem.data = (char*)mremap(metadata.data,
+					PAGESIZE * metadata.numPages, 
+					PAGESIZE * ++metadata.numPages,
 					MREMAP_MAYMOVE);
 }
 
