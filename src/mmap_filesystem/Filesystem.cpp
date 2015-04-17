@@ -1,0 +1,311 @@
+#include <sys/mman.h>
+#include <iostream>
+#include <cstdlib>
+#include <fcntl.h>
+#include <unistd.h>
+#include <stdio.h>
+#include "Filesystem.h"
+#include <string.h>
+
+Storage::Filesystem::Filesystem(std::string meta_, std::string data_): meta_fname(meta_), data_fname(data_) {
+	// Initialize the filesystem
+	bool create_initial = false;
+	if (!file_exists(meta_) || !file_exists(data_)) {
+		create_initial = true;
+	}
+
+	metadata.fd = open(meta_fname.c_str(), O_RDWR | O_CREAT, (mode_t)0644);
+	if (metadata.fd == -1) {
+		std::cerr << "Error opening metadata!" << std::endl;
+		exit(1);
+	}
+	filesystem.fd = open(data_fname.c_str(), O_RDWR | O_CREAT, (mode_t)0644);
+	if (filesystem.fd == -1) {
+		std::cerr << "Error opening filesystem!" << std::endl;
+		exit(1);
+	}
+
+	initFilesystem(create_initial);
+}
+
+File Storage::Filesystem::load(std::string name) {
+	File file(name);
+	if (metadata.files.count(name)) {
+		file.block = metadata.files[name];	
+		file.size = 0;
+		Block b = loadBlock(file.block);
+		bool done = false;
+		while (!done) {
+			file.size += b.used_space;
+			uint64_t next = b.next;
+			if (next == 0) {
+				done = true;
+			} else {
+				b = loadBlock(next);
+			}
+		}
+	} else {
+		file = createNewFile(name);
+	}
+	return file;
+}
+
+void Storage::Filesystem::write(File *file, char *data, uint64_t len) {
+	uint64_t to_write = len;
+	uint64_t pos = 0;
+	Block block = loadBlock(file->block);
+	file->size = len;
+	
+	while (to_write > 0) {
+		if (to_write > BLOCK_SIZE) {
+			memcpy(block.buffer, data + pos, BLOCK_SIZE);
+			// Grab a new block
+			block.next = getBlock();
+			block.used_space = BLOCK_SIZE;
+			writeBlock(block);
+			block = loadBlock(block.next);
+			to_write -= BLOCK_SIZE;
+			pos += BLOCK_SIZE;
+		} else {
+			memcpy(block.buffer, data + pos, to_write);
+			block.next = 0;
+			block.used_space = to_write;
+			writeBlock(block);
+			to_write = 0;
+			pos += to_write;
+		}
+	}	
+}
+
+char *Storage::Filesystem::read(File *file) {
+	// Assume the file is just one block.  Realloc later if not the case
+	uint64_t size = BLOCK_SIZE;
+	char *buffer = (char*)malloc(size);
+	uint64_t read_size = 0;
+	uint64_t pos = 0;
+	Block block = loadBlock(file->block);
+	bool done = false;
+	while (!done) {
+		memcpy(buffer + pos, block.buffer + pos, block.used_space);
+		read_size += block.used_space;
+		if (block.next != 0) {
+			block = loadBlock(block.next);
+			size *= 2;
+			buffer = (char*)realloc(buffer, size);
+		} else {
+			done = true;
+		}
+	}
+	buffer = (char*)realloc(buffer, read_size);
+	file->size = read_size;
+	return buffer;
+}
+
+File Storage::Filesystem::createNewFile(std::string name) {
+	File file(name);
+	file.block = getBlock();
+	file.size = 0;
+	metadata.files[name] = file.block;
+	writeMetadata();
+	return file;
+}
+
+Block Storage::Filesystem::loadBlock(uint64_t blockID) {
+	Block block;
+	uint64_t id = blockID-1;
+	memcpy(&block.id, filesystem.data + (id * sizeof(Block)), sizeof(uint64_t));
+	memcpy(&block.used_space, filesystem.data + (id * sizeof(Block)) + sizeof(uint64_t), sizeof(uint64_t));
+	memcpy(&block.next, filesystem.data + (id * sizeof(Block)) + 2*sizeof(uint64_t), sizeof(uint64_t));
+	memcpy(block.buffer, filesystem.data + (id * sizeof(Block)) + 3*sizeof(uint64_t), BLOCK_SIZE);
+	block.id = blockID;
+	return block;
+}
+
+void Storage::Filesystem::writeBlock(Block block) {
+	uint64_t id = block.id-1;
+	uint64_t position = id * sizeof(Block);
+	while (position > filesystem.numPages * PAGESIZE) {
+		growFilesystem();
+	}
+	memcpy(filesystem.data + id * sizeof(Block), &block.id, sizeof(uint64_t));
+	memcpy(filesystem.data + id * sizeof(Block) + sizeof(uint64_t), &block.used_space, sizeof(uint64_t));
+	memcpy(filesystem.data + id * sizeof(Block) + 2*sizeof(uint64_t), &block.next, sizeof(uint64_t));
+	memcpy(filesystem.data + id * sizeof(Block) + 3*sizeof(uint64_t), block.buffer, BLOCK_SIZE);
+}
+
+void Storage::Filesystem::growFilesystem() {
+	filesystem.data = (char*)mremap(filesystem.data,
+					PAGESIZE * filesystem.numPages, 
+					PAGESIZE * ++filesystem.numPages,
+					MREMAP_MAYMOVE);
+}
+
+uint64_t Storage::Filesystem::getBlock() {
+	uint64_t bid;
+	Block b;
+	// If there is a free block, use it.
+	if (metadata.firstFree) {
+		bid = metadata.firstFree;
+		b = loadBlock(bid);
+		metadata.firstFree = b.next;
+	} else {
+		// Grow the filesystem
+		growFilesystem();
+		bid = (BLOCKS_PER_PAGE * (filesystem.numPages-1)) + 1;
+		b = loadBlock(metadata.firstFree);
+		metadata.firstFree = b.next;
+	}
+	return bid;
+}
+
+void Storage::Filesystem::initFilesystem(bool initialFill) {
+	// If the files were empty, fill them to one page
+	if (initialFill) {
+		posix_fallocate(metadata.fd, 0, PAGESIZE);
+		posix_fallocate(filesystem.fd, 0, PAGESIZE);
+	}
+
+	// Map the metadata
+	metadata.data = (char*)mmap64((caddr_t)0, PAGESIZE, PROT_READ | PROT_WRITE, MAP_SHARED, metadata.fd, 0);
+	close(metadata.fd);
+	if (!metadata.data) {
+		std::cerr << "Error mapping metadata!" << std::endl;
+		exit(1);
+	}
+
+	// Map the filesystem
+	filesystem.data = (char*)mmap64((caddr_t)1, PAGESIZE, PROT_READ | PROT_WRITE, MAP_SHARED, filesystem.fd, 0);
+	close(filesystem.fd);
+	if (!filesystem.data) {
+		std::cerr << "Error mapping filesystem!" << std::endl;
+		exit(1);
+	}
+
+	initMetadata();
+	if (initialFill) {
+		writeMetadata();
+		Block b;
+		b.id = 1;
+		b.used_space = 0;
+		b.next = 2;
+		for (int i=0; i<BLOCK_SIZE; ++i) {
+			b.buffer[i] = '\0';
+		}
+		uint64_t id;
+		for (uint64_t i=0; i<BLOCKS_PER_PAGE; ++i) {
+			id = b.id-1;
+			memcpy(filesystem.data + id * sizeof(Block), &b.id, sizeof(uint64_t));
+			memcpy(filesystem.data + id * sizeof(Block) + sizeof(uint64_t), &b.used_space, sizeof(uint64_t));
+			memcpy(filesystem.data + id * sizeof(Block) + 2*sizeof(uint64_t), &b.next, sizeof(uint64_t));
+			memcpy(filesystem.data + id * sizeof(Block) + 3*sizeof(uint64_t), b.buffer, BLOCK_SIZE);
+			b.id++;
+			if (i == BLOCKS_PER_PAGE - 1) {
+				b.next = 0;
+			} else {
+				b.next++;
+			}
+		}
+	} else {
+		readMetadata();
+	}
+}
+
+void Storage::Filesystem::initMetadata() {
+	// Initial values
+	metadata.numPages = 1;
+	metadata.numFiles = 0;
+	metadata.firstFree = 1;
+	filesystem.numPages = 1;
+}
+
+void Storage::Filesystem::readMetadata() {
+	// Ensure the header is intact
+	for (uint64_t i = 0; i < sizeof(HEADER); ++i) {
+		if (metadata.data[i] != HEADER[i]) {
+			std::cerr << "Invalid header!" << std::endl;
+			exit(1);
+		}
+	}
+	memcpy(&metadata.numPages, metadata.data + sizeof(HEADER), sizeof(uint64_t));
+	memcpy(&filesystem.numPages, metadata.data + sizeof(HEADER) + sizeof(uint64_t), sizeof(uint64_t));
+	memcpy(&metadata.numFiles, metadata.data + sizeof(HEADER) + 2*sizeof(uint64_t), sizeof(uint64_t));
+	memcpy(&metadata.firstFree, metadata.data + sizeof(HEADER) + 3*sizeof(uint64_t), sizeof(uint64_t));
+
+	// If we have more than one page, remap the data
+	if (metadata.numPages > 1) {
+		metadata.data = (char*)mremap(metadata.data,
+						PAGESIZE,
+						PAGESIZE * metadata.numPages,
+						MREMAP_MAYMOVE);
+	}
+
+	if (filesystem.numPages > 1) {
+		filesystem.data = (char*)mremap(filesystem.data, 
+						PAGESIZE,
+						PAGESIZE * filesystem.numPages,
+						MREMAP_MAYMOVE);
+	}
+
+	uint64_t pos = sizeof(HEADER) + 4*sizeof(uint64_t);
+	char *buf = NULL;
+	for (uint64_t i=0; i < metadata.numFiles; ++i) {
+		// Read filename size
+		uint64_t fnameSize;
+		memcpy(&fnameSize, metadata.data + pos, sizeof(uint64_t));
+		pos += sizeof(uint64_t);
+
+		// Read file name
+		buf = (char*)realloc(buf, fnameSize);
+		memcpy(buf, metadata.data + pos, fnameSize);
+		std::string key(buf, fnameSize);
+		pos += fnameSize;
+
+		// Read block ID
+		uint64_t val = 0;
+		memcpy(&val, metadata.data + val, sizeof(uint64_t));
+		pos += sizeof(uint64_t);
+
+		// Insert into file map
+		metadata.files[key] = val;
+	}
+	free(buf);
+}
+
+void Storage::Filesystem::writeMetadata() {
+	memcpy(metadata.data, HEADER, sizeof(HEADER));
+	memcpy(metadata.data + sizeof(HEADER), &metadata.numPages , sizeof(uint64_t));
+	memcpy(metadata.data + sizeof(HEADER) + sizeof(uint64_t), &filesystem.numPages , sizeof(uint64_t));
+	memcpy(metadata.data + sizeof(HEADER) + 2*sizeof(uint64_t), &metadata.numFiles , sizeof(uint64_t));
+	memcpy(metadata.data + sizeof(HEADER) + 3*sizeof(uint64_t), &metadata.firstFree , sizeof(uint64_t));
+	uint64_t pos = sizeof(HEADER) + 4*sizeof(uint64_t);
+	for (auto it = metadata.files.begin(); it != metadata.files.end(); it++) {
+		std::string key = it->first;
+		uint64_t keySize = key.size();
+		uint64_t val = it->second;
+
+		// Write the size of the filename
+		memcpy(metadata.data + pos, &keySize, sizeof(uint64_t)); 
+		pos += sizeof(uint64_t);
+
+		// Write the filename
+		memcpy(metadata.data + pos, key.c_str(), keySize); 
+		pos += keySize;
+		
+		// Write the block ID
+		memcpy(metadata.data + pos, &val, sizeof(val)); 
+		pos += sizeof(uint64_t);
+
+		// Need to grow
+		while (pos >= PAGESIZE * metadata.numPages) {
+			metadata.data = (char*)mremap(metadata.data,
+						      PAGESIZE * metadata.numPages,
+						      PAGESIZE * ++metadata.numPages,
+						      MREMAP_MAYMOVE);
+		} 
+	}
+}
+
+void Storage::Filesystem::shutdown() {
+	munmap(metadata.data, metadata.numPages * PAGESIZE);
+	munmap(filesystem.data, filesystem.numPages * PAGESIZE);
+}

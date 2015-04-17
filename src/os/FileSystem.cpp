@@ -164,7 +164,7 @@ namespace os {
     void FileSystem::gotoBlock( uint64_t blockId ) {
         l.enter( "GOTOBLOCK" );
 
-        Assert( "blockId is 0" , blockId , blockId > 0 );
+//        Assert( "blockId is 0" , blockId , blockId > 0 );
         Assert( "Going out of range" , blockId, blocks_allocated, blockId < blocks_allocated );
 
         stream.seekp( blockId * Total_Size_Block );
@@ -569,7 +569,7 @@ namespace os {
     Block *FileSystem::load( uint64_t block , Block *ret ) {
         l.enter( "LOAD" );
         assertStream(stream);
-        Assert( "Block should greater than 0" , block > 0 );
+        //Assert( "Block should greater than 0" , block > 0 );
 
         gotoBlock( block );
         ret = readBlock(ret);
@@ -853,7 +853,7 @@ namespace os {
         }
 
 
-        Assert( "The block id is 0" , curr != 0 );
+       // Assert( "The block id is 0" , curr != 0 );
 
         // While we have not written everything
         uint64_t remaining = length;

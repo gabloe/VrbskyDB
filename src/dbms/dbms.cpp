@@ -987,7 +987,7 @@ rapidjson::Document select(rapidjson::Document &docArray, rapidjson::Document &o
  *
  */
 
-void execute(Parsing::Query &q, META &meta, std::string meta_fname, FILESYSTEM &fs, bool print = true) {
+void execute(Parsing::Query &q, META &meta, FILESYSTEM &fs, bool print = true) {
     clock_t start, end;
     start = std::clock();
     switch (q.command) {
@@ -1108,7 +1108,6 @@ void execute(Parsing::Query &q, META &meta, std::string meta_fname, FILESYSTEM &
         std::cout << "Done!  Took " << 1000 * (float)(end - start) / CLOCKS_PER_SEC << " milliseconds." << std::endl;
     }
     //dumpToFile(meta_fname, meta);
-    writeToFile( meta_fname, meta );
 }
 
 /*
@@ -1349,20 +1348,22 @@ int main(int argc, char **argv) {
             Parsing::Parser p(line);
             Parsing::Query *query = p.parse();
             if (query) {
-                execute( *query, meta, meta_fname, *fs, false);
+                execute( *query, meta, *fs, false);
                 count++;
                 percent = (double)count / total;
                 delete query;
             }
             printf("%.1f%% done.\r", percent*100);
         }
+    	std::cout << "\n";
     }
 
-    std::cout << "\n";
+    std::cout << "Welcome to VrbskyDB v" << MAJOR_VERSION << "." << MINOR_VERSION  << std::endl;
 
     rl_startup_hook = start_readline;
 
     std::cout << "Enter a query (q to quit):" << std::endl;
+    uint64_t metaSize = 0;
     while (1) {
         buf = readline("> ");
 
@@ -1377,10 +1378,16 @@ int main(int argc, char **argv) {
         if (!q.compare("q")) {
             break;
         }
+
         Parsing::Parser p(q);
         Parsing::Query *query = p.parse();
         if (query) {
-            execute( *query, meta, meta_fname, *fs);
+            execute( *query, meta, *fs);
+	    // If the meta hasnt been saved in a while, save it.
+	    if (metaSize < meta.size()) {
+    	    	writeToFile( meta_fname, meta );
+		metaSize = meta.size();
+	    }
             delete query;
         }
         std::cout << std::endl;

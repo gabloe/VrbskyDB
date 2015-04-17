@@ -51,7 +51,7 @@ namespace os {
 
         // Assertion:   The files current position is not
         //              after the requested position
-        Assert( "We could not go to the requested position" , file.name , file.size , file.position <= position );
+      //  Assert( "We could not go to the requested position" , file.name , file.size , file.position <= position );
 
         if( position < 0 ) {
             throw std::runtime_error( "Invalid file position" );
@@ -86,11 +86,10 @@ namespace os {
             // Get next
             current = b.next;
         }
-        Assert( "We could not go to the requested position" , file.disk_usage , position , file.position == position );
+        //Assert( "We could not go to the requested position" , file.disk_usage , position , file.position == position );
 
         // Out of the file
         if( file.position < position ) {
-            assert(false);
             file.current = 0;
             file.position += position;
             file.disk_position += round<Block_Size>(position);
