@@ -64,11 +64,9 @@ File Storage::Filesystem::load(std::string name) {
 		Block b = loadBlock(block);
 		uint64_t size = calculateSize(b);
 		File file(name, block, size);
-		std::cout << "Block of current file: " << file.block << std::endl;
 		return file;
 	} else {
 		File file = createNewFile(name);
-		std::cout << "Block of new file: " << file.block << std::endl;
 		return file;
 	}
 }
@@ -142,7 +140,6 @@ char *Storage::Filesystem::read(File *file) {
 */
 
 File Storage::Filesystem::createNewFile(std::string name) {
-	std::cout << "Creating a new file: " << name << std::endl;
 	File file(name, getBlock(), 0);
 	metadata.files[name] = file.block;
 	metadata.numFiles++;
