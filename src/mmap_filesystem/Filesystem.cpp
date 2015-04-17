@@ -7,6 +7,12 @@
 #include "Filesystem.h"
 #include <string.h>
 
+/*
+	Constructor--
+	Checks if the filesystem and metadata exist.  If not, it creates an initial page of data.
+	If the files exist, load the metadata.
+*/
+
 Storage::Filesystem::Filesystem(std::string meta_, std::string data_): meta_fname(meta_), data_fname(data_) {
 	// Initialize the filesystem
 	bool create_initial = false;
@@ -28,6 +34,10 @@ Storage::Filesystem::Filesystem(std::string meta_, std::string data_): meta_fnam
 	initFilesystem(create_initial);
 }
 
+/*
+	Calculates the total size used by a chain of blocks.
+*/
+
 uint64_t Storage::Filesystem::calculateSize(Block b) {
 	uint64_t size = 0;
 	bool done = false;
@@ -43,20 +53,30 @@ uint64_t Storage::Filesystem::calculateSize(Block b) {
 	return size;
 }
 
-// Load file metadata, size and first block location.
+/*
+	Load file metadata, size and first block location.
+	If the file doesn't exist, create it.
+*/
+
 File Storage::Filesystem::load(std::string name) {
 	if (metadata.files.count(name)) {
 		uint64_t block = metadata.files[name];
 		Block b = loadBlock(block);
 		uint64_t size = calculateSize(b);
 		File file(name, block, size);
+		std::cout << "Block of current file: " << file.block << std::endl;
 		return file;
 	} else {
-		return createNewFile(name);
+		File file = createNewFile(name);
+		std::cout << "Block of new file: " << file.block << std::endl;
+		return file;
 	}
 }
 
-// Write a file.
+/*
+	Write data to a file.
+*/
+
 void Storage::Filesystem::write(File *file, const char *data, uint64_t len) {
 	uint64_t to_write = len;
 	uint64_t pos = 0;
@@ -67,7 +87,9 @@ void Storage::Filesystem::write(File *file, const char *data, uint64_t len) {
 		if (to_write > BLOCK_SIZE) {
 			memcpy(block.buffer, data + pos, BLOCK_SIZE);
 			// Grab a new block
-			block.next = getBlock();
+			if (block.next == 0) {
+				block.next = getBlock();
+			}
 			block.used_space = BLOCK_SIZE;
 			writeBlock(block);
 			block = loadBlock(block.next);
@@ -75,6 +97,10 @@ void Storage::Filesystem::write(File *file, const char *data, uint64_t len) {
 			pos += BLOCK_SIZE;
 		} else {
 			memcpy(block.buffer, data + pos, to_write);
+			// TODO: Need to add the leftover blocks to the free list...  Now any blocks leftover are essentially garbage
+			if (block.next != 0) {
+				metadata.firstFree = block.next;
+			}
 			block.next = 0;
 			block.used_space = to_write;
 			writeBlock(block);
@@ -83,6 +109,10 @@ void Storage::Filesystem::write(File *file, const char *data, uint64_t len) {
 		}
 	}	
 }
+
+/*
+	Read data from a file.
+*/
 
 char *Storage::Filesystem::read(File *file) {
 	// Assume the file is just one block.  Realloc later if not the case
@@ -107,12 +137,22 @@ char *Storage::Filesystem::read(File *file) {
 	return buffer;
 }
 
+/*
+	Creates a file and syncs the metadata
+*/
+
 File Storage::Filesystem::createNewFile(std::string name) {
+	std::cout << "Creating a new file: " << name << std::endl;
 	File file(name, getBlock(), 0);
 	metadata.files[name] = file.block;
+	metadata.numFiles++;
 	writeMetadata();
 	return file;
 }
+
+/*
+	Copy the contents of one block of data into a buffer along with block metadata.
+*/
 
 Block Storage::Filesystem::loadBlock(uint64_t blockID) {
 	Block block;
@@ -124,6 +164,10 @@ Block Storage::Filesystem::loadBlock(uint64_t blockID) {
 	block.id = blockID;
 	return block;
 }
+
+/*
+	Replace a block with new data.
+*/
 
 void Storage::Filesystem::writeBlock(Block block) {
 	uint64_t id = block.id-1;
@@ -137,6 +181,10 @@ void Storage::Filesystem::writeBlock(Block block) {
 	memcpy(filesystem.data + id * sizeof(Block) + 3*sizeof(uint64_t), block.buffer, BLOCK_SIZE);
 }
 
+/*
+	Increase the size of the filesystem by an increment of one page.
+*/
+
 void Storage::Filesystem::growFilesystem() {
 	std::cout << "Growing filesystem" << std::endl;
 	posix_fallocate(filesystem.fd, PAGESIZE * filesystem.numPages, PAGESIZE);
@@ -149,6 +197,10 @@ void Storage::Filesystem::growFilesystem() {
 	chainPage(firstBlock);
 }
 
+/*
+	Increase the size of the metadata by an increment of one page.
+*/
+
 void Storage::Filesystem::growMetadata() {
 	std::cout << "Growing metadata" << std::endl;
 	posix_fallocate(metadata.fd, PAGESIZE * metadata.numPages, PAGESIZE);
@@ -159,6 +211,11 @@ void Storage::Filesystem::growMetadata() {
 					MREMAP_MAYMOVE);
 
 }
+
+/*
+	If there is a block available, return it.
+	Expand the filesystem if there are no blocks available.
+*/
 
 uint64_t Storage::Filesystem::getBlock() {
 	uint64_t bid;
@@ -177,6 +234,10 @@ uint64_t Storage::Filesystem::getBlock() {
 	}
 	return bid;
 }
+
+/*
+	Create the initial filesystem.
+*/
 
 void Storage::Filesystem::initFilesystem(bool initialFill) {
 	// If the files were empty, fill them to one page
@@ -210,6 +271,10 @@ void Storage::Filesystem::initFilesystem(bool initialFill) {
 	}
 }
 
+/*
+	Chain a page of blocks together.  TODO: What to do with the last block of the previous page?  Need to chain it to the first block of the next page...
+*/
+
 void Storage::Filesystem::chainPage(uint64_t startBlock) {
 	Block b;
 	b.id = startBlock;
@@ -235,6 +300,10 @@ void Storage::Filesystem::chainPage(uint64_t startBlock) {
 	}
 }
 
+/*
+	Set some initial values for the metadata.
+*/
+
 void Storage::Filesystem::initMetadata() {
 	// Initial values
 	metadata.numPages = 1;
@@ -242,6 +311,10 @@ void Storage::Filesystem::initMetadata() {
 	metadata.firstFree = 1;
 	filesystem.numPages = 1;
 }
+
+/*
+	Read the metadata into memory.
+*/
 
 void Storage::Filesystem::readMetadata() {
 	// Ensure the header is intact
@@ -289,7 +362,7 @@ void Storage::Filesystem::readMetadata() {
 
 		// Read block ID
 		uint64_t val = 0;
-		memcpy(&val, metadata.data + val, sizeof(uint64_t));
+		memcpy(&val, metadata.data + pos, sizeof(uint64_t));
 		pos += sizeof(uint64_t);
 
 		// Insert into file map
@@ -297,6 +370,10 @@ void Storage::Filesystem::readMetadata() {
 	}
 	free(buf);
 }
+
+/*
+	Write the metadata to disk.
+*/
 
 void Storage::Filesystem::writeMetadata() {
 	memcpy(metadata.data, HEADER, sizeof(HEADER));
@@ -319,7 +396,7 @@ void Storage::Filesystem::writeMetadata() {
 		pos += keySize;
 		
 		// Write the block ID
-		memcpy(metadata.data + pos, &val, sizeof(val)); 
+		memcpy(metadata.data + pos, &val, sizeof(uint64_t)); 
 		pos += sizeof(uint64_t);
 
 		// Need to grow
@@ -329,7 +406,12 @@ void Storage::Filesystem::writeMetadata() {
 	}
 }
 
+/*
+	Unmap the filesystem.
+*/
+
 void Storage::Filesystem::shutdown() {
+	writeMetadata();
 	munmap(metadata.data, metadata.numPages * PAGESIZE);
 	munmap(filesystem.data, filesystem.numPages * PAGESIZE);
 }
