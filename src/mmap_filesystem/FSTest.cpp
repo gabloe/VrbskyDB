@@ -4,24 +4,25 @@
 
 int main(void) {
 	Storage::Filesystem fs("meta.db", "data.db");
-	File file1 = fs.load("test1");
+	File file = fs.load("test");
+	std::string data("Hello, World!");
+	fs.write(&file, data.c_str(), data.size());
 
-	std::cout << "Writing some short text to the file." << std::endl;
-	fs.write(&file1, "Hello, World!!!", sizeof("Hello, World!!!"));
+	char *x = fs.read(&file);
+	std::string out1(x, file.size);
 
-	char *data1 = fs.read(&file1);
+	std::cout << out1 << std::endl;
 
-	std::string first(data1, file1.size);
+	std::string data2("ABCDEFGHIJKLMNOPQRSTUVWXYZABCDEFGHIJKLMNOPQRSTUVWXYZABCDEFGHIJKLMNOPQRSTUVWXYZABCDEFGHIJKLMNOPQRSTUVWXYZABCDEFGHIJKLMNOPQRSTUVWXYZABCDEFGHIJKLMNOPQRSTUVWXYZ");
+	fs.write(&file, data2.c_str(), data2.size());
+
+	char *y = fs.read(&file);
+	std::string out2(y, file.size);
+
+	std::cout << out2 << std::endl;
 	
-	std::cout << first << std::endl;
-
-	std::cout << "Overwriting the text with something long." << std::endl;
-	std::string data("ABCDEFGHIJKLMNOPQRSTUVWXYZABCDEFGHIJKLMNOPQRSTUVWXYZABCDEFGHIJKLMNOPQRSTUVWXYZABCDEFGHIJKLMNOPQRSTUVWXYZ");
-	fs.write(&file1, data.c_str(), data.size());
-
-	char *data2 = fs.read(&file1);
-	std::string derp(data2, file1.size);
-	std::cout << derp << std::endl;
+	free(x);
+	free(y);
 
 	fs.shutdown();
 }

@@ -3,12 +3,16 @@
 
 #include <string>
 #include <sys/stat.h>
+#include <sys/mman.h>
 #include <map>
+#include <assert.h>
+#include <fcntl.h>
+#include <unistd.h>
+
+#define UNUSED(x) (void)(x)
 
 #define BLOCK_SIZE 32
-#define BLOCKS_PER_PAGE 128
-#define PAGESIZE BLOCK_SIZE * BLOCKS_PER_PAGE
-
+#define BLOCKS_PER_PAGE 128 
 
 struct Block {
 	uint64_t id;
@@ -16,6 +20,24 @@ struct Block {
 	uint64_t next;
 	char buffer[BLOCK_SIZE];
 };
+
+#define PAGESIZE sizeof(Block) * BLOCKS_PER_PAGE
+
+inline int bsd_fallocate(int, off_t, off_t);
+inline void *bsd_mremap(int, void *, size_t, size_t, int);
+
+#if defined(__APPLE__) || defined(__BSD__) || defined(__MINGW__)
+#define posix_fallocate bsd_fallocate
+#define mremap bsd_mremap
+#define mmap64 mmap
+#define MREMAP_MAYMOVE 0
+#else
+#define mremap t_mremap
+inline void *t_mremap(int fd, void *old_address, size_t old_size, size_t new_size, int flags) {
+	UNUSED(fd);
+	return mremap(old_address, old_size, new_size, flags);
+}
+#endif
 
 struct File {
 	std::string name;
@@ -38,6 +60,41 @@ struct FSystem {
 	int fd;
 	char *data;
 };
+
+inline int bsd_fallocate(int fd, off_t offset, off_t size) {
+	fstore_t fst;
+	struct stat sb;
+	int ret;
+
+	fst.fst_flags = F_ALLOCATECONTIG; // could add F_ALLOCATEALL
+	fst.fst_posmode = F_PEOFPOSMODE; // allocate from EOF (0)
+	fst.fst_offset = 0; // offset relative to the EOF
+	fst.fst_length = offset + size;
+	fst.fst_bytesalloc = 0; // why not but is not needed
+	ret = fcntl(fd, F_PREALLOCATE, &fst);
+	if(ret == -1) { // read fcntl docs - must test against -1
+		return 0;
+	}
+
+	ret = fstat(fd, &sb);
+	if(ret != 0) {
+		return 0;
+	}
+	assert(sb.st_size == 0);	
+
+	ret = ftruncate(fd, offset + size); // NOT fst.fst_bytesAllocated!
+	if(ret != 0) {
+		return 0;
+	}
+	return ret;
+}
+
+inline void *bsd_mremap(int fd, void *old_address, size_t old_size, size_t new_size, int flags) {
+	UNUSED(flags);
+	munmap(old_address, old_size);
+	ftruncate(fd, new_size);
+	return mmap64(old_address, new_size, PROT_READ | PROT_WRITE, MAP_SHARED, fd, 0); 
+}
 
 const char HEADER[] = { 0x0D, 0x0E, 0x0A, 0x0D, 0x0B, 0x0E, 0x0E, 0x0F };
 
@@ -79,6 +136,7 @@ namespace Storage {
 		void growFilesystem();
 		void growMetadata();
 		uint64_t calculateSize(Block);
+		void chainPage(uint64_t);
 	};
 }
 

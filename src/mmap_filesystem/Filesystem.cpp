@@ -138,19 +138,26 @@ void Storage::Filesystem::writeBlock(Block block) {
 }
 
 void Storage::Filesystem::growFilesystem() {
+	std::cout << "Growing filesystem" << std::endl;
 	posix_fallocate(filesystem.fd, PAGESIZE * filesystem.numPages, PAGESIZE);
-	filesystem.data = (char*)mremap(filesystem.data,
+	filesystem.data = (char*)mremap(filesystem.fd,
+					filesystem.data,
 					PAGESIZE * filesystem.numPages, 
 					PAGESIZE * ++filesystem.numPages,
 					MREMAP_MAYMOVE);
+	uint64_t firstBlock = BLOCKS_PER_PAGE * (filesystem.numPages-1) + 1;
+	chainPage(firstBlock);
 }
 
 void Storage::Filesystem::growMetadata() {
+	std::cout << "Growing metadata" << std::endl;
 	posix_fallocate(metadata.fd, PAGESIZE * metadata.numPages, PAGESIZE);
-	filesystem.data = (char*)mremap(metadata.data,
+	filesystem.data = (char*)mremap(metadata.fd,
+					metadata.data,
 					PAGESIZE * metadata.numPages, 
 					PAGESIZE * ++metadata.numPages,
 					MREMAP_MAYMOVE);
+
 }
 
 uint64_t Storage::Filesystem::getBlock() {
@@ -197,29 +204,34 @@ void Storage::Filesystem::initFilesystem(bool initialFill) {
 	initMetadata();
 	if (initialFill) {
 		writeMetadata();
-		Block b;
-		b.id = 1;
-		b.used_space = 0;
-		b.next = 2;
-		for (int i=0; i<BLOCK_SIZE; ++i) {
-			b.buffer[i] = '\0';
-		}
-		uint64_t id;
-		for (uint64_t i=0; i<BLOCKS_PER_PAGE; ++i) {
-			id = b.id-1;
-			memcpy(filesystem.data + id * sizeof(Block), &b.id, sizeof(uint64_t));
-			memcpy(filesystem.data + id * sizeof(Block) + sizeof(uint64_t), &b.used_space, sizeof(uint64_t));
-			memcpy(filesystem.data + id * sizeof(Block) + 2*sizeof(uint64_t), &b.next, sizeof(uint64_t));
-			memcpy(filesystem.data + id * sizeof(Block) + 3*sizeof(uint64_t), b.buffer, BLOCK_SIZE);
-			b.id++;
-			if (i == BLOCKS_PER_PAGE - 1) {
-				b.next = 0;
-			} else {
-				b.next++;
-			}
-		}
+		chainPage(1);
 	} else {
 		readMetadata();
+	}
+}
+
+void Storage::Filesystem::chainPage(uint64_t startBlock) {
+	Block b;
+	b.id = startBlock;
+	b.used_space = 0;
+	b.next = startBlock + 1;
+	for (int i=0; i<BLOCK_SIZE; ++i) {
+		b.buffer[i] = '\0';
+	}
+	uint64_t id;
+	uint64_t begin = startBlock - 1;
+	for (uint64_t i=0; i<BLOCKS_PER_PAGE; ++i) {
+		id = b.id-1 + begin;
+		memcpy(filesystem.data + id * sizeof(Block), &b.id, sizeof(uint64_t));
+		memcpy(filesystem.data + id * sizeof(Block) + sizeof(uint64_t), &b.used_space, sizeof(uint64_t));
+		memcpy(filesystem.data + id * sizeof(Block) + 2*sizeof(uint64_t), &b.next, sizeof(uint64_t));
+		memcpy(filesystem.data + id * sizeof(Block) + 3*sizeof(uint64_t), b.buffer, BLOCK_SIZE);
+		b.id++;
+		if (i == BLOCKS_PER_PAGE - 1) {
+			b.next = 0;
+		} else {
+			b.next++;
+		}
 	}
 }
 
@@ -246,14 +258,16 @@ void Storage::Filesystem::readMetadata() {
 
 	// If we have more than one page, remap the data
 	if (metadata.numPages > 1) {
-		metadata.data = (char*)mremap(metadata.data,
+		metadata.data = (char*)mremap(metadata.fd,
+						metadata.data,
 						PAGESIZE,
 						PAGESIZE * metadata.numPages,
 						MREMAP_MAYMOVE);
 	}
 
 	if (filesystem.numPages > 1) {
-		filesystem.data = (char*)mremap(filesystem.data, 
+		filesystem.data = (char*)mremap(filesystem.fd,
+						filesystem.data, 
 						PAGESIZE,
 						PAGESIZE * filesystem.numPages,
 						MREMAP_MAYMOVE);
@@ -310,10 +324,7 @@ void Storage::Filesystem::writeMetadata() {
 
 		// Need to grow
 		while (pos >= PAGESIZE * metadata.numPages) {
-			metadata.data = (char*)mremap(metadata.data,
-						      PAGESIZE * metadata.numPages,
-						      PAGESIZE * ++metadata.numPages,
-						      MREMAP_MAYMOVE);
+			growMetadata();
 		} 
 	}
 }
