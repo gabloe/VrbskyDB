@@ -2,6 +2,7 @@
 #define _HASHMAP_READER_H_
 
 #include <map>
+#include <string.h>
 #include "Filesystem.h"
 
 namespace Storage {
