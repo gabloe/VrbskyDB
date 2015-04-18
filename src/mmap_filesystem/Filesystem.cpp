@@ -183,13 +183,13 @@ void Storage::Filesystem::writeBlock(Block block) {
 */
 
 void Storage::Filesystem::growFilesystem() {
-	std::cout << "Growing filesystem" << std::endl;
 	posix_fallocate(filesystem.fd, PAGESIZE * filesystem.numPages, PAGESIZE);
 	filesystem.data = (char*)t_mremap(filesystem.fd,
 					filesystem.data,
 					PAGESIZE * filesystem.numPages, 
-					PAGESIZE * ++filesystem.numPages,
+					PAGESIZE * filesystem.numPages+1,
 					MREMAP_MAYMOVE);
+	filesystem.numPages++;
 	uint64_t firstBlock = BLOCKS_PER_PAGE * (filesystem.numPages-1) + 1;
 	chainPage(firstBlock);
 }
@@ -203,8 +203,9 @@ void Storage::Filesystem::growMetadata() {
 	filesystem.data = (char*)t_mremap(metadata.fd,
 					metadata.data,
 					PAGESIZE * metadata.numPages, 
-					PAGESIZE * ++metadata.numPages,
+					PAGESIZE * metadata.numPages+1,
 					MREMAP_MAYMOVE);
+	metadata.numPages++;
 }
 
 /*
