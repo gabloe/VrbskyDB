@@ -20,12 +20,12 @@ Storage::Filesystem::Filesystem(std::string meta_, std::string data_): meta_fnam
 		create_initial = true;
 	}
 
-	metadata.fd = open(meta_fname.c_str(), O_RDWR | O_CREAT, (mode_t)0644);
+	metadata.fd = open(meta_fname.c_str(), O_RDWR | O_CREAT, (mode_t)0777);
 	if (metadata.fd == -1) {
 		std::cerr << "Error opening metadata!" << std::endl;
 		exit(1);
 	}
-	filesystem.fd = open(data_fname.c_str(), O_RDWR | O_CREAT, (mode_t)0644);
+	filesystem.fd = open(data_fname.c_str(), O_RDWR | O_CREAT, (mode_t)0777);
 	if (filesystem.fd == -1) {
 		std::cerr << "Error opening filesystem!" << std::endl;
 		exit(1);
@@ -95,10 +95,9 @@ void Storage::Filesystem::write(File *file, const char *data, uint64_t len) {
 			pos += BLOCK_SIZE;
 		} else {
 			memcpy(block.buffer, data + pos, to_write);
-			// TODO: Need to add the leftover blocks to the free list...  Now any blocks leftover are essentially garbage
+			// If the chain had more
 			if (block.next != 0) {
-                // BUG: Just lost all other free blocks
-				metadata.firstFree = block.next;
+				//addToFreeList(block.next);
 			}
 			block.next = 0;
 			block.used_space = to_write;
@@ -107,6 +106,21 @@ void Storage::Filesystem::write(File *file, const char *data, uint64_t len) {
 			pos += to_write;
 		}
 	}	
+}
+
+void Storage::Filesystem::addToFreeList(uint64_t block) {
+	std::cout << "Adding " << block << " to free list" << std::endl;
+	if (metadata.firstFree == 0) {
+		metadata.firstFree = block;
+	} else {
+		Block b = loadBlock(metadata.firstFree);
+		while (b.next != 0) {
+			b = loadBlock(b.next);
+		}
+		b.next = block;
+		writeBlock(b);
+	}
+	writeMetadata();
 }
 
 /*
@@ -164,14 +178,13 @@ Block Storage::Filesystem::loadBlock(uint64_t blockID) {
 
 void Storage::Filesystem::writeBlock(Block block) {
 	uint64_t id = block.id-1;
-	uint64_t position = id * sizeof(Block);
-	while (position > filesystem.numPages * PAGESIZE) {
+	while (id >= filesystem.numPages * BLOCKS_PER_PAGE) {
 		growFilesystem();
 	}
 	memcpy(filesystem.data + id * sizeof(Block), &block.id, sizeof(uint64_t));
-	memcpy(filesystem.data + id * sizeof(Block) + sizeof(uint64_t), &block.used_space, sizeof(uint64_t));
-	memcpy(filesystem.data + id * sizeof(Block) + 2*sizeof(uint64_t), &block.next, sizeof(uint64_t));
-	memcpy(filesystem.data + id * sizeof(Block) + 3*sizeof(uint64_t), block.buffer, BLOCK_SIZE);
+	memcpy(filesystem.data + (id * sizeof(Block)) + sizeof(uint64_t), &block.used_space, sizeof(uint64_t));
+	memcpy(filesystem.data + (id * sizeof(Block)) + 2*sizeof(uint64_t), &block.next, sizeof(uint64_t));
+	memcpy(filesystem.data + (id * sizeof(Block)) + 3*sizeof(uint64_t), block.buffer, BLOCK_SIZE);
 }
 
 /*
@@ -179,16 +192,16 @@ void Storage::Filesystem::writeBlock(Block block) {
 */
 
 void Storage::Filesystem::growFilesystem() {
-	std::cout << "Growing" << std::endl;
-	posix_fallocate(filesystem.fd, PAGESIZE * filesystem.numPages, PAGESIZE);
 	filesystem.data = (char*)t_mremap(filesystem.fd,
 					filesystem.data,
 					PAGESIZE * filesystem.numPages, 
-					PAGESIZE * filesystem.numPages+1,
+					PAGESIZE * (filesystem.numPages+1),
 					MREMAP_MAYMOVE);
 	filesystem.numPages++;
-	uint64_t firstBlock = BLOCKS_PER_PAGE * (filesystem.numPages-1) + 1;
+	uint64_t firstBlock = (BLOCKS_PER_PAGE * (filesystem.numPages-1)) + 1;
 	chainPage(firstBlock);
+	// Add page to free list
+	addToFreeList(firstBlock);
 }
 
 /*
@@ -196,11 +209,10 @@ void Storage::Filesystem::growFilesystem() {
 */
 
 void Storage::Filesystem::growMetadata() {
-	posix_fallocate(metadata.fd, PAGESIZE * metadata.numPages, PAGESIZE);
 	filesystem.data = (char*)t_mremap(metadata.fd,
 					metadata.data,
 					PAGESIZE * metadata.numPages, 
-					PAGESIZE * metadata.numPages+1,
+					PAGESIZE * (metadata.numPages+1),
 					MREMAP_MAYMOVE);
 	metadata.numPages++;
 }
@@ -213,18 +225,12 @@ void Storage::Filesystem::growMetadata() {
 uint64_t Storage::Filesystem::getBlock() {
 	uint64_t bid;
 	Block b;
-	// If there is a free block, use it.
-	if (metadata.firstFree) {
-		bid = metadata.firstFree;
-		b = loadBlock(bid);
-		metadata.firstFree = b.next;
-	} else {
-		// Grow the filesystem
+	if (metadata.firstFree == 0) {
 		growFilesystem();
-		bid = (BLOCKS_PER_PAGE * (filesystem.numPages-1)) + 1;
-		b = loadBlock(metadata.firstFree);
-		metadata.firstFree = b.next;
 	}
+	bid = metadata.firstFree;
+	b = loadBlock(bid);
+	metadata.firstFree = b.next;
 	return bid;
 }
 
@@ -240,16 +246,14 @@ void Storage::Filesystem::initFilesystem(bool initialFill) {
 	}
 
 	// Map the metadata
-	metadata.data = (char*)mmap64((caddr_t)0, PAGESIZE, PROT_READ | PROT_WRITE, MAP_SHARED, metadata.fd, 0);
-	close(metadata.fd);
+	metadata.data = (char*)mmap((caddr_t)0, PAGESIZE, PROT_READ | PROT_WRITE, MAP_SHARED, metadata.fd, 0);
 	if (!metadata.data) {
 		std::cerr << "Error mapping metadata!" << std::endl;
 		exit(1);
 	}
 
 	// Map the filesystem
-	filesystem.data = (char*)mmap64((caddr_t)1, PAGESIZE, PROT_READ | PROT_WRITE, MAP_SHARED, filesystem.fd, 0);
-	close(filesystem.fd);
+	filesystem.data = (char*)mmap((caddr_t)1, PAGESIZE, PROT_READ | PROT_WRITE, MAP_SHARED, filesystem.fd, 0);
 	if (!filesystem.data) {
 		std::cerr << "Error mapping filesystem!" << std::endl;
 		exit(1);
@@ -270,28 +274,17 @@ void Storage::Filesystem::initFilesystem(bool initialFill) {
 
 void Storage::Filesystem::chainPage(uint64_t startBlock) {
 	Block b;
-	b.id = startBlock;
 	b.used_space = 0;
-	b.next = startBlock + 1;
-    std::fill( b.buffer , b.buffer + BLOCK_SIZE, 0 );
-    /* for (int i=0; i<BLOCK_SIZE; ++i) {
-		b.buffer[i] = '\0';
-	} */
-	uint64_t id;
-	uint64_t begin = startBlock - 1;
+    	std::fill( b.buffer , b.buffer + BLOCK_SIZE, 0 );
 	for (uint64_t i=0; i<BLOCKS_PER_PAGE; ++i) {
-		id = b.id-1 + begin;
-		memcpy(filesystem.data + id * sizeof(Block) + 0*sizeof(uint64_t), &b.id, sizeof(uint64_t));
-		memcpy(filesystem.data + id * sizeof(Block) + 1*sizeof(uint64_t), &b.used_space, sizeof(uint64_t));
-		memcpy(filesystem.data + id * sizeof(Block) + 2*sizeof(uint64_t), &b.next, sizeof(uint64_t));
-		memcpy(filesystem.data + id * sizeof(Block) + 3*sizeof(uint64_t), b.buffer, BLOCK_SIZE);
-		b.id++;
-		if (i == BLOCKS_PER_PAGE - 1) {
-			b.next = 0;
-		} else {
-			b.next++;
-		}
+		b.id = i + startBlock;
+		b.next = b.id+1;
+		writeBlock(b);
 	}
+	// The last block in the chain should point to 0
+	b = loadBlock(b.id-1);
+	b.next = 0;
+	writeBlock(b);
 }
 
 /*
@@ -409,4 +402,6 @@ void Storage::Filesystem::shutdown() {
 	writeMetadata();
 	munmap(metadata.data, metadata.numPages * PAGESIZE);
 	munmap(filesystem.data, filesystem.numPages * PAGESIZE);
+	close(filesystem.fd);
+	close(metadata.fd);
 }

@@ -8,6 +8,7 @@
 #include <assert.h>
 #include <fcntl.h>
 #include <unistd.h>
+#include <iostream>
 
 #define UNUSED(x) (void)(x)
 
@@ -30,43 +31,45 @@ inline int bsd_fallocate(int fd, off_t offset, off_t size) {
 	fstore_t fst;
 	struct stat sb;
 	int ret;
+	uint64_t newSize = offset + size;
 
 	fst.fst_flags = F_ALLOCATECONTIG; // could add F_ALLOCATEALL
 	fst.fst_posmode = F_PEOFPOSMODE; // allocate from EOF (0)
 	fst.fst_offset = 0; // offset relative to the EOF
-	fst.fst_length = offset + size;
-	fst.fst_bytesalloc = 0; // why not but is not needed
+	fst.fst_length = newSize;
 	ret = fcntl(fd, F_PREALLOCATE, &fst);
 	if(ret == -1) { // read fcntl docs - must test against -1
-		return 0;
+		std::cerr << "Could not pre-allocate!" << std::endl;
+		exit(0);
 	}
 
 	ret = fstat(fd, &sb);
 	if(ret != 0) {
-		return 0;
+		std::cerr << "Could not stat file!" << std::endl;
+		exit(0);
 	}
-	assert(sb.st_size == 0);	
 
-	ret = ftruncate(fd, offset + size); // NOT fst.fst_bytesAllocated!
+	ret = ftruncate(fd, newSize); // NOT fst.fst_bytesAllocated!
 	if(ret != 0) {
-		return 0;
+		std::cerr << "Could not expand file!" << std::endl;
+		exit(0);
 	}
-	return ret;
+
+	return ret; 
 }
 
 inline void *bsd_mremap(int fd, void *old_address, size_t old_size, size_t new_size, int flags) {
 	UNUSED(flags);
 	munmap(old_address, old_size);
-	ftruncate(fd, new_size);
+	bsd_fallocate(fd, old_size, new_size - old_size);
 	return mmap(old_address, new_size, PROT_READ | PROT_WRITE, MAP_SHARED, fd, 0); 
 }
 #define posix_fallocate bsd_fallocate
 #define t_mremap bsd_mremap
-#define mmap64 mmap
 #define MREMAP_MAYMOVE 0
 #else
 inline void *linux_mremap(int fd, void *old_address, size_t old_size, size_t new_size, int flags) {
-	UNUSED(fd);
+	posix_fallocate(fd, 0, new_size);
 	return mremap(old_address, old_size, new_size, flags);
 }
 #define t_mremap linux_mremap 
@@ -137,6 +140,7 @@ namespace Storage {
 		void growMetadata();
 		uint64_t calculateSize(Block);
 		void chainPage(uint64_t);
+		void addToFreeList(uint64_t);
 	};
 }
 
