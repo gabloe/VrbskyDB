@@ -110,7 +110,7 @@ void Storage::Filesystem::write(File *file, const char *data, uint64_t len) {
 }
 
 /*
-	Read data from a file.
+	Read (ALL) data from a file.
 */
 
 char *Storage::Filesystem::read(File *file) {
