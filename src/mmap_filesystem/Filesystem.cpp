@@ -64,7 +64,6 @@ File Storage::Filesystem::load(std::string name) {
 		Block b = loadBlock(block);
 		uint64_t size = calculateSize(b);
 		File file(name, block, size);
-		std::cout << "Using block " << file.block << std::endl;
 		return file;
 	} else {
 		File file = createNewFile(name);
