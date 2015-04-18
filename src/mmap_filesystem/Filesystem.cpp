@@ -275,9 +275,12 @@ void Storage::Filesystem::chainPage(uint64_t startBlock) {
 	b.id = startBlock;
 	b.used_space = 0;
 	b.next = startBlock + 1;
+    std::fill( b.buffer , b.buffer + BLOCK_SIZE, 0 );
+    /*
 	for (int i=0; i<BLOCK_SIZE; ++i) {
 		b.buffer[i] = '\0';
 	}
+    */
 	uint64_t id;
 	uint64_t begin = startBlock - 1;
 	for (uint64_t i=0; i<BLOCKS_PER_PAGE; ++i) {
