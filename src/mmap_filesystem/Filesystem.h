@@ -11,8 +11,8 @@
 
 #define UNUSED(x) (void)(x)
 
-#define BLOCK_SIZE 32
-#define BLOCKS_PER_PAGE 128 
+#define BLOCK_SIZE 128
+#define BLOCKS_PER_PAGE 512 
 
 struct Block {
 	uint64_t id;
