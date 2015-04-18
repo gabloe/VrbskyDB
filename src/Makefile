@@ -10,8 +10,11 @@ else
    LIBS += -luuid -lreadline
 endif
 
-binary: $(OUT) $(OBJECTS) OST PARSINGT DBMST
+binary: $(OUT) $(OBJECTS) PARSINGT DBMST MMAP_FS
 	$(CC) $(CFLAGS) $(INCLUDES) -o $(OUT)dbms $(OBJECTS)*.o $(LIBS) 
+
+MMAP_FS:
+	make -C mmap_filesystem
 
 OST:
 	make -C os

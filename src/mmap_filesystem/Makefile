@@ -1,21 +1,19 @@
-OUT=./
-OBJECTS=./
+OUT=../objects/
 CC=g++
 CFLAGS=--std=c++11 -O3 -Wall -Wextra -g
-INCLUDES += 
-LIBS +=
+INCLUDE_DIR=../include/
+INCLUDES=-I$(INCLUDE_DIR)
+OBJECTS=$(OUT)mmap_filesystem.o
 
-binary: filesystem.o fstest.o
-	$(CC) $(CFLAGS) $(INCLUDES) -o $(OUT)FSTest $(OBJECTS)*.o $(LIBS) 
+mmap_filesystem.o: Filesystem.cpp Filesystem.h
+	$(CC) $(CFLAGS) $(INCLUDES) -c Filesystem.cpp -o$(OUT)mmap_filesystem.o
 
-fstest.o: FSTest.cpp
-	$(CC) $(CFLAGS) $(INCLUDES) -c FSTest.cpp -o$(OUT)fstest.o
-	
-filesystem.o: Filesystem.cpp Filesystem.h
-	$(CC) $(CFLAGS) $(INCLUDES) -c Filesystem.cpp -o$(OUT)filesystem.o
+test: FSTest.cpp mmap_filesystem.o
+	$(CC) $(CFLAGS) $(INCLUDES) FSTest.cpp $(OBJECTS) -ommaptest
 
 clean:
-	rm -f *.o *.db
-	rm -f FSTest
+	rm -f $(OBJECTS)
+	rm -f *.db
+	rm -f mmaptest
 
 .PHONY: clean

@@ -10,8 +10,6 @@
 #include <unistd.h>
 #include <iostream>
 
-#define UNUSED(x) (void)(x)
-
 #define BLOCK_SIZE 128
 #define BLOCKS_PER_PAGE 512 
 
@@ -58,7 +56,7 @@ inline int bsd_fallocate(int fd, off_t offset, off_t size) {
 	return ret; 
 }
 inline void *bsd_mremap(int fd, void *old_address, size_t old_size, size_t new_size, int flags) {
-	UNUSED(flags);
+	(void)(flags);
 	munmap(old_address, old_size);
 	bsd_fallocate(fd, old_size, new_size - old_size);
 	return mmap(old_address, new_size, PROT_READ | PROT_WRITE, MAP_SHARED, fd, 0); 
@@ -108,7 +106,7 @@ namespace Storage {
 	public:
 		Filesystem(std::string);
 		void shutdown();
-		File load(std::string);
+		File open_file(std::string);
 		char *read(File*);
 		void write(File*, const char*, uint64_t);
 

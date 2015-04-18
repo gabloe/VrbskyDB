@@ -44,7 +44,7 @@ $(OUT)ParserTest: ./ParserTest.cpp
 	cp queries $(OUT)queries
 
 $(OUT)UUIDTest: ./uuidtest.cpp
-	$(CC) $(CFLAGS) $(INCLUDES) ./uuidtest.cpp -o $(OUT)UUIDTest -luuid
+	$(CC) $(CFLAGS) $(INCLUDES) ./uuidtest.cpp -o $(OUT)UUIDTest
 
 $(OUT)WriteReadTest: ./WriteReadTest.cpp
 	$(CC) $(CFLAGS) $(INCLUDES) $(OS_OBJS) ./WriteReadTest.cpp -o $(OUT)WriteReadTest

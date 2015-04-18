@@ -55,7 +55,7 @@ uint64_t Storage::Filesystem::calculateSize(Block b) {
 	If the file doesn't exist, create it.
 */
 
-File Storage::Filesystem::load(std::string name) {
+File Storage::Filesystem::open_file(std::string name) {
 	if (metadata.files.count(name)) {
 		uint64_t block = metadata.files[name];
 		Block b = loadBlock(block);
@@ -105,7 +105,6 @@ void Storage::Filesystem::write(File *file, const char *data, uint64_t len) {
 }
 
 void Storage::Filesystem::addToFreeList(uint64_t block) {
-	std::cout << "Adding " << block << " to free list" << std::endl;
 	if (metadata.firstFree == 0) {
 		metadata.firstFree = block;
 	} else {
@@ -116,7 +115,6 @@ void Storage::Filesystem::addToFreeList(uint64_t block) {
 		b.next = block;
 		writeBlock(b);
 	}
-	writeMetadata();
 }
 
 /*
@@ -148,7 +146,6 @@ File Storage::Filesystem::createNewFile(std::string name) {
 	File file(name, getBlock(), 0);
 	metadata.files[name] = file.block;
 	metadata.numFiles++;
-	writeMetadata();
 	return file;
 }
 
@@ -236,7 +233,6 @@ void Storage::Filesystem::initFilesystem(bool initialFill) {
 	initMetadata();
 	if (initialFill) {
 		writeMetadata();
-		chainPage(2);
 	} else {
 		readMetadata();
 	}
@@ -250,11 +246,8 @@ void Storage::Filesystem::chainPage(uint64_t startBlock) {
 	Block b;
 	b.used_space = 0;
     	std::fill( b.buffer , b.buffer + BLOCK_SIZE, 0 );
-	for (uint64_t i=startBlock; i<startBlock+BLOCKS_PER_PAGE; ++i) {
-		if (i > filesystem.numPages * BLOCKS_PER_PAGE) {
-			break;
-		}
-		b.id = i;
+	for (uint64_t i=0; i<BLOCKS_PER_PAGE; ++i) {
+		b.id = i + startBlock;
 		b.next = b.id+1;
 		writeBlock(b);
 	}
@@ -270,13 +263,12 @@ void Storage::Filesystem::chainPage(uint64_t startBlock) {
 
 void Storage::Filesystem::initMetadata() {
 	// Initial values
-	metadata.numFiles = 1;
-	metadata.firstFree = 2;
+	metadata.numFiles = 0;
+	metadata.firstFree = 1;
 	filesystem.numPages = 1;
-	Block meta_block = loadBlock(1);
-	uint64_t meta_size = calculateSize(meta_block);
-	metadata.file = File("_METADATA_", 1, meta_size);
-	metadata.files["_METADATA_"] = 1;
+	chainPage(1);
+	metadata.file = open_file("_METADATA_");
+	writeMetadata();
 }
 
 /*

@@ -8,12 +8,9 @@
 
 #include "dbms.h"
 #include "../hashing/Hash.h"
-//#include "../storage/LinearHash.h"
 #include "../parsing/Parser.h"
 #include "../parsing/Scanner.h"
-#include "../os/FileSystem.h"
-#include "../os/FileReader.h"
-#include "../os/FileWriter.h"
+#include "../mmap_filesystem/Filesystem.h"
 
 #include <readline/readline.h>
 #include <readline/history.h>
@@ -182,15 +179,8 @@ void insertDocument(rapidjson::Document &doc, uint64_t projHash, META &meta, FIL
     std::string data = toString(&doc);
 
     // Insert this row into the DB
-    os::File &file = fs.open(docUUID.c_str());
-    os::FileWriter writer(file);
-    // START DEBUGGING
-    size_t test = writer.write(data.size(), data.c_str());
-    size_t len = data.size();
-
-    Assert( "Data size" , len , test , test == 0 );
-    // END DEBUGGING
-    writer.close();
+    File file = fs.open_file(docUUID.c_str());
+    fs.write(&file, data.c_str(), data.size());
 
     appendDocToProject(projHash, docUUID, meta);
 }
@@ -742,12 +732,9 @@ void update(rapidjson::Document &docArray, rapidjson::Document &updates, rapidjs
     for (rapidjson::Value::ConstValueIterator docID = docArray.Begin(); docID != docArray.End(); ++docID) {
         // Open the document
         std::string dID = docID->GetString();
-        os::File &file1 = fs.open(dID);
-        os::FileReader reader(file1);
-        char *c = reader.readAll();
+        File file1 = fs.open_file(dID);
+        char *c = fs.read(&file1);
         std::string docTxt = std::string(c,file1.size);
-        delete[] c;
-        reader.close();
 
         // Parse the document
         rapidjson::Document doc;
@@ -773,11 +760,9 @@ void update(rapidjson::Document &docArray, rapidjson::Document &updates, rapidjs
 		rapidjson::Value v(v_tmp, doc.GetAllocator());
 		doc.AddMember(k,v, doc.GetAllocator());
 	}
-	os::File &file2 = fs.open(dID);
-	os::FileWriter writer(file2);
+	File file2 = fs.open_file(dID);
 	std::string data = toString(&doc);
-	writer.write(data.size(), data.c_str());
-	writer.close();
+	fs.write(&file2, data.c_str(), data.size());
 
 	// In case a limit is being used, pre-empt may be necessary
 	if (limit > 0 && ++num == limit) {
@@ -812,12 +797,9 @@ void ddelete(rapidjson::Document &docArray, rapidjson::Document &origFields, rap
     while (docID != docArray.End()) {
         // Open the document
         std::string dID = docID->GetString();
-        os::File &file1 = fs.open(dID);
-        os::FileReader reader(file1);
-        char *c = reader.readAll();
+        File file1 = fs.open_file(dID);
+        char *c = fs.read(&file1);
         std::string docTxt = std::string(c,file1.size);
-        delete[] c;
-        reader.close();
 
         // Parse the document
         rapidjson::Document doc;
@@ -836,16 +818,14 @@ void ddelete(rapidjson::Document &docArray, rapidjson::Document &origFields, rap
         // Iterate over the desired fields
         if (selectAll) {
             // Delete document 
-	    file1.unlink();
+	    //file1.unlink();
 	    docArray.Erase(docID);
 	    goto next;
         } else {
             deleteFields(&doc, &fields);
 	    std::string newData = toString(&doc);
-	    os::File &file2 = fs.open(dID);
-	    os::FileWriter writer(file2);
-	    writer.write(newData.size(), newData.c_str());
-	    writer.close();
+	    File file2 = fs.open_file(dID);
+	    fs.write(&file2, newData.c_str(), newData.size());
         }
 
 	++docID;
@@ -889,12 +869,9 @@ rapidjson::Document select(rapidjson::Document &docArray, rapidjson::Document &o
     for (rapidjson::Value::ConstValueIterator docID = docArray.Begin(); docID != docArray.End(); ++docID) {
         // Open the document
         std::string dID = docID->GetString();
-        os::File &file = fs.open(dID);
-        os::FileReader reader(file);
-        char *c = reader.readAll();
+        File file = fs.open_file(dID);
+        char *c = fs.read(&file);
         std::string docTxt = std::string(c,file.size);
-        delete[] c;
-        reader.close();
 
         // Parse the document
         rapidjson::Document doc;
@@ -1111,22 +1088,6 @@ void execute(Parsing::Query &q, META &meta, FILESYSTEM &fs, bool print = true) {
 }
 
 /*
- *      file_exists ---
- *
- *      Return true if the supplied filename exists.  False, otherwise.
- *
- */
-
-inline bool file_exists (const std::string& name) {
-    if (FILE *file = fopen(name.c_str(), "r")) {
-        fclose(file);
-        return true;
-    } else {
-        return false;
-    }
-}
-
-/*
  *      Begin autocompletion methods for Readline library.
  */
 
@@ -1325,7 +1286,7 @@ int main(int argc, char **argv) {
     std::string data_fname("data.db");
     META meta;
     char *buf;
-    os::FileSystem *fs = new os::FileSystem(data_fname);
+    Storage::Filesystem *fs = new Storage::Filesystem(data_fname);
 
     if (file_exists(meta_fname)) {
         readFromFile(meta_fname , meta );
