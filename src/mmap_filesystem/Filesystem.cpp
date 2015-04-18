@@ -185,7 +185,7 @@ void Storage::Filesystem::writeBlock(Block block) {
 void Storage::Filesystem::growFilesystem() {
 	std::cout << "Growing filesystem" << std::endl;
 	posix_fallocate(filesystem.fd, PAGESIZE * filesystem.numPages, PAGESIZE);
-	filesystem.data = (char*)mremap(filesystem.fd,
+	filesystem.data = (char*)t_mremap(filesystem.fd,
 					filesystem.data,
 					PAGESIZE * filesystem.numPages, 
 					PAGESIZE * ++filesystem.numPages,
@@ -199,14 +199,12 @@ void Storage::Filesystem::growFilesystem() {
 */
 
 void Storage::Filesystem::growMetadata() {
-	std::cout << "Growing metadata" << std::endl;
 	posix_fallocate(metadata.fd, PAGESIZE * metadata.numPages, PAGESIZE);
-	filesystem.data = (char*)mremap(metadata.fd,
+	filesystem.data = (char*)t_mremap(metadata.fd,
 					metadata.data,
 					PAGESIZE * metadata.numPages, 
 					PAGESIZE * ++metadata.numPages,
 					MREMAP_MAYMOVE);
-
 }
 
 /*
@@ -328,7 +326,7 @@ void Storage::Filesystem::readMetadata() {
 
 	// If we have more than one page, remap the data
 	if (metadata.numPages > 1) {
-		metadata.data = (char*)mremap(metadata.fd,
+		metadata.data = (char*)t_mremap(metadata.fd,
 						metadata.data,
 						PAGESIZE,
 						PAGESIZE * metadata.numPages,
@@ -336,7 +334,7 @@ void Storage::Filesystem::readMetadata() {
 	}
 
 	if (filesystem.numPages > 1) {
-		filesystem.data = (char*)mremap(filesystem.fd,
+		filesystem.data = (char*)t_mremap(filesystem.fd,
 						filesystem.data, 
 						PAGESIZE,
 						PAGESIZE * filesystem.numPages,
