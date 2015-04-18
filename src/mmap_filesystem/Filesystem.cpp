@@ -85,10 +85,9 @@ void Storage::Filesystem::write(File *file, const char *data, uint64_t len) {
 		if (to_write > BLOCK_SIZE) {
 			memcpy(block.buffer, data + pos, BLOCK_SIZE);
 			// Grab a new block
-			if (block.next == 0) {
-				block.next = getBlock();
-			}
+			uint64_t next = getBlock();
 			block.used_space = BLOCK_SIZE;
+			block.next = next;
 			writeBlock(block);
 			block = loadBlock(block.next);
 			to_write -= BLOCK_SIZE;
