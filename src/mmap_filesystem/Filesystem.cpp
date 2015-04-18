@@ -97,6 +97,7 @@ void Storage::Filesystem::write(File *file, const char *data, uint64_t len) {
 			memcpy(block.buffer, data + pos, to_write);
 			// TODO: Need to add the leftover blocks to the free list...  Now any blocks leftover are essentially garbage
 			if (block.next != 0) {
+                // BUG: Just lost all other free blocks
 				metadata.firstFree = block.next;
 			}
 			block.next = 0;
@@ -109,7 +110,7 @@ void Storage::Filesystem::write(File *file, const char *data, uint64_t len) {
 }
 
 /*
-	Read data from a file.
+	Read (ALL) data from a file.
 */
 
 char *Storage::Filesystem::read(File *file) {
@@ -271,15 +272,16 @@ void Storage::Filesystem::chainPage(uint64_t startBlock) {
 	b.id = startBlock;
 	b.used_space = 0;
 	b.next = startBlock + 1;
-	for (int i=0; i<BLOCK_SIZE; ++i) {
+    std::fill( b.buffer , b.buffer + BLOCK_SIZE, 0 );
+    /* for (int i=0; i<BLOCK_SIZE; ++i) {
 		b.buffer[i] = '\0';
-	}
+	} */
 	uint64_t id;
 	uint64_t begin = startBlock - 1;
 	for (uint64_t i=0; i<BLOCKS_PER_PAGE; ++i) {
 		id = b.id-1 + begin;
-		memcpy(filesystem.data + id * sizeof(Block), &b.id, sizeof(uint64_t));
-		memcpy(filesystem.data + id * sizeof(Block) + sizeof(uint64_t), &b.used_space, sizeof(uint64_t));
+		memcpy(filesystem.data + id * sizeof(Block) + 0*sizeof(uint64_t), &b.id, sizeof(uint64_t));
+		memcpy(filesystem.data + id * sizeof(Block) + 1*sizeof(uint64_t), &b.used_space, sizeof(uint64_t));
 		memcpy(filesystem.data + id * sizeof(Block) + 2*sizeof(uint64_t), &b.next, sizeof(uint64_t));
 		memcpy(filesystem.data + id * sizeof(Block) + 3*sizeof(uint64_t), b.buffer, BLOCK_SIZE);
 		b.id++;
@@ -337,6 +339,7 @@ void Storage::Filesystem::readMetadata() {
 						MREMAP_MAYMOVE);
 	}
 
+    // Loading the files?
 	uint64_t pos = sizeof(HEADER) + 4*sizeof(uint64_t);
 	char *buf = NULL;
 	for (uint64_t i=0; i < metadata.numFiles; ++i) {

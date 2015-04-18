@@ -15,7 +15,7 @@ filesystem.o: Filesystem.cpp Filesystem.h
 	$(CC) $(CFLAGS) $(INCLUDES) -c Filesystem.cpp -o$(OUT)filesystem.o
 
 clean:
-	rm -f *.o
+	rm -f *.o *.db
 	rm -f FSTest
 
 .PHONY: clean
