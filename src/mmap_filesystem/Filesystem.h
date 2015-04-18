@@ -58,7 +58,7 @@ inline void *bsd_mremap(int fd, void *old_address, size_t old_size, size_t new_s
 	UNUSED(flags);
 	munmap(old_address, old_size);
 	ftruncate(fd, new_size);
-	return mmap64(old_address, new_size, PROT_READ | PROT_WRITE, MAP_SHARED, fd, 0); 
+	return mmap(old_address, new_size, PROT_READ | PROT_WRITE, MAP_SHARED, fd, 0); 
 }
 #define posix_fallocate bsd_fallocate
 #define t_mremap bsd_mremap

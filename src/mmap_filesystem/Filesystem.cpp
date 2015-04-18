@@ -114,8 +114,7 @@ void Storage::Filesystem::write(File *file, const char *data, uint64_t len) {
 
 char *Storage::Filesystem::read(File *file) {
 	// Assume the file is just one block.  Realloc later if not the case
-	uint64_t size = BLOCK_SIZE;
-	char *buffer = (char*)malloc(size);
+	char *buffer = (char*)malloc(file->size);
 	uint64_t read_size = 0;
 	Block block = loadBlock(file->block);
 	bool done = false;
@@ -124,14 +123,10 @@ char *Storage::Filesystem::read(File *file) {
 		read_size += block.used_space;
 		if (block.next != 0) {
 			block = loadBlock(block.next);
-			size *= 2;
-			buffer = (char*)realloc(buffer, size);
 		} else {
 			done = true;
 		}
 	}
-	buffer = (char*)realloc(buffer, read_size);
-	file->size = read_size;
 	return buffer;
 }
 

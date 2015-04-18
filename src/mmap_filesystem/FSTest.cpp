@@ -4,12 +4,21 @@
 
 int main(void) {
 	Storage::Filesystem fs("meta.db", "data.db");
-	File file = fs.load("test");
-	std::cout << "Writing file with something short." << std::endl;
-	fs.write(&file, "Hello, World!", 13);
-	char *y = fs.read(&file);
-	std::string out2(y, file.size);
-	std::cout << "Result should be 'Hello, World!':" << std::endl << out2 << std::endl;
-	free(y);
+	std::string test("ABCDEFGHIJKLMNOPQRSTUVWXYZ Hello World!  HERP DERP.  CS609 is the coolest.");
+	for (char i='a'; i<'z'; ++i) {
+		std::string fname("");
+		fname += i;
+		File f = fs.load(fname);
+		fs.write(&f, test.c_str(), test.size());
+	}
+
+	for (char i='a'; i<'z'; ++i) {
+		std::string fname("");
+		fname += i;
+		File f = fs.load(fname);
+		char *data = fs.read(&f);
+		std::string out(data, f.size);
+		std::cout << out << std::endl;
+	}
 	fs.shutdown();
 }
