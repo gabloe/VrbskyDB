@@ -97,6 +97,7 @@ void Storage::Filesystem::write(File *file, const char *data, uint64_t len) {
 			memcpy(block.buffer, data + pos, to_write);
 			// TODO: Need to add the leftover blocks to the free list...  Now any blocks leftover are essentially garbage
 			if (block.next != 0) {
+                // BUG: Just lost all other free blocks
 				metadata.firstFree = block.next;
 			}
 			block.next = 0;
@@ -343,6 +344,7 @@ void Storage::Filesystem::readMetadata() {
 						MREMAP_MAYMOVE);
 	}
 
+    // Loading the files?
 	uint64_t pos = sizeof(HEADER) + 4*sizeof(uint64_t);
 	char *buf = NULL;
 	for (uint64_t i=0; i < metadata.numFiles; ++i) {
