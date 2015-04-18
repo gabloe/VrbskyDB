@@ -57,7 +57,6 @@ inline int bsd_fallocate(int fd, off_t offset, off_t size) {
 
 	return ret; 
 }
-
 inline void *bsd_mremap(int fd, void *old_address, size_t old_size, size_t new_size, int flags) {
 	UNUSED(flags);
 	munmap(old_address, old_size);
@@ -79,15 +78,14 @@ struct File {
 	std::string name;
 	uint64_t block;
 	uint64_t size;
+	File() {}
 	File(std::string name_, uint64_t block_, uint64_t size_): name(name_), block(block_), size(size_) {}
 };
 
 struct Metadata {
-	uint64_t numPages;
 	uint64_t numFiles;
 	uint64_t firstFree;
-	int fd;
-	char *data;
+	File file;
 	std::map<std::string, uint64_t> files;
 };
 
@@ -96,10 +94,6 @@ struct FSystem {
 	int fd;
 	char *data;
 };
-
-
-
-const char HEADER[] = { 0x0D, 0x0E, 0x0A, 0x0D, 0x0B, 0x0E, 0x0E, 0x0F };
 
 inline bool file_exists(std::string fname) {
 	struct stat buf;
@@ -112,7 +106,7 @@ inline bool file_exists(std::string fname) {
 namespace Storage {
 	class Filesystem {
 	public:
-		Filesystem(std::string, std::string);
+		Filesystem(std::string);
 		void shutdown();
 		File load(std::string);
 		char *read(File*);
