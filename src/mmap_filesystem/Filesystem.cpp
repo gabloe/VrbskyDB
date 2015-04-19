@@ -8,6 +8,7 @@
 #include "HashmapReader.h"
 #include "HashmapWriter.h"
 #include <string.h>
+#include <vector>
 
 /*
 	Constructor--
@@ -118,6 +119,14 @@ void Storage::Filesystem::addToFreeList(uint64_t block) {
 		b.dirty = false;
 		writeBlock(b);
 	}
+}
+
+std::vector<std::string> Storage::Filesystem::getFilenames() {
+	std::vector<std::string> res;
+	for (auto it = metadata.files.begin(); it != metadata.files.end(); ++it) {
+		res.push_back(it->first);
+	}
+	return res;
 }
 
 /*
@@ -331,7 +340,7 @@ void Storage::Filesystem::readMetadata() {
         }
 	}
 
-    std::cout << "Number of pages: " << filesystem.numPages << std::endl;
+    	std::cout << "Number of pages: " << filesystem.numPages << std::endl;
 
 	Block b = loadBlock(1);
 	uint64_t metadata_size = calculateSize(b);
