@@ -11,7 +11,7 @@
 #include <iostream>
 
 #define BLOCK_SIZE 128
-#define BLOCKS_PER_PAGE 512 
+#define BLOCKS_PER_PAGE 2048 
 
 struct Block {
 	uint64_t id;
@@ -58,7 +58,6 @@ inline int bsd_fallocate(int fd, off_t offset, off_t size) {
 inline void *bsd_mremap(int fd, void *old_address, size_t old_size, size_t new_size, int flags) {
 	(void)(flags);
 	munmap(old_address, old_size);
-	bsd_fallocate(fd, old_size, new_size - old_size);
 	return mmap(old_address, new_size, PROT_READ | PROT_WRITE, MAP_SHARED, fd, 0); 
 }
 #define posix_fallocate bsd_fallocate
@@ -66,7 +65,6 @@ inline void *bsd_mremap(int fd, void *old_address, size_t old_size, size_t new_s
 #define MREMAP_MAYMOVE 0
 #else
 inline void *linux_mremap(int fd, void *old_address, size_t old_size, size_t new_size, int flags) {
-	posix_fallocate(fd, 0, new_size);
 	return mremap(old_address, old_size, new_size, flags);
 }
 #define t_mremap linux_mremap 

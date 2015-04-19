@@ -160,7 +160,7 @@ Block Storage::Filesystem::loadBlock(uint64_t blockID) {
 	memcpy(&block.used_space, filesystem.data + (id * sizeof(Block)) + sizeof(uint64_t), sizeof(uint64_t));
 	memcpy(&block.next, filesystem.data + (id * sizeof(Block)) + 2*sizeof(uint64_t), sizeof(uint64_t));
 	memcpy(block.buffer, filesystem.data + (id * sizeof(Block)) + 3*sizeof(uint64_t), BLOCK_SIZE);
-	block.id = blockID;
+	assert(block.id == blockID);
 	return block;
 }
 
@@ -177,6 +177,7 @@ void Storage::Filesystem::writeBlock(Block block) {
 	memcpy(filesystem.data + (id * sizeof(Block)) + sizeof(uint64_t), &block.used_space, sizeof(uint64_t));
 	memcpy(filesystem.data + (id * sizeof(Block)) + 2*sizeof(uint64_t), &block.next, sizeof(uint64_t));
 	memcpy(filesystem.data + (id * sizeof(Block)) + 3*sizeof(uint64_t), block.buffer, BLOCK_SIZE);
+	msync(filesystem.data, filesystem.numPages * PAGESIZE, MS_ASYNC);
 }
 
 /*
@@ -184,6 +185,7 @@ void Storage::Filesystem::writeBlock(Block block) {
 */
 
 void Storage::Filesystem::growFilesystem() {
+	posix_fallocate(filesystem.fd, PAGESIZE * filesystem.numPages, PAGESIZE * (filesystem.numPages+1));
 	filesystem.data = (char*)t_mremap(filesystem.fd,
 					filesystem.data,
 					PAGESIZE * filesystem.numPages, 
@@ -224,7 +226,7 @@ void Storage::Filesystem::initFilesystem(bool initialFill) {
 	}
 
 	// Map the filesystem
-	filesystem.data = (char*)mmap((caddr_t)0, PAGESIZE, PROT_READ | PROT_WRITE, MAP_SHARED, filesystem.fd, 0);
+	filesystem.data = (char*)mmap(NULL, PAGESIZE, PROT_READ | PROT_WRITE, MAP_SHARED, filesystem.fd, 0);
 	if (!filesystem.data) {
 		std::cerr << "Error mapping filesystem!" << std::endl;
 		exit(1);
@@ -232,6 +234,8 @@ void Storage::Filesystem::initFilesystem(bool initialFill) {
 
 	initMetadata();
 	if (initialFill) {
+		chainPage(1);
+		metadata.file = open_file("__METADATA__");
 		writeMetadata();
 	} else {
 		readMetadata();
@@ -266,9 +270,6 @@ void Storage::Filesystem::initMetadata() {
 	metadata.numFiles = 0;
 	metadata.firstFree = 1;
 	filesystem.numPages = 1;
-	chainPage(1);
-	metadata.file = open_file("_METADATA_");
-	writeMetadata();
 }
 
 /*
@@ -276,15 +277,9 @@ void Storage::Filesystem::initMetadata() {
 */
 
 void Storage::Filesystem::readMetadata() {
-	HashmapReader<uint64_t> reader(metadata.file, *this);
-	char *data = read(&metadata.file);
 	uint64_t pos = 0;
-	memcpy(&metadata.numFiles, data + pos, sizeof(uint64_t));
+	memcpy(&filesystem.numPages, filesystem.data+pos, sizeof(uint64_t));
 	pos += sizeof(uint64_t);
-
-	memcpy(&metadata.firstFree, data + pos, sizeof(uint64_t));
-	pos += sizeof(uint64_t);
-
 	if (filesystem.numPages > 1) {
 		filesystem.data = (char*)t_mremap(filesystem.fd,
 						filesystem.data, 
@@ -292,7 +287,24 @@ void Storage::Filesystem::readMetadata() {
 						PAGESIZE * filesystem.numPages,
 						MREMAP_MAYMOVE);
 	}
-	metadata.files = reader.read(pos);	
+
+	memcpy(&metadata.numFiles, filesystem.data + pos, sizeof(uint64_t));
+	pos += sizeof(uint64_t);
+	
+	memcpy(&metadata.firstFree, filesystem.data + pos, sizeof(uint64_t));
+	pos += sizeof(uint64_t);
+
+
+	Block b = loadBlock(1);
+	uint64_t metadata_size = calculateSize(b);
+	uint64_t files_size = metadata_size - pos;
+	metadata.file = File("__METADATA__", 1, metadata_size);
+
+	char *buffer = read(&metadata.file);
+
+	HashmapReader<uint64_t> reader(metadata.file, *this);
+	metadata.files = reader.read_buffer(buffer + pos, files_size);
+	free(buffer);
 }
 
 /*
@@ -301,9 +313,13 @@ void Storage::Filesystem::readMetadata() {
 
 void Storage::Filesystem::writeMetadata() {
 	HashmapWriter<uint64_t> writer(metadata.file, *this);	
-	uint64_t size = 2 * sizeof(uint64_t);
+	uint64_t size = 3 * sizeof(uint64_t);
 	uint64_t pos = 0;
 	char *buffer = (char*)malloc(size);
+
+	memcpy(buffer+pos, &filesystem.numPages, sizeof(uint64_t));
+	pos += sizeof(uint64_t);
+
 	memcpy(buffer+pos, &metadata.numFiles, sizeof(uint64_t));
 	pos += sizeof(uint64_t);
 
@@ -318,6 +334,7 @@ void Storage::Filesystem::writeMetadata() {
 	write(&metadata.file,buffer,size);
 	free(files);
 	free(buffer);
+	msync(filesystem.data, filesystem.numPages * PAGESIZE, MS_ASYNC);
 }
 
 /*
@@ -326,6 +343,7 @@ void Storage::Filesystem::writeMetadata() {
 
 void Storage::Filesystem::shutdown() {
 	writeMetadata();
-	munmap(filesystem.data, filesystem.numPages * PAGESIZE);
+	msync(filesystem.data, filesystem.numPages * PAGESIZE, MS_SYNC);
 	close(filesystem.fd);
+	munmap(filesystem.data, filesystem.numPages * PAGESIZE);
 }

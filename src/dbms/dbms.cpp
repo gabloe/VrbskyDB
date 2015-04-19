@@ -735,6 +735,7 @@ void update(rapidjson::Document &docArray, rapidjson::Document &updates, rapidjs
         File file1 = fs.open_file(dID);
         char *c = fs.read(&file1);
         std::string docTxt = std::string(c,file1.size);
+	free(c);
 
         // Parse the document
         rapidjson::Document doc;
@@ -800,6 +801,7 @@ void ddelete(rapidjson::Document &docArray, rapidjson::Document &origFields, rap
         File file1 = fs.open_file(dID);
         char *c = fs.read(&file1);
         std::string docTxt = std::string(c,file1.size);
+	free(c);
 
         // Parse the document
         rapidjson::Document doc;
@@ -872,6 +874,7 @@ rapidjson::Document select(rapidjson::Document &docArray, rapidjson::Document &o
         File file = fs.open_file(dID);
         char *c = fs.read(&file);
         std::string docTxt = std::string(c,file.size);
+	free(c);
 
         // Parse the document
         rapidjson::Document doc;
