@@ -1,7 +1,7 @@
 OUT=../../bin/
 OBJECTS=../objects/
 CC=g++
-CFLAGS=-std=c++11 -O3 -Wall -Wextra -g
+CFLAGS=-std=c++11 -O3 -Wall -Wextra -g -luuid
 INCLUDE_DIR=../include/
 INCLUDES=-I$(INCLUDE_DIR)
 OS_OBJS=$(OBJECTS)File.o $(OBJECTS)FileSystem.o $(OBJECTS)FileReader.o $(OBJECTS)FileWriter.o
