@@ -9,6 +9,7 @@
 #include <fcntl.h>
 #include <unistd.h>
 #include <iostream>
+#include <vector>
 
 #define BLOCK_SIZE 64
 #define BLOCKS_PER_PAGE 128
@@ -109,6 +110,7 @@ namespace Storage {
 		File open_file(std::string);
 		char *read(File*);
 		void write(File*, const char*, uint64_t);
+		std::vector<std::string> getFilenames();
 
 	protected:
 		Metadata metadata;
