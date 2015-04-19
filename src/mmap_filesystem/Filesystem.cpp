@@ -160,7 +160,6 @@ Block Storage::Filesystem::loadBlock(uint64_t blockID) {
 	memcpy(&block.used_space, filesystem.data + (id * sizeof(Block)) + sizeof(uint64_t), sizeof(uint64_t));
 	memcpy(&block.next, filesystem.data + (id * sizeof(Block)) + 2*sizeof(uint64_t), sizeof(uint64_t));
 	memcpy(block.buffer, filesystem.data + (id * sizeof(Block)) + 3*sizeof(uint64_t), BLOCK_SIZE);
-	assert(block.id == blockID);
 	return block;
 }
 
@@ -177,7 +176,7 @@ void Storage::Filesystem::writeBlock(Block block) {
 	memcpy(filesystem.data + (id * sizeof(Block)) + sizeof(uint64_t), &block.used_space, sizeof(uint64_t));
 	memcpy(filesystem.data + (id * sizeof(Block)) + 2*sizeof(uint64_t), &block.next, sizeof(uint64_t));
 	memcpy(filesystem.data + (id * sizeof(Block)) + 3*sizeof(uint64_t), block.buffer, BLOCK_SIZE);
-	//msync(filesystem.data, filesystem.numPages * PAGESIZE, MS_ASYNC);
+	msync(filesystem.data + id * sizeof(Block), sizeof(Block), MS_SYNC);
 }
 
 /*
@@ -340,7 +339,6 @@ void Storage::Filesystem::writeMetadata() {
 
 void Storage::Filesystem::shutdown() {
 	writeMetadata();
-	msync(filesystem.data, filesystem.numPages * PAGESIZE, MS_SYNC);
 	close(filesystem.fd);
 	munmap(filesystem.data, filesystem.numPages * PAGESIZE);
 }
