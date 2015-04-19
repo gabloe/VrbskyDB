@@ -10,7 +10,7 @@ mmap_filesystem.o: Filesystem.cpp Filesystem.h
 
 test: readtest writetest
 
-fsreader: FilesystemReader.cpp
+fsreader: FilesystemReader.cpp mmap_filesystem.o
 	$(CC) $(CFLAGS) $(INCLUDES) FilesystemReader.cpp $(OBJECTS) -oFSReader
 
 readtest: ReadTest.cpp mmap_filesystem.o

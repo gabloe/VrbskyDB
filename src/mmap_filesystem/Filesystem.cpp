@@ -331,7 +331,7 @@ void Storage::Filesystem::readMetadata() {
 						MREMAP_MAYMOVE);
 	}
 
-    std::cout << "Number of pages: " << filesystem.numPages << std::endl;
+    	std::cout << "Number of pages: " << filesystem.numPages << std::endl;
 
 	Block b = loadBlock(1);
 	uint64_t metadata_size = calculateSize(b);
