@@ -82,16 +82,7 @@ void Storage::Filesystem::write(File *file, const char *data, uint64_t len) {
 			memcpy(block.buffer, data + pos, BLOCK_SIZE);
 			// Grab a new block
 			uint64_t next;
-			if (block.next == 0) {
-				next = getBlock();
-			} else {
-				next = block.next;
-				// Check if the next block is dirty
-				Block b = loadBlock(next);
-				if (b.dirty) {
-					next = getBlock();
-				}
-			}
+			next = getBlock();
 			block.used_space = BLOCK_SIZE;
 			block.next = next;
 			block.dirty = true;
@@ -113,6 +104,9 @@ void Storage::Filesystem::write(File *file, const char *data, uint64_t len) {
 }
 
 void Storage::Filesystem::addToFreeList(uint64_t block) {
+	Block b = loadBlock(block);
+	b.dirty = false;
+	writeBlock(b);
 	if (metadata.firstFree == 0) {
 		metadata.firstFree = block;
 	} else {
@@ -121,6 +115,7 @@ void Storage::Filesystem::addToFreeList(uint64_t block) {
 			b = loadBlock(b.next);
 		}
 		b.next = block;
+		b.dirty = false;
 		writeBlock(b);
 	}
 }
@@ -242,9 +237,11 @@ void Storage::Filesystem::growFilesystem() {
 uint64_t Storage::Filesystem::getBlock() {
 	uint64_t bid;
 	Block b;
+	// Free list is empty.  Grow the filesystem.
 	if (metadata.firstFree == 0) {
 		growFilesystem();
 	}
+	// We know there is space available
 	bid = metadata.firstFree;
 	b = loadBlock(bid);
 	metadata.firstFree = b.next;
@@ -315,6 +312,7 @@ void Storage::Filesystem::initMetadata() {
 
 void Storage::Filesystem::readMetadata() {
 	uint64_t pos = 0;
+	// Peek at the number of pages
 	memcpy(&filesystem.numPages, filesystem.data + 3*sizeof(uint64_t), sizeof(uint64_t));
 	if (filesystem.numPages > 1) {
 		filesystem.data = (char*)t_mremap(filesystem.fd,
@@ -326,7 +324,6 @@ void Storage::Filesystem::readMetadata() {
 
 	Block b = loadBlock(1);
 	uint64_t metadata_size = calculateSize(b);
-	uint64_t files_size = metadata_size - (3*sizeof(uint64_t));
 	metadata.file = File("__METADATA__", 1, metadata_size);
 
 	char *buffer = read(&metadata.file);
@@ -370,9 +367,6 @@ void Storage::Filesystem::writeMetadata() {
 	pos += files_size;
 
 	write(&metadata.file, buf, size);
-
-	uint64_t num_pages;
-	memcpy(&num_pages, filesystem.data + 3 * sizeof(uint64_t), sizeof(uint64_t));
 
 	free(files);
 	free(buf);

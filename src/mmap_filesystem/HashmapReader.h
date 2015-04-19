@@ -19,7 +19,7 @@ namespace Storage {
 				pos += sizeof(uint64_t);
 
 				char *key_tmp = (char*)malloc(key_size);
-				memcpy(key_tmp, buffer + pos, key_size);
+				strncpy(key_tmp, buffer + pos, key_size);
 				std::string key(key_tmp, key_size);
 				free(key_tmp);
 				pos += key_size;
@@ -36,7 +36,8 @@ namespace Storage {
 			std::map<std::string, T> result;
 			uint64_t size = file.size;
 			char *buffer = fs->read(&file);
-			result = read_buffer(buffer, 0, size);
+			result = read_buffer(&buffer, 0, size);
+			free(buffer);
 			return result;
 		}
 	private:

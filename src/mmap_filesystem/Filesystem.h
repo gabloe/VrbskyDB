@@ -12,6 +12,7 @@
 
 #define BLOCK_SIZE 64
 #define BLOCKS_PER_PAGE 128
+#define UNUSED(X)
 
 struct Block {
 	uint64_t id;
@@ -65,7 +66,7 @@ inline void *bsd_mremap(int fd, void *old_address, size_t old_size, size_t new_s
 #define t_mremap bsd_mremap
 #define MREMAP_MAYMOVE 0
 #else
-inline void *linux_mremap(int fd, void *old_address, size_t old_size, size_t new_size, int flags) {
+inline void *linux_mremap(int UNUSED(fd), void *old_address, size_t old_size, size_t new_size, int flags) {
 	return mremap(old_address, old_size, new_size, flags);
 }
 #define t_mremap linux_mremap 

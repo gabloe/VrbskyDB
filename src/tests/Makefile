@@ -6,12 +6,11 @@ INCLUDE_DIR=../include/
 INCLUDES=-I$(INCLUDE_DIR)
 OS_OBJS=$(OBJECTS)File.o $(OBJECTS)FileSystem.o $(OBJECTS)FileReader.o $(OBJECTS)FileWriter.o
 
-OUTPUT=$(OUT)LinearHashTest $(OUT)ParserTest $(OUT)UUIDTest $(OUT)EndianTest \
+OUTPUT=$(OUT)LinearHashTest $(OUT)ParserTest $(OUT)Insert $(OUT)EndianTest \
 	$(OUT)CreateTest $(OUT)FileTest $(OUT)WriteReadTest \
 	$(OUT)WriteTest \
 	$(OUT)LargeWriteTest $(OUT)LargeReadTest \
-	$(OUT)ReadAllTest $(OUT)ReplaceTest	\
-	$(OUT)Insert
+	$(OUT)ReadAllTest $(OUT)ReplaceTest
 
 all: $(OUT) PARSING OS $(OUTPUT)
 
