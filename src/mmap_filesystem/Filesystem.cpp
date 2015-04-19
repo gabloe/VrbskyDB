@@ -76,7 +76,6 @@ void Storage::Filesystem::write(File *file, const char *data, uint64_t len) {
 	uint64_t to_write = len;
 	uint64_t pos = 0;
 	Block block = loadBlock(file->block);
-	std::cout << "Writing file starting at block: " << block.id << std::endl;
 	
 	while (to_write > 0) {
 		if (to_write > BLOCK_SIZE) {
@@ -89,12 +88,13 @@ void Storage::Filesystem::write(File *file, const char *data, uint64_t len) {
 				next = block.next;
 				// Check if the next block is dirty
 				Block b = loadBlock(next);
-				if (b.used_space > 0) {
+				if (b.dirty) {
 					next = getBlock();
 				}
 			}
 			block.used_space = BLOCK_SIZE;
 			block.next = next;
+			block.dirty = true;
 			writeBlock(block);
 			block = loadBlock(block.next);
 			to_write -= BLOCK_SIZE;
@@ -103,6 +103,7 @@ void Storage::Filesystem::write(File *file, const char *data, uint64_t len) {
 			memcpy(block.buffer, data + pos, to_write);
 			block.next = 0;
 			block.used_space = to_write;
+			block.dirty = true;
 			writeBlock(block);
 			to_write = 0;
 			pos += to_write;
@@ -163,7 +164,7 @@ File Storage::Filesystem::createNewFile(std::string name) {
 Block Storage::Filesystem::loadBlock(uint64_t blockID) {
 	Block block;
 	uint64_t id = blockID-1;
-	uint64_t offset = id * sizeof(Block);
+	uint64_t offset = id * BLOCK_SIZE_ACTUAL;
 	uint64_t pos = offset;
 	
 	memcpy(&block.id, filesystem.data + pos, sizeof(uint64_t));
@@ -175,10 +176,13 @@ Block Storage::Filesystem::loadBlock(uint64_t blockID) {
 	memcpy(&block.next, filesystem.data + pos ,sizeof(uint64_t));
 	pos += sizeof(uint64_t);
 
+	memcpy(&block.dirty, filesystem.data + pos, sizeof(bool));
+	pos += sizeof(bool);
+
 	memcpy(block.buffer, filesystem.data + pos, BLOCK_SIZE);
 	pos += BLOCK_SIZE;
 
-	assert(pos-offset == sizeof(Block));
+	assert(pos-offset == BLOCK_SIZE_ACTUAL);
 
 	return block;
 }
@@ -192,11 +196,23 @@ void Storage::Filesystem::writeBlock(Block block) {
 	while (id >= filesystem.numPages * BLOCKS_PER_PAGE) {
 		growFilesystem();
 	}
-	memcpy(filesystem.data + id * sizeof(Block), &block.id, sizeof(uint64_t));
-	memcpy(filesystem.data + (id * sizeof(Block)) + sizeof(uint64_t), &block.used_space, sizeof(uint64_t));
-	memcpy(filesystem.data + (id * sizeof(Block)) + 2*sizeof(uint64_t), &block.next, sizeof(uint64_t));
-	memcpy(filesystem.data + (id * sizeof(Block)) + 3*sizeof(uint64_t), block.buffer, BLOCK_SIZE);
-	msync(filesystem.data + id * sizeof(Block), sizeof(Block), MS_SYNC);
+	uint64_t pos = id * BLOCK_SIZE_ACTUAL;
+	memcpy(filesystem.data + pos, &block.id, sizeof(uint64_t));
+	pos += sizeof(uint64_t);
+
+	memcpy(filesystem.data + pos, &block.used_space, sizeof(uint64_t));
+	pos += sizeof(uint64_t);
+
+	memcpy(filesystem.data + pos, &block.next, sizeof(uint64_t));
+	pos += sizeof(uint64_t);
+
+	memcpy(filesystem.data + pos, &block.dirty, sizeof(bool));
+	pos += sizeof(bool);
+
+	memcpy(filesystem.data + pos, block.buffer, BLOCK_SIZE);
+	pos += BLOCK_SIZE;
+
+	msync(filesystem.data + id * BLOCK_SIZE_ACTUAL, BLOCK_SIZE_ACTUAL, MS_SYNC);
 }
 
 /*
@@ -204,7 +220,6 @@ void Storage::Filesystem::writeBlock(Block block) {
 */
 
 void Storage::Filesystem::growFilesystem() {
-	std::cout << "Growing filesystem to " << filesystem.numPages + 1 << std::endl;
 	posix_fallocate(filesystem.fd, PAGESIZE * filesystem.numPages, PAGESIZE * (filesystem.numPages+1));
 	filesystem.data = (char*)t_mremap(filesystem.fd,
 					filesystem.data,
@@ -212,12 +227,11 @@ void Storage::Filesystem::growFilesystem() {
 					PAGESIZE * (filesystem.numPages+1),
 					MREMAP_MAYMOVE);
 	filesystem.numPages++;
-	msync(filesystem.data, PAGESIZE * filesystem.numPages, MS_SYNC);
 	uint64_t firstBlock = (BLOCKS_PER_PAGE * (filesystem.numPages-1)) + 1;
 	chainPage(firstBlock);
 	// Add page to free list
 	addToFreeList(firstBlock);
-	//writeMetadata();
+	writeMetadata();
 }
 
 /*
@@ -271,6 +285,7 @@ void Storage::Filesystem::initFilesystem(bool initialFill) {
 void Storage::Filesystem::chainPage(uint64_t startBlock) {
 	Block b;
 	b.used_space = 0;
+	b.dirty = false;
     	std::fill( b.buffer , b.buffer + BLOCK_SIZE, 0 );
 	for (uint64_t i=0; i<BLOCKS_PER_PAGE; ++i) {
 		b.id = i + startBlock;
@@ -300,9 +315,7 @@ void Storage::Filesystem::initMetadata() {
 
 void Storage::Filesystem::readMetadata() {
 	uint64_t pos = 0;
-	memcpy(&filesystem.numPages, filesystem.data, sizeof(uint64_t));
-	std::cout << "The number of pages: " << filesystem.numPages << std::endl;
-	pos += sizeof(uint64_t);
+	memcpy(&filesystem.numPages, filesystem.data + 3*sizeof(uint64_t), sizeof(uint64_t));
 	if (filesystem.numPages > 1) {
 		filesystem.data = (char*)t_mremap(filesystem.fd,
 						filesystem.data, 
@@ -311,21 +324,22 @@ void Storage::Filesystem::readMetadata() {
 						MREMAP_MAYMOVE);
 	}
 
-	memcpy(&metadata.numFiles, filesystem.data + pos, sizeof(uint64_t));
-	pos += sizeof(uint64_t);
-	
-	memcpy(&metadata.firstFree, filesystem.data + pos, sizeof(uint64_t));
-	pos += sizeof(uint64_t);
-
 	Block b = loadBlock(1);
 	uint64_t metadata_size = calculateSize(b);
-	uint64_t files_size = metadata_size - pos;
+	uint64_t files_size = metadata_size - (3*sizeof(uint64_t));
 	metadata.file = File("__METADATA__", 1, metadata_size);
 
 	char *buffer = read(&metadata.file);
+	pos = sizeof(uint64_t);
 
-	HashmapReader<uint64_t> reader(metadata.file, *this);
-	metadata.files = reader.read_buffer(buffer, pos, files_size);
+	memcpy(&metadata.numFiles, buffer + pos, sizeof(uint64_t));
+	pos += sizeof(uint64_t);
+
+	memcpy(&metadata.firstFree, buffer + pos, sizeof(uint64_t));
+	pos += sizeof(uint64_t);
+
+	HashmapReader<uint64_t> reader(metadata.file, this);
+	metadata.files = reader.read_buffer(buffer, pos, metadata_size);
 	free(buffer);
 }
 
@@ -334,36 +348,34 @@ void Storage::Filesystem::readMetadata() {
 */
 
 void Storage::Filesystem::writeMetadata() {
-	HashmapWriter<uint64_t> writer(metadata.file, *this);	
+	HashmapWriter<uint64_t> writer(metadata.file, this);	
 	uint64_t size = 3 * sizeof(uint64_t);
 	uint64_t pos = 0;
-	char *files;
-	uint64_t files_size = writer.write_buffer(metadata.files, files);
+	uint64_t files_size = 0;
+
+	char *files = writer.write_buffer(metadata.files, &files_size);
 	size += files_size;
-	char *buffer = (char*)malloc(size);
+	char *buf = (char*)malloc(size);
 
-	memcpy(buffer+pos, &filesystem.numPages, sizeof(uint64_t));
+	memcpy(buf+pos, &filesystem.numPages, sizeof(uint64_t));
 	pos += sizeof(uint64_t);
 
-	memcpy(buffer+pos, &metadata.numFiles, sizeof(uint64_t));
+	memcpy(buf+pos, &metadata.numFiles, sizeof(uint64_t));
 	pos += sizeof(uint64_t);
 
-	memcpy(buffer+pos, &metadata.firstFree, sizeof(uint64_t));
+	memcpy(buf+pos, &metadata.firstFree, sizeof(uint64_t));
 	pos += sizeof(uint64_t);
 
-	memcpy(buffer+pos, files, files_size);
+	memcpy(buf+pos, files, files_size);
 	pos += files_size;
 
-	write(&metadata.file, buffer, pos);
-
-	std::cout << "Actual numpages: " << filesystem.numPages << std::endl;
+	write(&metadata.file, buf, size);
 
 	uint64_t num_pages;
-	memcpy(&num_pages, filesystem.data, sizeof(uint64_t));
-	std::cout << "Wrote numpages: " << num_pages << std::endl;
+	memcpy(&num_pages, filesystem.data + 3 * sizeof(uint64_t), sizeof(uint64_t));
 
 	free(files);
-	free(buffer);
+	free(buf);
 }
 
 /*
