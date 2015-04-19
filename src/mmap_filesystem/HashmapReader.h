@@ -27,6 +27,8 @@ namespace Storage {
 				T val;
 				memcpy(&val, buffer + pos, sizeof(T));
 				pos += sizeof(T);
+		
+				std::cout << "result[" << key << "] = " << val << std::endl;
 	
 				result[key] = val;
 			}

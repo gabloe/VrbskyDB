@@ -10,8 +10,8 @@
 #include <unistd.h>
 #include <iostream>
 
-#define BLOCK_SIZE 128
-#define BLOCKS_PER_PAGE 2048 
+#define PAGESIZE 4096
+#define BLOCK_SIZE 40 
 
 struct Block {
 	uint64_t id;
@@ -20,7 +20,7 @@ struct Block {
 	char buffer[BLOCK_SIZE];
 };
 
-#define PAGESIZE sizeof(Block) * BLOCKS_PER_PAGE
+#define BLOCKS_PER_PAGE PAGESIZE / sizeof(Block)
 
 #ifdef __APPLE__
 inline int bsd_fallocate(int, off_t, off_t);
