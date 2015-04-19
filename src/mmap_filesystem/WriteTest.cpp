@@ -14,4 +14,5 @@ int main(void) {
 		fs->write(&f, lorem.c_str(), lorem.size());
 	}
 	fs->shutdown();
+    delete fs;
 }
