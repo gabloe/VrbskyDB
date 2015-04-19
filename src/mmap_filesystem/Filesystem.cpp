@@ -322,6 +322,8 @@ void Storage::Filesystem::readMetadata() {
 						MREMAP_MAYMOVE);
 	}
 
+    std::cout << "Number of pages: " << filesystem.numPages << std::endl;
+
 	Block b = loadBlock(1);
 	uint64_t metadata_size = calculateSize(b);
 	metadata.file = File("__METADATA__", 1, metadata_size);
@@ -349,6 +351,8 @@ void Storage::Filesystem::writeMetadata() {
 	uint64_t size = 3 * sizeof(uint64_t);
 	uint64_t pos = 0;
 	uint64_t files_size = 0;
+
+    std::cout << "Writing " << filesystem.numPages << " files" << std::endl;
 
 	char *files = writer.write_buffer(metadata.files, &files_size);
 	size += files_size;
