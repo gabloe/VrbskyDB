@@ -271,6 +271,7 @@ void Storage::Filesystem::initFilesystem(bool initialFill) {
 		metadata.file = open_file("__METADATA__");
 		writeMetadata();
 	} else {
+		metadata.file = open_file("__METADATA__");
 		readMetadata();
 	}
 }
@@ -313,13 +314,21 @@ void Storage::Filesystem::initMetadata() {
 void Storage::Filesystem::readMetadata() {
 	uint64_t pos = 0;
 	// Peek at the number of pages
-	memcpy(&filesystem.numPages, filesystem.data + 3*sizeof(uint64_t), sizeof(uint64_t));
+    memcpy(&filesystem.numPages,    filesystem.data + 0 * sizeof(uint64_t) , sizeof(uint64_t) );
+    memcpy(&metadata.numFiles,      filesystem.data + 1 * sizeof(uint64_t) , sizeof(uint64_t) );
+    memcpy(&metadata.firstFree,     filesystem.data + 2 * sizeof(uint64_t) , sizeof(uint64_t) );
+
+	//memcpy(&filesystem.numPages, filesystem.data + 3*sizeof(uint64_t), sizeof(uint64_t));
 	if (filesystem.numPages > 1) {
 		filesystem.data = (char*)t_mremap(filesystem.fd,
 						filesystem.data, 
 						PAGESIZE,
 						PAGESIZE * filesystem.numPages,
 						MREMAP_MAYMOVE);
+        if(!filesystem.data) {
+            std::cerr << "Error remapping" << std::endl;
+            std::exit(-1);
+        }
 	}
 
     std::cout << "Number of pages: " << filesystem.numPages << std::endl;
