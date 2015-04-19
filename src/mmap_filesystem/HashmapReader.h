@@ -10,9 +10,9 @@ namespace Storage {
 	class HashmapReader {
 	public:
 		HashmapReader(File &file_, Filesystem &fs_): fs(fs_), file(file_) {}
-		std::map<std::string, T> read_buffer(char *buffer, uint64_t size) {
+		std::map<std::string, T> read_buffer(char *buffer, uint64_t offset, uint64_t size) {
 			std::map<std::string, T> result;
-			uint64_t pos = 0;
+			uint64_t pos = offset;
 			char *key_tmp = NULL;
 			while (pos < size) {
 				uint64_t key_size;
@@ -27,7 +27,7 @@ namespace Storage {
 				T val;
 				memcpy(&val, buffer + pos, sizeof(T));
 				pos += sizeof(T);
-
+	
 				result[key] = val;
 			}
 			free(key_tmp);
@@ -37,7 +37,7 @@ namespace Storage {
 			std::map<std::string, T> result;
 			uint64_t size = file.size;
 			char *buffer = fs.read(&file);
-			result = read_buffer(buffer, size);
+			result = read_buffer(buffer, 0, size);
 			return result;
 		}
 	private:

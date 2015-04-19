@@ -20,15 +20,27 @@ namespace Storage {
 				uint64_t key_size = key.size();
 				T val = it->second;
 
-				growBuffer(buffer, pos, size);
+				if (pos > size) {
+					size *= 2;
+					buffer = (char*)realloc(buffer, size);
+				}
+
 				memcpy(buffer+pos, &key_size, sizeof(uint64_t));
 				pos += sizeof(uint64_t);
 
-				growBuffer(buffer, pos, size);
+				if (pos > size) {
+					size *= 2;
+					buffer = (char*)realloc(buffer, size);
+				}
+
 				memcpy(buffer+pos, key.c_str(), key_size);
 				pos += key_size;
 
-				growBuffer(buffer, pos, size);
+				if (pos > size) {
+					size *= 2;
+					buffer = (char*)realloc(buffer, size);
+				}
+
 				memcpy(buffer+pos, &val, sizeof(T));
 				pos += sizeof(T);
 			}
@@ -44,12 +56,6 @@ namespace Storage {
 	private:
 		Filesystem &fs;
 		File &file;
-		void growBuffer(char *&buffer, uint64_t pos, uint64_t &size) {
-			if (pos > size) {
-				size *= 2;
-				buffer = (char*)realloc(buffer,size);
-			}
-		}
 	};
 }
 

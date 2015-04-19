@@ -177,7 +177,7 @@ void Storage::Filesystem::writeBlock(Block block) {
 	memcpy(filesystem.data + (id * sizeof(Block)) + sizeof(uint64_t), &block.used_space, sizeof(uint64_t));
 	memcpy(filesystem.data + (id * sizeof(Block)) + 2*sizeof(uint64_t), &block.next, sizeof(uint64_t));
 	memcpy(filesystem.data + (id * sizeof(Block)) + 3*sizeof(uint64_t), block.buffer, BLOCK_SIZE);
-	msync(filesystem.data, filesystem.numPages * PAGESIZE, MS_ASYNC);
+	//msync(filesystem.data, filesystem.numPages * PAGESIZE, MS_ASYNC);
 }
 
 /*
@@ -294,7 +294,6 @@ void Storage::Filesystem::readMetadata() {
 	memcpy(&metadata.firstFree, filesystem.data + pos, sizeof(uint64_t));
 	pos += sizeof(uint64_t);
 
-
 	Block b = loadBlock(1);
 	uint64_t metadata_size = calculateSize(b);
 	uint64_t files_size = metadata_size - pos;
@@ -303,7 +302,7 @@ void Storage::Filesystem::readMetadata() {
 	char *buffer = read(&metadata.file);
 
 	HashmapReader<uint64_t> reader(metadata.file, *this);
-	metadata.files = reader.read_buffer(buffer + pos, files_size);
+	metadata.files = reader.read_buffer(buffer, pos, files_size);
 	free(buffer);
 }
 
@@ -315,6 +314,9 @@ void Storage::Filesystem::writeMetadata() {
 	HashmapWriter<uint64_t> writer(metadata.file, *this);	
 	uint64_t size = 3 * sizeof(uint64_t);
 	uint64_t pos = 0;
+	char *files;
+	uint64_t files_size = writer.write_buffer(metadata.files, files);
+	size += files_size;
 	char *buffer = (char*)malloc(size);
 
 	memcpy(buffer+pos, &filesystem.numPages, sizeof(uint64_t));
@@ -326,15 +328,10 @@ void Storage::Filesystem::writeMetadata() {
 	memcpy(buffer+pos, &metadata.firstFree, sizeof(uint64_t));
 	pos += sizeof(uint64_t);
 
-	char *files;
-	uint64_t files_size = writer.write_buffer(metadata.files, files);
-	size += files_size;
-	buffer = (char*)realloc(buffer, size);
 	memcpy(buffer+pos, files, files_size);	
-	write(&metadata.file,buffer,size);
+	write(&metadata.file, buffer, size);
 	free(files);
 	free(buffer);
-	msync(filesystem.data, filesystem.numPages * PAGESIZE, MS_ASYNC);
 }
 
 /*
