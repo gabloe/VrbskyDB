@@ -134,6 +134,7 @@ std::vector<std::string> Storage::Filesystem::getFilenames() {
 */
 
 char *Storage::Filesystem::read(File *file) {
+    Assert( "Filesize is too big" , file->size , file->size < 1000 );
 	char *buffer = (char*)malloc(file->size);
 	uint64_t read_size = 0;
 	Block block = loadBlock(file->block);
@@ -280,7 +281,7 @@ void Storage::Filesystem::initFilesystem(bool initialFill) {
 		metadata.file = open_file("__METADATA__");
 		writeMetadata();
 	} else {
-		metadata.file = open_file("__METADATA__");
+		//metadata.file = open_file("__METADATA__");
 		readMetadata();
 	}
 }
@@ -322,12 +323,14 @@ void Storage::Filesystem::initMetadata() {
 
 void Storage::Filesystem::readMetadata() {
 	uint64_t pos = 0;
-	// Peek at the number of pages
+
+	// Read numPages (first position)
     memcpy(&filesystem.numPages,    filesystem.data + 0 * sizeof(uint64_t) , sizeof(uint64_t) );
+	// Read numFiles (second position)
     memcpy(&metadata.numFiles,      filesystem.data + 1 * sizeof(uint64_t) , sizeof(uint64_t) );
+	// Read firstFree (third position)
     memcpy(&metadata.firstFree,     filesystem.data + 2 * sizeof(uint64_t) , sizeof(uint64_t) );
 
-	//memcpy(&filesystem.numPages, filesystem.data + 3*sizeof(uint64_t), sizeof(uint64_t));
 	if (filesystem.numPages > 1) {
 		filesystem.data = (char*)t_mremap(filesystem.fd,
 						filesystem.data, 
@@ -340,7 +343,6 @@ void Storage::Filesystem::readMetadata() {
         }
 	}
 
-    	std::cout << "Number of pages: " << filesystem.numPages << std::endl;
 
 	Block b = loadBlock(1);
 	uint64_t metadata_size = calculateSize(b);
@@ -370,21 +372,24 @@ void Storage::Filesystem::writeMetadata() {
 	uint64_t pos = 0;
 	uint64_t files_size = 0;
 
-    std::cout << "Writing " << filesystem.numPages << " files" << std::endl;
-
 	char *files = writer.write_buffer(metadata.files, &files_size);
 	size += files_size;
+    Assert( "Size is too big" , size < 20000 );
 	char *buf = (char*)malloc(size);
 
+    // Write numPages first
 	memcpy(buf+pos, &filesystem.numPages, sizeof(uint64_t));
 	pos += sizeof(uint64_t);
 
+    // Write numFiles second
 	memcpy(buf+pos, &metadata.numFiles, sizeof(uint64_t));
 	pos += sizeof(uint64_t);
 
+    // Write firstFree third
 	memcpy(buf+pos, &metadata.firstFree, sizeof(uint64_t));
 	pos += sizeof(uint64_t);
 
+    // Write data fourth
 	memcpy(buf+pos, files, files_size);
 	pos += files_size;
 
