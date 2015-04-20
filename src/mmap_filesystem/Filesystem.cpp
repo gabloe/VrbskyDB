@@ -66,6 +66,7 @@ File Storage::Filesystem::open_file(std::string name) {
         File file(name, block, size);
         return file;
     } else {
+        std::cout << "The file " << name << " does not exist" << std::endl;
         File file = createNewFile(name);
         return file;
     }

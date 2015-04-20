@@ -20,4 +20,5 @@ void write( std::string prefix ) {
 int main(void) {
     write( "herp" );
     write( "derp" );
+    return 0;
 }
