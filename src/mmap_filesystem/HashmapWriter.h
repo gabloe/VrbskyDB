@@ -53,6 +53,7 @@ namespace Storage {
                     uint64_t size;
                     buffer = write_buffer(data, &size);			
                     fs->write(&file,buffer,size);
+		    free(buffer);
                     return size;
                 }
             private:
