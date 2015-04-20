@@ -30,5 +30,6 @@ clean:
 	rm -f *.db
 	rm -f ReadTest
 	rm -f WriteTest
+	rm -f CreateTest
 
 .PHONY: clean
