@@ -36,7 +36,7 @@ Storage::Filesystem::Filesystem(std::string data_): data_fname(data_) {
 
 /*
    Calculates the total size used by a chain of blocks.
-   */
+*/
 
 uint64_t Storage::Filesystem::calculateSize(Block b) {
     uint64_t size = 0;
@@ -84,8 +84,10 @@ void Storage::Filesystem::write(File *file, const char *data, uint64_t len) {
         if (to_write > BLOCK_SIZE) {
             memcpy(block.buffer, data + pos, BLOCK_SIZE);
             // Grab a new block
-            uint64_t next;
-            next = getBlock();
+            uint64_t next = block.next;
+	    if (next == 0) {
+            	next = getBlock();
+	    }
             block.used_space = BLOCK_SIZE;
             block.next = next;
             block.dirty = true;
