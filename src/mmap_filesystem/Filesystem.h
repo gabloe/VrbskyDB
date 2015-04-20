@@ -22,7 +22,7 @@ struct Block {
 	uint64_t next;
 	char buffer[BLOCK_SIZE];
 };
-#define BLOCK_SIZE_ACTUAL (3*sizeof(uint64_t)) + BLOCK_SIZE
+#define BLOCK_SIZE_ACTUAL (3*sizeof(uint64_t) + BLOCK_SIZE)
 #define PAGESIZE BLOCK_SIZE_ACTUAL * BLOCKS_PER_PAGE
 
 #ifdef __APPLE__

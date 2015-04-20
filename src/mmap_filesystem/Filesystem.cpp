@@ -173,7 +173,6 @@ std::vector<std::string> Storage::Filesystem::getFilenames() {
    */
 
 char *Storage::Filesystem::read(File *file) {
-    std::cout << "Reading" << std::endl;
     if (file->size == 0) {
         return NULL;
     }
@@ -210,7 +209,7 @@ File Storage::Filesystem::createNewFile(std::string name) {
 
 Block Storage::Filesystem::loadBlock(uint64_t blockID) {
     Block block;
-    uint64_t id = blockID-1;
+    uint64_t id = blockID - 1;
     uint64_t offset = id * BLOCK_SIZE_ACTUAL;
     uint64_t pos = offset;
 
@@ -236,7 +235,7 @@ Block Storage::Filesystem::loadBlock(uint64_t blockID) {
    */
 
 void Storage::Filesystem::writeBlock(Block block) {
-    uint64_t id = block.id-1;
+    uint64_t id = block.id - 1;
     while (id >= filesystem.numPages * BLOCKS_PER_PAGE) {
         growFilesystem();
     }
@@ -268,13 +267,16 @@ void Storage::Filesystem::growFilesystem() {
             PAGESIZE * filesystem.numPages, 
             PAGESIZE * (filesystem.numPages+1),
             MREMAP_MAYMOVE);
+
     if( !filesystem.data ) {
         std::cerr << "Error when growing filesystem" << std::endl;
         std::exit( -1 );
     }
+
     filesystem.numPages++;
     uint64_t firstBlock = (BLOCKS_PER_PAGE * (filesystem.numPages-1)) + 1;
     chainPage(firstBlock);
+
     // Add page to free list
     addToFreeList(firstBlock);
     writeMetadata();
@@ -396,7 +398,6 @@ void Storage::Filesystem::readMetadata() {
     pos += sizeof(uint64_t);
 
     memcpy(&metadata.firstFree, buffer + pos, sizeof(uint64_t));
-    std::cout << "First free: " << metadata.firstFree << std::endl;
     pos += sizeof(uint64_t);
 
     // */
@@ -456,7 +457,6 @@ void Storage::Filesystem::writeMetadata() {
    */
 
 void Storage::Filesystem::shutdown() {
-    writeMetadata();
     writeMetadata();
     close(filesystem.fd);
     munmap(filesystem.data, filesystem.numPages * PAGESIZE);
