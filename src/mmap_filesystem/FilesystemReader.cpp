@@ -25,4 +25,5 @@ int main(int argc, char **argv) {
 	}
 		
 	fs->shutdown();
+	delete fs;
 }
