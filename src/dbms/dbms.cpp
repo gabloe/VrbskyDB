@@ -1278,6 +1278,15 @@ int main(int argc, char **argv) {
 
     rl_startup_hook = start_readline;
 
+    std::string queryLogFile("queries.log");
+
+    if (file_exists(queryLogFile.c_str())) {
+	read_history(queryLogFile.c_str());
+    } else {
+	std::fstream out(queryLogFile.c_str(), std::fstream::out);
+	out.flush();
+	out.close();
+    }
     std::cout << "Enter a query (q to quit):" << std::endl;
     while (1) {
         buf = readline("> ");
@@ -1297,6 +1306,8 @@ int main(int argc, char **argv) {
         Parsing::Parser p(q);
         Parsing::Query *query = p.parse();
         if (query) {
+	    // If the query parses, add it to a log.
+            append_history(1, queryLogFile.c_str());
             execute( *query, *meta, *fs );
             delete query;
         }
