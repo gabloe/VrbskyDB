@@ -80,6 +80,6 @@ $(OUT):
 
 clean:
 	rm -f $(OUTPUT)
-	rm -f output.dat test.dat
+	rm -f *.dat
 
 .PHONY: clean
