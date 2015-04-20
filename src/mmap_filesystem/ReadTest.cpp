@@ -6,7 +6,7 @@
 #include "HashmapWriter.h"
 #include "HashmapReader.h"
 
-int prefixRead(std::string prefix, int howMany) {
+void prefixRead(std::string prefix, int howMany) {
 	Storage::Filesystem *fs = new Storage::Filesystem("data.db");
     for (int i=0; i< howMany; i++) {
         std::string name(prefix + std::to_string(i));
