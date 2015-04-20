@@ -87,7 +87,7 @@ void Storage::Filesystem::write(File *file, const char *data, uint64_t len) {
     while (to_write > 0) {
         uint64_t t_w = std::min( to_write , BLOCK_SIZE );
         memcpy(block.buffer, data + pos, t_w );
-        block.used_space = to_write;
+        block.used_space = t_w;
         block.dirty = true;
 
         to_write -= t_w;
