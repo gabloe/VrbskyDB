@@ -67,8 +67,7 @@ File Storage::Filesystem::open_file(std::string name) {
         File file(name, block, size);
         return file;
     } else {
-        File file = createNewFile(name);
-        return file;
+        return createNewFile(name);
     }
 }
 
@@ -149,10 +148,10 @@ void Storage::Filesystem::addToFreeList(uint64_t block) {
     if (metadata.firstFree == 0) {
         metadata.firstFree = block;
     } else {
+        // Go to last block and append
         Block b = loadBlock(metadata.firstFree);
         while (b.next != 0) {
             b = loadBlock(b.next);
-	    b.used_space = 0;
         }
         b.next = block;
         writeBlock(b);
@@ -328,7 +327,6 @@ void Storage::Filesystem::initFilesystem(bool initialFill) {
         metadata.file = open_file("__METADATA__");
         writeMetadata();
     } else {
-        //metadata.file = open_file("__METADATA__");
         readMetadata();
     }
 }
@@ -425,7 +423,7 @@ void Storage::Filesystem::writeMetadata() {
     uint64_t pos = 0;
     uint64_t files_size = 0;
 
-    //printJunk();
+    printJunk();
     
     uint64_t test = filesystem.numPages + metadata.firstFree + metadata.numFiles;
 
@@ -453,6 +451,7 @@ void Storage::Filesystem::writeMetadata() {
     write(&metadata.file, buf, size);
     test -= (filesystem.numPages + metadata.firstFree + metadata.numFiles);
     if(test) {
+        std::cout << "Metadata updated, re-write" << std::endl;
         memcpy(buf + 0 * sizeof(uint64_t), &filesystem.numPages, sizeof(uint64_t));
         memcpy(buf + 1 * sizeof(uint64_t), &metadata.numFiles, sizeof(uint64_t));
         memcpy(buf + 2 * sizeof(uint64_t), &metadata.firstFree, sizeof(uint64_t));
