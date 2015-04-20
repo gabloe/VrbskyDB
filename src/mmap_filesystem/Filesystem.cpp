@@ -13,6 +13,13 @@
 #include "HashmapReader.h"
 #include "HashmapWriter.h"
 
+#define SET_FREE(SPOT,NEW) {    \
+    uint64_t old = SPOT;        \
+    uint64_t now = NEW;         \
+    std::cout << "Changing from " << old << " to " << now << " at line " << __LINE__ << std::endl; \
+    SPOT = NEW;                 \
+}
+
 /*
    Constructor--
    Checks if the filesystem and metadata exist.  If not, it creates an initial page of data.
@@ -146,14 +153,16 @@ void Storage::Filesystem::write(File *file, const char *data, uint64_t len) {
 
 void Storage::Filesystem::addToFreeList(uint64_t block) {
     if (metadata.firstFree == 0) {
-        metadata.firstFree = block;
+        SET_FREE(metadata.firstFree,block);
+        //metadata.firstFree = block;
     } else {
         // Go to last block and append
         Block b = loadBlock(metadata.firstFree);
         while (b.next != 0) {
             b = loadBlock(b.next);
         }
-        b.next = block;
+        SET_FREE(b.next,block);
+        //b.next = block;
         writeBlock(b);
     }
 }
@@ -298,7 +307,8 @@ uint64_t Storage::Filesystem::getBlock() {
     // We know there is space available
     bid = metadata.firstFree;
     b = loadBlock(bid);
-    metadata.firstFree = b.next;
+    SET_FREE(metadata.firstFree,b.next);
+    //metadata.firstFree = b.next;
     b.next = 0;
     writeBlock(b);
     return bid;
@@ -357,7 +367,8 @@ void Storage::Filesystem::chainPage(uint64_t startBlock) {
 void Storage::Filesystem::initMetadata() {
     // Initial values
     metadata.numFiles = 0;
-    metadata.firstFree = 1;
+    SET_FREE(metadata.firstFree,1);
+    //metadata.firstFree = 1;
     filesystem.numPages = 1;
 }
 
@@ -384,16 +395,18 @@ void Storage::Filesystem::readMetadata() {
 
 
     Block b = loadBlock(1);
+    uint64_t tmpData = 0;
     uint64_t metadata_size = calculateSize(b);
     metadata.file = File("__METADATA__", 1, metadata_size);
 
     char *buffer = read(&metadata.file);
-    // Skip numPages, numFiles, and firstFree
+    // Skip numPages
     pos = 1 * sizeof(uint64_t);
     memcpy(&metadata.numFiles, buffer + pos, sizeof(uint64_t));
     pos += sizeof(uint64_t);
 
-    memcpy(&metadata.firstFree, buffer + pos, sizeof(uint64_t));
+    memcpy(&tmpData, buffer + pos, sizeof(uint64_t));
+    SET_FREE(metadata.firstFree,tmpData);
     pos += sizeof(uint64_t);
 
     HashmapReader<uint64_t> reader(metadata.file, this);
@@ -401,6 +414,7 @@ void Storage::Filesystem::readMetadata() {
     free(buffer);
     std::cout << "num pages:" << filesystem.numPages << std::endl;
     std::cout << "First free: " << metadata.firstFree << std::endl;
+    std::cout << "Read size is " << metadata_size << std::endl;
 }
 
 /*
@@ -444,7 +458,10 @@ void Storage::Filesystem::writeMetadata() {
     memcpy(buf+pos, files, files_size);
     pos += files_size;
 
+    std::cout << "Write size is " << files_size + 3 * sizeof(uint64_t) << std::endl;
+
     write(&metadata.file, buf, size);
+
     test -= (filesystem.numPages + metadata.firstFree + metadata.numFiles);
     if(test) {
         std::cout << "Metadata updated, re-write" << std::endl;
