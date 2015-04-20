@@ -227,6 +227,7 @@ void Storage::Filesystem::writeBlock(Block block) {
 */
 
 void Storage::Filesystem::growFilesystem() {
+    std::cout << "Growing" << std::endl;
 	posix_fallocate(filesystem.fd, PAGESIZE * filesystem.numPages, PAGESIZE * (filesystem.numPages+1));
 	filesystem.data = (char*)t_mremap(filesystem.fd,
 					filesystem.data,
@@ -338,6 +339,8 @@ void Storage::Filesystem::readMetadata() {
 	// Read firstFree (third position)
     memcpy(&metadata.firstFree,     filesystem.data + 2 * sizeof(uint64_t) , sizeof(uint64_t) );
 
+    std::cout << "First free: " << metadata.firstFree << std::endl;
+
 	if (filesystem.numPages > 1) {
 		filesystem.data = (char*)t_mremap(filesystem.fd,
 						filesystem.data, 
@@ -356,14 +359,15 @@ void Storage::Filesystem::readMetadata() {
 	metadata.file = File("__METADATA__", 1, metadata_size);
 
 	char *buffer = read(&metadata.file);
-	pos = sizeof(uint64_t);
-
+    // Skip numPages, numFiles, and firstFree
+	pos = 3 * sizeof(uint64_t);
+    /*
 	memcpy(&metadata.numFiles, buffer + pos, sizeof(uint64_t));
 	pos += sizeof(uint64_t);
 
 	memcpy(&metadata.firstFree, buffer + pos, sizeof(uint64_t));
 	pos += sizeof(uint64_t);
-
+    */
 	HashmapReader<uint64_t> reader(metadata.file, this);
 	metadata.files = reader.read_buffer(buffer, pos, metadata_size);
 	free(buffer);
