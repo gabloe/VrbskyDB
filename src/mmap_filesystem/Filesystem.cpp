@@ -262,7 +262,8 @@ uint64_t Storage::Filesystem::getBlock() {
 	bid = metadata.firstFree;
 	b = loadBlock(bid);
 	metadata.firstFree = b.next;
-    b.next = 0;
+    	b.next = 0;
+	writeBlock(b);
 	return bid;
 }
 
