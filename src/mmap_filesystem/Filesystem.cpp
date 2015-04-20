@@ -233,6 +233,10 @@ void Storage::Filesystem::growFilesystem() {
 					PAGESIZE * filesystem.numPages, 
 					PAGESIZE * (filesystem.numPages+1),
 					MREMAP_MAYMOVE);
+    if( !filesystem.data ) {
+        std::cerr << "Error when growing filesystem" << std::endl;
+        std::exit( -1 );
+    }
 	filesystem.numPages++;
 	uint64_t firstBlock = (BLOCKS_PER_PAGE * (filesystem.numPages-1)) + 1;
 	chainPage(firstBlock);
@@ -257,6 +261,7 @@ uint64_t Storage::Filesystem::getBlock() {
 	bid = metadata.firstFree;
 	b = loadBlock(bid);
 	metadata.firstFree = b.next;
+    b.next = 0;
 	return bid;
 }
 
