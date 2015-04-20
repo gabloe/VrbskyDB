@@ -14,6 +14,7 @@ void validate(std::string prefix , int howMany) {
 
 	Storage::Filesystem *fs = new Storage::Filesystem("data.db");
     auto files = fs->getFilenames();
+    int count = 0;
     for( auto n = files.begin() ; n != files.end() ; ++n ) {
         File f = fs->open_file( *n );
         Assert( "File size is incorrect" , f.size, f.size == 9 );
@@ -22,10 +23,15 @@ void validate(std::string prefix , int howMany) {
         Assert( "Number is wrong", idx , idx < howMany && idx >= 0 );
         Assert( "Already seen this number", tests[idx] == false );
         tests[idx] = true;
+        ++count;
+    }
+
+    if( count != howMany ) {
+        std::cout << "Missing " << howMany - count << " file(s) out of  " << howMany << " files" << std::endl;
     }
 	fs->shutdown();
 
-    for( int i = 0 ; i < howMany; ++i) Assert( "Missing a file", i  , tests[i] );
+    for( int i = 0 ; i < howMany; ++i) if( !tests[i] ) {std::cerr << "Missing file " << i << std::endl;};
 
     delete fs;
     delete tests;
@@ -55,9 +61,13 @@ void write( std::string prefix , int limit ) {
     delete fs;
 }
 
-int main(void) {
-    write( "herp" , 50000 );
-    validate("herp" , 50000 );
+int main( int argc , char *argv[]) {
+    int limit = 5000;
+    if( argc == 2 ) {
+        limit = atoi(argv[1] );
+    }
+    write( "herp" , limit );
+    validate("herp" , limit );
     printFiles(10);
     return 0;
 }
