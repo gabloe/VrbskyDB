@@ -31,7 +31,6 @@ void write( std::string prefix ) {
 
 int main(void) {
     write( "herp" );
-    printFiles();
     write( "derp" );
     printFiles();
     return 0;
