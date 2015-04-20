@@ -11,71 +11,13 @@
 #include "../parsing/Parser.h"
 #include "../parsing/Scanner.h"
 #include "../mmap_filesystem/Filesystem.h"
+#include "../mmap_filesystem/HashmapWriter.h"
+#include "../mmap_filesystem/HashmapReader.h"
 
 #include <readline/readline.h>
 #include <readline/history.h>
 #include <pretty.h>
 #include <UUID.h>
-
-void writeToFile( std::string fname , META &meta ) {
-    std::fstream output( fname , std::fstream::out | std::fstream::trunc | std::fstream::binary );
-
-    // Write how many
-    uint64_t len = meta.size();
-    output.write( reinterpret_cast<char*>( &len ) , sizeof(uint64_t));
-    
-    for( auto item = meta.begin() ; item != meta.end() ; ++item ) {
-        // Write key
-        output.write( reinterpret_cast<const char*>( &(item->first)) , sizeof(uint64_t));
-        // Write value length
-        len = item->second.size();
-        output.write( reinterpret_cast<const char*>( &len ) , sizeof(uint64_t) );
-        // Write value
-        output.write( item->second.c_str() , len);
-    }
-    output.flush();
-    output.close();
-}
-
-void readFromFile( std::string fname , META &meta ) {
-    // Read how many entries
-    // for each entry
-    //      read key
-    //      read length
-    //      read characters
-    // return
-    std::fstream input( fname , std::fstream::in | std::fstream::binary );
-    input.seekg( 0 );
-
-    // Write how many
-    uint64_t count = 0;
-    input.read( reinterpret_cast<char*>( &count ) , sizeof(uint64_t));
-
-    char *data = NULL;
-    uint64_t data_len = 0;
-
-    for( unsigned int i = 0 ; i < count ; ++ i ) {
-        uint64_t key,len;
-
-        // Read key
-        input.read( reinterpret_cast<char*>( &key) , sizeof(uint64_t));
-
-        // Read value length
-        input.read( reinterpret_cast<char*>( &len) , sizeof(uint64_t));
-        // Read value
-        if( data_len < len ) {
-            data = (char*)realloc( data , len * 2 );
-            data_len = len * 2;
-        }
-        input.read( data , len);
-
-        meta[key] = std::string( data , len );
-    }
-
-    if( data != NULL ) free(data);
-
-    input.close();
-}
 
 // Add val to current value of result.
 void sumAggregate(rapidjson::Value *val, rapidjson::Value &result) {
@@ -138,10 +80,11 @@ void maxAggregate(rapidjson::Value *val, rapidjson::Value &result) {
  */
 
 void appendDocToProject(uint64_t projectHash, std::string doc, META &meta) {
-    if (meta.count(projectHash) > 0) {
+    std::string p_h = std::to_string(projectHash);
+    if (meta.count(p_h) > 0) {
         // Get the previous array of docs
         std::string data;
-        data = meta[projectHash];
+        data = meta[p_h];
 
         // Parse the array and insert new document ID
         rapidjson::Document d;
@@ -153,7 +96,7 @@ void appendDocToProject(uint64_t projectHash, std::string doc, META &meta) {
         // Save the new array in meta
         std::string newData = toString(&d);
         //meta.put(projectHash, newData);
-        meta[projectHash] = newData;
+        meta[p_h] = newData;
     }
 }
 
@@ -195,14 +138,15 @@ void insertDocument(rapidjson::Document &doc, uint64_t projHash, META &meta, FIL
 void updateProjectList(std::string pname, META &meta) {
     std::string key("__PROJECTS__");
     uint64_t keyHash = hash(key, key.size());
-    if (meta.count(keyHash) == 0) {
-        meta[keyHash] =  "[]";
+    std::string k_h = std::to_string(keyHash);
+    if (meta.count(k_h) == 0) {
+        meta[k_h] =  "[]";
     }
 
     // Get the array of project names
     std::string arr;
     //meta.get(keyHash, arr);
-    arr = meta[keyHash];
+    arr = meta[k_h];
 
     // Parse the array into a JSON object
     rapidjson::Document d;
@@ -229,7 +173,7 @@ void updateProjectList(std::string pname, META &meta) {
 
         // Update the metadata with the modified array
         //meta.put(keyHash, toString(&d));
-        meta[keyHash] = toString(&d);
+        meta[k_h] = toString(&d);
     }
 }
 
@@ -247,21 +191,23 @@ void updateProjectList(std::string pname, META &meta) {
 
 void insertDocuments(rapidjson::Document &docs, std::string pname, META &meta, FILESYSTEM &fs) {
     uint64_t projectHash = hash(pname, pname.size());
+    std::string p_h = std::to_string(projectHash);
     uint64_t uuidHash;
-    if (meta.count(projectHash) == 0) {
+    if (meta.count(p_h) == 0) {
         // project doesn't exist.  Create a UUID for it.
         std::string proj_uuid = newUUID();
         //meta.put(projectHash, proj_uuid);
-        meta[projectHash] = proj_uuid;
+        meta[p_h] = proj_uuid;
 
         // Insert an empty array.  This array will eventuall contain document uuid's
         uuidHash = hash(proj_uuid, proj_uuid.size());
         std::string emptyArray("[]");
         //meta.put(uuidHash, emptyArray);
-        meta[uuidHash] = emptyArray;
+	std::string u_h = std::to_string(uuidHash);
+        meta[u_h] = emptyArray;
     } else {
         std::string proj_uuid;
-        proj_uuid = meta[projectHash];
+        proj_uuid = meta[p_h];
         uuidHash = hash(proj_uuid, proj_uuid.size());
     }
 
@@ -989,13 +935,15 @@ void execute(Parsing::Query &q, META &meta, FILESYSTEM &fs, bool print = true) {
             {
                 std::string project = *q.project;
                 uint64_t pHash = hash(project, project.size());
-                if (meta.count(pHash) > 0) {
+		std::string p_h = std::to_string(pHash);
+                if (meta.count(p_h) > 0) {
                     std::string pid;
-                    pid = meta[pHash];
+                    pid = meta[p_h];
                     uint64_t docsHash = hash(pid, pid.size());
-                    if (meta.count(docsHash) > 0) {
+		    std::string d_h = std::to_string(docsHash);
+                    if (meta.count(d_h) > 0) {
                         std::string docs;
-                        docs = meta[docsHash];
+                        docs = meta[d_h];
                         rapidjson::Document docArray;
                         docArray.Parse(docs.c_str());
                         rapidjson::Document data = select(docArray, *q.fields, q.where, q.limit, fs);
@@ -1021,19 +969,21 @@ void execute(Parsing::Query &q, META &meta, FILESYSTEM &fs, bool print = true) {
             {
                 std::string project = *q.project;
                 uint64_t pHash = hash(project, project.size());
-                if (meta.count(pHash)) {
+		std::string p_h = std::to_string(pHash);
+                if (meta.count(p_h)) {
                     std::string pid;
                     //meta.get(pHash, pid);
-                    pid = meta[pHash];
+                    pid = meta[p_h];
                     uint64_t docsHash = hash(pid, pid.size());
-                    if (meta.count(docsHash)) {
+		    std::string d_h = std::to_string(docsHash);
+                    if (meta.count(d_h)) {
                         std::string docs;
-                        docs = meta[docsHash];
+                        docs = meta[d_h];
                         rapidjson::Document docArray;
                         docArray.Parse(docs.c_str());
                         ddelete(docArray, *q.fields, q.where, q.limit, fs);
                         std::string newDocArray = toString(&docArray);
-                        meta[docsHash] = newDocArray;
+                        meta[d_h] = newDocArray;
                     }
                 } else {
                     std::cout << "Project '" << project << "' does not exist!" << std::endl;
@@ -1044,9 +994,10 @@ void execute(Parsing::Query &q, META &meta, FILESYSTEM &fs, bool print = true) {
             {
                 std::string key("__PROJECTS__");
                 uint64_t keyHash = hash(key, key.size());
-                if (meta.count(keyHash)) {
+		std::string k_h = std::to_string(keyHash);
+                if (meta.count(k_h)) {
                     std::string arr;
-                    arr = meta[keyHash];
+                    arr = meta[k_h];
                     if (!arr.compare("[]")) {
                         std::cout << "No projects found!" << std::endl;
                     } else {
@@ -1061,15 +1012,17 @@ void execute(Parsing::Query &q, META &meta, FILESYSTEM &fs, bool print = true) {
             {
                 std::string project = *q.project;
                 uint64_t pHash = hash(project, project.size());
-                if (meta.count(pHash)) {
+		std::string p_h = std::to_string(pHash);
+                if (meta.count(p_h)) {
                     std::string pid;
                     //meta.get(pHash, pid);
-                    pid = meta[pHash];
+                    pid = meta[p_h];
                     uint64_t docsHash = hash(pid, pid.size());
-                    if (meta.count(docsHash)) {
+		    std::string d_h = std::to_string(docsHash);
+                    if (meta.count(d_h)) {
                         std::string docs;
                         //meta.get(docsHash, docs);
-                        docs = meta[docsHash];
+                        docs = meta[d_h];
                         rapidjson::Document docArray;
                         docArray.Parse(docs.c_str());
                         rapidjson::Document &updates = *q.with;
@@ -1285,18 +1238,17 @@ int start_readline(void) {
 
 
 int main(int argc, char **argv) {
-    std::string meta_fname("meta.lht");
     std::string data_fname("data.db");
-    META meta;
     char *buf;
     Storage::Filesystem *fs = new Storage::Filesystem(data_fname);
-
-    if (file_exists(meta_fname)) {
-        readFromFile(meta_fname , meta );
+    META *meta;
+    File meta_file = fs->open_file("__DB_METADATA__");
+    Storage::HashmapReader<std::string> meta_reader(meta_file, fs);
+    if (meta_file.size > 0) {
+	meta = new std::map<std::string, std::string>(meta_reader.read());
     } else {
-        //meta = new Storage::LinearHash<std::string>(1025,2048);
+	meta = new std::map<std::string, std::string>();
     }
-
     std::string line;
     int count = 0;
     if (argc > 1) {
@@ -1312,7 +1264,7 @@ int main(int argc, char **argv) {
             Parsing::Parser p(line);
             Parsing::Query *query = p.parse();
             if (query) {
-                execute( *query, meta, *fs, false);
+                execute( *query, *meta, *fs, false);
                 count++;
                 percent = (double)count / total;
                 delete query;
@@ -1346,23 +1298,19 @@ int main(int argc, char **argv) {
         Parsing::Parser p(q);
         Parsing::Query *query = p.parse();
         if (query) {
-            execute( *query, meta, *fs);
-	    // If the meta hasnt been saved in a while, save it.
-	    if (metaSize < meta.size()) {
-    	    	writeToFile( meta_fname, meta );
-		metaSize = meta.size();
-	    }
+            execute( *query, *meta, *fs );
             delete query;
         }
         std::cout << std::endl;
     }
+    Storage::HashmapWriter<std::string> meta_writer(meta_file, fs);
+    meta_writer.write(*meta);
     std::cout << "Goodbye!" << std::endl;
     free(buf);
-    //dumpToFile(meta_fname, *meta);
-    writeToFile( meta_fname , meta );
     fs->shutdown();
 
     delete fs;
+    delete meta;
 
     return 0;
 }

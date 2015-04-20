@@ -28,7 +28,7 @@ namespace Storage {
 				memcpy(&val, buffer + pos, sizeof(T));
 				pos += sizeof(T);
 		
-                //std::cout << "Reading file: " << key << std::endl;
+                		std::cout << "Reading file: " << key << std::endl;
 				result[key] = val;
 			}
 			return result;
@@ -37,7 +37,7 @@ namespace Storage {
 			std::map<std::string, T> result;
 			uint64_t size = file.size;
 			char *buffer = fs->read(&file);
-			result = read_buffer(&buffer, 0, size);
+			result = read_buffer(buffer, 0, size);
 			free(buffer);
 			return result;
 		}
