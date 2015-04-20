@@ -254,22 +254,6 @@ void Storage::Filesystem::growFilesystem() {
    */
 
 uint64_t Storage::Filesystem::getBlock() {
-<<<<<<< HEAD
-    uint64_t bid;
-    Block b;
-    // Free list is empty.  Grow the filesystem.
-    if (metadata.firstFree == 0) {
-        growFilesystem();
-    }
-    // We know there is space available
-    bid = metadata.firstFree;
-    b = loadBlock(bid);
-    metadata.firstFree = b.next;
-    b.next = 0;
-
-    writeBlock(b);
-    return bid;
-=======
 	uint64_t bid;
 	Block b;
 	// Free list is empty.  Grow the filesystem.
@@ -284,7 +268,6 @@ uint64_t Storage::Filesystem::getBlock() {
     	b.next = 0;
 	writeBlock(b);
 	return bid;
->>>>>>> 635bfa1ccc8dbd1b134caf9936321ebaca09146f
 }
 
 /*
