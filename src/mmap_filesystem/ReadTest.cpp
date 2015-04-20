@@ -14,6 +14,9 @@ int main(void) {
         if( f.size > 0 ) {
             std::cout << "Filesize: " << f.size << std::endl;
             char *x = fs->read(&f);
+	    if  (x == NULL) {
+		continue;
+	    }
             std::string out(x, f.size);
             std::cout << out << std::endl;
             free(x);

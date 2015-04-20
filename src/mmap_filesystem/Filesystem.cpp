@@ -262,6 +262,7 @@ uint64_t Storage::Filesystem::getBlock() {
 	bid = metadata.firstFree;
 	b = loadBlock(bid);
 	metadata.firstFree = b.next;
+	std::cout << "First free has changed to " << metadata.firstFree << std::endl;
     	b.next = 0;
 	writeBlock(b);
 	return bid;
