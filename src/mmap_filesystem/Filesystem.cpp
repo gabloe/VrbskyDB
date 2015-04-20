@@ -227,7 +227,11 @@ void Storage::Filesystem::writeBlock(Block block) {
 */
 
 void Storage::Filesystem::growFilesystem() {
+<<<<<<< HEAD
     std::cout << "Growing" << std::endl;
+=======
+	std::cout << "Growing the filesystem to " << filesystem.numPages + 1 << " pages." << std::endl;
+>>>>>>> 09000166fcbedff736794c220b80707d62a1a9bd
 	posix_fallocate(filesystem.fd, PAGESIZE * filesystem.numPages, PAGESIZE * (filesystem.numPages+1));
 	filesystem.data = (char*)t_mremap(filesystem.fd,
 					filesystem.data,
@@ -331,13 +335,10 @@ void Storage::Filesystem::initMetadata() {
 
 void Storage::Filesystem::readMetadata() {
 	uint64_t pos = 0;
-
+	uint64_t offset = 3 * sizeof(uint64_t) + 1;
 	// Read numPages (first position)
-    memcpy(&filesystem.numPages,    filesystem.data + 0 * sizeof(uint64_t) , sizeof(uint64_t) );
-	// Read numFiles (second position)
-    memcpy(&metadata.numFiles,      filesystem.data + 1 * sizeof(uint64_t) , sizeof(uint64_t) );
-	// Read firstFree (third position)
-    memcpy(&metadata.firstFree,     filesystem.data + 2 * sizeof(uint64_t) , sizeof(uint64_t) );
+	memcpy(&filesystem.numPages,    filesystem.data + offset , sizeof(uint64_t) );
+	std::cout << "num pages:" << filesystem.numPages << std::endl;
 
     std::cout << "First free: " << metadata.firstFree << std::endl;
 
