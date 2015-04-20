@@ -135,6 +135,9 @@ std::vector<std::string> Storage::Filesystem::getFilenames() {
 
 char *Storage::Filesystem::read(File *file) {
     Assert( "Filesize is too big" , file->size , file->size < 1000 );
+	if (file->size == 0) {
+		return NULL;
+	}
 	char *buffer = (char*)malloc(file->size);
 	uint64_t read_size = 0;
 	Block block = loadBlock(file->block);
