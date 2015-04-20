@@ -20,7 +20,6 @@ int main(int argc , char *argv[]) {
     for( int i = 0 ; i < generate_count; ++i ) {
         std::cout << "insert into herp with { \"A\" : " << i << " };" << std::endl;
     }
-    std::cout << "q" << std::endl;
     return 0;
 }
 
