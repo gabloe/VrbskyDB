@@ -364,8 +364,10 @@ void Storage::Filesystem::readMetadata() {
     memcpy(&metadata.numFiles, buffer + pos, sizeof(uint64_t));
     pos += sizeof(uint64_t);
 
-    memcpy(&metadata.firstFree, buffer + pos, sizeof(uint64_t));
-    pos += sizeof(uint64_t);
+	memcpy(&metadata.firstFree, buffer + pos, sizeof(uint64_t));
+        std::cout << "First free: " << metadata.firstFree << std::endl;
+	pos += sizeof(uint64_t);
+
     // */
     HashmapReader<uint64_t> reader(metadata.file, this);
     metadata.files = reader.read_buffer(buffer, pos, metadata_size);
