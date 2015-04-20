@@ -5,8 +5,6 @@
 #include <string.h>
 #include "Filesystem.h"
 
-#include "../assert/Assert.h"
-
 namespace Storage {
 	template <typename T>
 	class HashmapReader {
@@ -20,7 +18,6 @@ namespace Storage {
 				memcpy(&key_size, buffer + pos, sizeof(uint64_t));
 				pos += sizeof(uint64_t);
 
-                Assert( "Key size is too big" , key_size < 1000 );
 				char *key_tmp = (char*)malloc(key_size);
 				strncpy(key_tmp, buffer + pos, key_size);
 				std::string key(key_tmp, key_size);

@@ -3,7 +3,6 @@
 #include <string>
 #include <map>
 
-#include "../assert/Assert.h"
 #include "HashmapWriter.h"
 #include "HashmapReader.h"
 
