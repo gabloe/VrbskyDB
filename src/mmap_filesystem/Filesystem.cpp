@@ -163,7 +163,9 @@ void Storage::Filesystem::addToFreeList(uint64_t block) {
 std::vector<std::string> Storage::Filesystem::getFilenames() {
     std::vector<std::string> res;
     for (auto it = metadata.files.begin(); it != metadata.files.end(); ++it) {
-        res.push_back(it->first);
+        if( it->first != "__METADATA__" ) {
+            res.push_back(it->first);
+        }
     }
     return res;
 }
