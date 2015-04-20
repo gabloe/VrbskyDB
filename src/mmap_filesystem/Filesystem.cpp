@@ -16,7 +16,6 @@
 #define SET_FREE(SPOT,NEW) {    \
     uint64_t old = SPOT;        \
     uint64_t now = NEW;         \
-    std::cout << "Changing from " << old << " to " << now << " at line " << __LINE__ << std::endl; \
     SPOT = NEW;                 \
 }
 
@@ -170,7 +169,6 @@ void Storage::Filesystem::addToFreeList(uint64_t block) {
 std::vector<std::string> Storage::Filesystem::getFilenames() {
     std::vector<std::string> res;
     for (auto it = metadata.files.begin(); it != metadata.files.end(); ++it) {
-        std::cout << "File: " << it->first << std::endl;
         if( it->first != "__METADATA__" ) {
             res.push_back(it->first);
         }
@@ -270,7 +268,6 @@ void Storage::Filesystem::writeBlock(Block block) {
    */
 
 void Storage::Filesystem::growFilesystem() {
-    std::cout << "Growing the filesystem to " << filesystem.numPages + 1 << " pages." << std::endl;
     posix_fallocate(filesystem.fd, PAGESIZE * filesystem.numPages, PAGESIZE * (filesystem.numPages+1));
     filesystem.data = (char*)t_mremap(filesystem.fd,
             filesystem.data,
@@ -289,7 +286,7 @@ void Storage::Filesystem::growFilesystem() {
 
     // Add page to free list
     addToFreeList(firstBlock);
-    writeMetadata();
+    //writeMetadata();
 }
 
 /*
@@ -413,11 +410,13 @@ void Storage::Filesystem::readMetadata() {
     HashmapReader<uint64_t> reader(metadata.file, this);
     metadata.files = reader.read_buffer(buffer, pos, metadata_size);
     free(buffer);
-    std::cout << "Reading Metadata" << std::endl;
-    std::cout << "\tnum pages:" << filesystem.numPages << std::endl;
-    std::cout << "\tnum files:" << metadata.numFiles << std::endl;
-    std::cout << "\tFirst free: " << metadata.firstFree << std::endl;
-    std::cout << "\tRead size is " << metadata_size << std::endl;
+    if( 0 ) {
+        std::cout << "Reading Metadata" << std::endl;
+        std::cout << "\tnum pages:" << filesystem.numPages << std::endl;
+        std::cout << "\tnum files:" << metadata.numFiles << std::endl;
+        std::cout << "\tFirst free: " << metadata.firstFree << std::endl;
+        std::cout << "\tRead size is " << metadata_size << std::endl;
+    }
 }
 
 /*
@@ -436,7 +435,7 @@ void Storage::Filesystem::writeMetadata() {
     uint64_t pos = 0;
     uint64_t files_size = 0;
 
-    printJunk();
+    //printJunk();
     
     uint64_t test = filesystem.numPages + metadata.firstFree + metadata.numFiles;
 
@@ -461,13 +460,10 @@ void Storage::Filesystem::writeMetadata() {
     memcpy(buf+pos, files, files_size);
     pos += files_size;
 
-    std::cout << "Write size is " << files_size + 3 * sizeof(uint64_t) << std::endl;
-
     write(&metadata.file, buf, size);
 
     test -= (filesystem.numPages + metadata.firstFree + metadata.numFiles);
     if(test) {
-        std::cout << "Metadata updated, re-write" << std::endl;
         memcpy(buf + 0 * sizeof(uint64_t), &filesystem.numPages, sizeof(uint64_t));
         memcpy(buf + 1 * sizeof(uint64_t), &metadata.numFiles, sizeof(uint64_t));
         memcpy(buf + 2 * sizeof(uint64_t), &metadata.firstFree, sizeof(uint64_t));

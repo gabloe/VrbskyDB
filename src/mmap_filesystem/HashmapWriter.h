@@ -23,7 +23,7 @@ namespace Storage {
 				std::string key = it->first;
 				uint64_t key_size = key.size();
 				T val = it->second;
-                std::cout << "Key: " << key << std::endl;
+                //std::cout << "Key: " << key << std::endl;
 
                 // Re-grow to fit
 				if (pos + (key_size + sizeof(uint64_t) + sizeof(T)) > buf_size) {
