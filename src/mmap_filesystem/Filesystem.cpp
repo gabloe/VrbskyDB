@@ -452,7 +452,6 @@ void Storage::Filesystem::writeMetadata() {
     write(&metadata.file, buf, size);
     test -= (filesystem.numPages + metadata.firstFree + metadata.numFiles);
     if(test) {
-        std::cout << "Writing again" << std::endl;
         memcpy(buf + 0 * sizeof(uint64_t), &filesystem.numPages, sizeof(uint64_t));
         memcpy(buf + 1 * sizeof(uint64_t), &metadata.numFiles, sizeof(uint64_t));
         memcpy(buf + 2 * sizeof(uint64_t), &metadata.firstFree, sizeof(uint64_t));
