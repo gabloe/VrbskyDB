@@ -6,6 +6,7 @@
 #include <stdio.h>
 #include <string.h>
 #include <vector>
+#include <algorithm>
 
 #include "../assert/Assert.h"
 #include "Filesystem.h"
@@ -76,7 +77,7 @@ File Storage::Filesystem::open_file(std::string name) {
    Write data to a file.
    */
 
-#define ALT 0
+#define ALT 1
 
 #if ALT 
 void Storage::Filesystem::write(File *file, const char *data, uint64_t len) {
@@ -91,17 +92,17 @@ void Storage::Filesystem::write(File *file, const char *data, uint64_t len) {
         block.dirty = true;
 
         to_write -= t_w;
-        pos += to_w;
+        pos += t_w;
 
-        Block b;
+        uint64_t next;
         if ( to_write > 0 && block.next == 0) {
-            b = getBlock();
+            next = getBlock();
         }else {
-            b = loadBlock( block.next );
+            next = block.next;
         }
+        block.next = next;
         writeBlock(block);
-        block.next = b.block;
-        block = b;
+        block = loadBlock( next );
     }	
     file->size = len;
 }

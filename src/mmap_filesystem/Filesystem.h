@@ -11,8 +11,9 @@
 #include <iostream>
 #include <vector>
 
-#define BLOCK_SIZE 64
-#define BLOCKS_PER_PAGE 1024
+const uint64_t BLOCK_SIZE  = 64;
+const uint64_t BLOCKS_PER_PAGE = 1024;
+
 #define UNUSED(X)
 
 struct Block {
