@@ -14,8 +14,6 @@
 #include "HashmapWriter.h"
 
 #define SET_FREE(SPOT,NEW) {    \
-    uint64_t old = SPOT;        \
-    uint64_t now = NEW;         \
     SPOT = NEW;                 \
 }
 

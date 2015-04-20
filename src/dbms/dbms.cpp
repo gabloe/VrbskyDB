@@ -1279,7 +1279,6 @@ int main(int argc, char **argv) {
     rl_startup_hook = start_readline;
 
     std::cout << "Enter a query (q to quit):" << std::endl;
-    uint64_t metaSize = 0;
     while (1) {
         buf = readline("> ");
 

@@ -14,7 +14,9 @@
 const uint64_t BLOCK_SIZE  = 16;
 const uint64_t BLOCKS_PER_PAGE = 128;
 
+#ifndef UNUSED
 #define UNUSED(X)
+#endif
 
 struct Block {
 	uint64_t id;

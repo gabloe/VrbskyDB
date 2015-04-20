@@ -1,10 +1,15 @@
+#ifndef DBMS_H_
+#define DBMS_H_
+
 #include "../parsing/Parser.h"
 #include "../storage/LinearHash.h"
 #include <rapidjson/document.h>
 #include "../mmap_filesystem/Filesystem.h"
 
 #define LENGTH(A) sizeof(A)/sizeof(A[0])
+#ifndef UNUSED
 #define UNUSED(id)
+#endif
 
 #define MAJOR_VERSION 0
 #define MINOR_VERSION 1
@@ -18,3 +23,5 @@ typedef Storage::Filesystem FILESYSTEM;
 
 std::string SpecialValueComparisons[] = { "#gt", "#lt", "#eq", "#contains", "#starts", "#ends" };
 std::string SpecialKeyComparisons[] = { "#exists", "#isnull", "#isstr", "#isnum", "#isbool", "#isarray", "#isobj" };
+
+#endif
