@@ -5,7 +5,7 @@ INCLUDE_DIR=../include/
 INCLUDES=-I$(INCLUDE_DIR)
 OBJECTS=$(OUT)mmap_filesystem.o
 
-mmap_filesystem.o: Filesystem.cpp Filesystem.h
+mmap_filesystem.o: $(OUT) Filesystem.cpp Filesystem.h
 	$(CC) $(CFLAGS) $(INCLUDES) -c Filesystem.cpp -o$(OUT)mmap_filesystem.o
 
 test: readtest writetest
@@ -18,6 +18,9 @@ readtest: ReadTest.cpp mmap_filesystem.o
 
 writetest: WriteTest.cpp mmap_filesystem.o
 	$(CC) $(CFLAGS) $(INCLUDES) WriteTest.cpp $(OBJECTS) -oWriteTest
+
+$(OUT):
+	mkdir $(OUT)
 
 clean:
 	rm -f $(OBJECTS)
