@@ -8,10 +8,13 @@ OBJECTS=$(OUT)mmap_filesystem.o
 mmap_filesystem.o: $(OUT) Filesystem.cpp Filesystem.h
 	$(CC) $(CFLAGS) $(INCLUDES) -c Filesystem.cpp -o$(OUT)mmap_filesystem.o
 
-test: readtest writetest
+test: readtest writetest CreateTest
 
 fsreader: FilesystemReader.cpp mmap_filesystem.o
 	$(CC) $(CFLAGS) $(INCLUDES) FilesystemReader.cpp $(OBJECTS) -oFSReader
+
+CreateTest: CreateTest.cpp mmap_filesystem.o
+	$(CC) $(CFLAGS) $(INCLUDES) CreateTest.cpp $(OBJECTS) -oCreateTest
 
 readtest: ReadTest.cpp mmap_filesystem.o
 	$(CC) $(CFLAGS) $(INCLUDES) ReadTest.cpp $(OBJECTS) -oReadTest

@@ -77,7 +77,7 @@ File Storage::Filesystem::open_file(std::string name) {
    Write data to a file.
    */
 
-#define ALT 1
+#define ALT 0
 
 #if ALT 
 void Storage::Filesystem::write(File *file, const char *data, uint64_t len) {
@@ -88,6 +88,7 @@ void Storage::Filesystem::write(File *file, const char *data, uint64_t len) {
     while (to_write > 0) {
         // How much are we going to shove in this block
         uint64_t t_w = std::min( to_write , BLOCK_SIZE );
+
         // Shove it
         memcpy(block.buffer, data + pos, t_w );
         block.used_space = t_w;
@@ -289,11 +290,11 @@ uint64_t Storage::Filesystem::getBlock() {
     if (metadata.firstFree == 0) {
         growFilesystem();
     }
+
     // We know there is space available
     bid = metadata.firstFree;
     b = loadBlock(bid);
     metadata.firstFree = b.next;
-    std::cout << "First free has changed to " << metadata.firstFree << std::endl;
     b.next = 0;
     writeBlock(b);
     return bid;
@@ -407,6 +408,12 @@ void Storage::Filesystem::readMetadata() {
 /*
    Write the metadata to disk.
    */
+#define printJunk() {   \
+    std::cout << "Writing metadata" << std::endl;\
+    std::cout << "\tNumPages: " << filesystem.numPages << std::endl;\
+    std::cout << "\tnumFiles: " << metadata.numFiles << std::endl;\
+    std::cout << "\tfirstFree: " << metadata.firstFree << std::endl;\
+}
 
 void Storage::Filesystem::writeMetadata() {
     HashmapWriter<uint64_t> writer(metadata.file, this);	
@@ -414,10 +421,7 @@ void Storage::Filesystem::writeMetadata() {
     uint64_t pos = 0;
     uint64_t files_size = 0;
 
-    std::cout << "Writing metadata" << std::endl;
-    std::cout << "\tNumPages: " << filesystem.numPages << std::endl;
-    std::cout << "\tnumFiles: " << metadata.numFiles << std::endl;
-    std::cout << "\tfirstFree: " << metadata.firstFree << std::endl;
+    //printJunk();
 
     char *files = writer.write_buffer(metadata.files, &files_size);
     size += files_size;
@@ -450,6 +454,7 @@ void Storage::Filesystem::writeMetadata() {
    */
 
 void Storage::Filesystem::shutdown() {
+    writeMetadata();
     writeMetadata();
     close(filesystem.fd);
     munmap(filesystem.data, filesystem.numPages * PAGESIZE);
