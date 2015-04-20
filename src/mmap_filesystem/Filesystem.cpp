@@ -178,6 +178,7 @@ bool Storage::Filesystem::deleteFile(File *file) {
     if (metadata.files.count(file->name)) {
 	metadata.files.erase(file->name);
         addToFreeList(file->block);
+	writeMetadata();
 	return true;
     } else {
 	return false;
