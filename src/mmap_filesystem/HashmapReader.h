@@ -13,7 +13,7 @@ namespace Storage {
 		std::map<std::string, T> read_buffer(char *buffer, uint64_t offset, uint64_t size) {
 			std::map<std::string, T> result;
 			uint64_t pos = offset;
-			while (pos < size - offset) {
+			while (pos < size) {
 				uint64_t key_size;
 				memcpy(&key_size, buffer + pos, sizeof(uint64_t));
 				pos += sizeof(uint64_t);

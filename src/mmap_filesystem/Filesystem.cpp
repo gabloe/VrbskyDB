@@ -170,6 +170,7 @@ void Storage::Filesystem::addToFreeList(uint64_t block) {
 std::vector<std::string> Storage::Filesystem::getFilenames() {
     std::vector<std::string> res;
     for (auto it = metadata.files.begin(); it != metadata.files.end(); ++it) {
+        std::cout << "File: " << it->first << std::endl;
         if( it->first != "__METADATA__" ) {
             res.push_back(it->first);
         }
@@ -412,9 +413,11 @@ void Storage::Filesystem::readMetadata() {
     HashmapReader<uint64_t> reader(metadata.file, this);
     metadata.files = reader.read_buffer(buffer, pos, metadata_size);
     free(buffer);
-    std::cout << "num pages:" << filesystem.numPages << std::endl;
-    std::cout << "First free: " << metadata.firstFree << std::endl;
-    std::cout << "Read size is " << metadata_size << std::endl;
+    std::cout << "Reading Metadata" << std::endl;
+    std::cout << "\tnum pages:" << filesystem.numPages << std::endl;
+    std::cout << "\tnum files:" << metadata.numFiles << std::endl;
+    std::cout << "\tFirst free: " << metadata.firstFree << std::endl;
+    std::cout << "\tRead size is " << metadata_size << std::endl;
 }
 
 /*
