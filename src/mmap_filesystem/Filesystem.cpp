@@ -86,23 +86,28 @@ void Storage::Filesystem::write(File *file, const char *data, uint64_t len) {
     Block block = loadBlock(file->block);
 
     while (to_write > 0) {
+        // How much are we going to shove in this block
         uint64_t t_w = std::min( to_write , BLOCK_SIZE );
+        // Shove it
         memcpy(block.buffer, data + pos, t_w );
         block.used_space = t_w;
         block.dirty = true;
 
+        // Update as neccessary
         to_write -= t_w;
         pos += t_w;
 
-        uint64_t next;
-        if ( to_write > 0 && block.next == 0) {
-            next = getBlock();
-        }else {
-            next = block.next;
+        if( to_write > 0 ) {
+            uint64_t next;
+            if ( block.next == 0) { 
+                next = getBlock();
+            }else {
+                next = block.next;
+            }
+            block.next = next;
+            writeBlock(block);
+            block = loadBlock( next );
         }
-        block.next = next;
-        writeBlock(block);
-        block = loadBlock( next );
     }	
     file->size = len;
 }
