@@ -112,6 +112,7 @@ namespace Storage {
 		File open_file(std::string);
 		char *read(File*);
 		void write(File*, const char*, uint64_t);
+		bool deleteFile(File*);
 		std::vector<std::string> getFilenames();
 
 	protected:

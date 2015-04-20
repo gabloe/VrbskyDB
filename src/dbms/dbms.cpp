@@ -766,8 +766,10 @@ void ddelete(rapidjson::Document &docArray, rapidjson::Document &origFields, rap
         // Iterate over the desired fields
         if (selectAll) {
             // Delete document 
-	    //file1.unlink();
-	    docArray.Erase(docID);
+	    bool success = fs.deleteFile(&file1);
+	    if (success) {
+	    	docArray.Erase(docID);
+            }
 	    goto next;
         } else {
             deleteFields(&doc, &fields);

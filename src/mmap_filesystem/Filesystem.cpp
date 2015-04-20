@@ -174,6 +174,16 @@ std::vector<std::string> Storage::Filesystem::getFilenames() {
     return res;
 }
 
+bool Storage::Filesystem::deleteFile(File *file) {
+    if (metadata.files.count(file->name)) {
+	metadata.files.erase(file->name);
+        addToFreeList(file->block);
+	return true;
+    } else {
+	return false;
+    }
+}
+
 /*
    Read (ALL) data from a file.
    */
