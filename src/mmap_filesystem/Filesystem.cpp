@@ -36,7 +36,7 @@ Storage::Filesystem::Filesystem(std::string data_): data_fname(data_) {
 
 /*
    Calculates the total size used by a chain of blocks.
-*/
+   */
 
 uint64_t Storage::Filesystem::calculateSize(Block b) {
     uint64_t size = 0;
@@ -76,6 +76,36 @@ File Storage::Filesystem::open_file(std::string name) {
    Write data to a file.
    */
 
+#define ALT 0
+
+#if ALT 
+void Storage::Filesystem::write(File *file, const char *data, uint64_t len) {
+    uint64_t to_write = len;
+    uint64_t pos = 0;
+    Block block = loadBlock(file->block);
+
+    while (to_write > 0) {
+        uint64_t t_w = std::min( to_write , BLOCK_SIZE );
+        memcpy(block.buffer, data + pos, t_w );
+        block.used_space = to_write;
+        block.dirty = true;
+
+        to_write -= t_w;
+        pos += to_w;
+
+        Block b;
+        if ( to_write > 0 && block.next == 0) {
+            b = getBlock();
+        }else {
+            b = loadBlock( block.next );
+        }
+        writeBlock(block);
+        block.next = b.block;
+        block = b;
+    }	
+    file->size = len;
+}
+#else
 void Storage::Filesystem::write(File *file, const char *data, uint64_t len) {
     uint64_t to_write = len;
     uint64_t pos = 0;
@@ -86,9 +116,9 @@ void Storage::Filesystem::write(File *file, const char *data, uint64_t len) {
             memcpy(block.buffer, data + pos, BLOCK_SIZE);
             // Grab a new block
             uint64_t next = block.next;
-	    if (next == 0) {
-            	next = getBlock();
-	    }
+            if (next == 0) {
+                next = getBlock();
+            }
             block.used_space = BLOCK_SIZE;
             block.next = next;
             block.dirty = true;
@@ -108,6 +138,7 @@ void Storage::Filesystem::write(File *file, const char *data, uint64_t len) {
     }	
     file->size = len;
 }
+#endif
 
 void Storage::Filesystem::addToFreeList(uint64_t block) {
     Block b = loadBlock(block);
@@ -257,20 +288,20 @@ void Storage::Filesystem::growFilesystem() {
    */
 
 uint64_t Storage::Filesystem::getBlock() {
-	uint64_t bid;
-	Block b;
-	// Free list is empty.  Grow the filesystem.
-	if (metadata.firstFree == 0) {
-		growFilesystem();
-	}
-	// We know there is space available
-	bid = metadata.firstFree;
-	b = loadBlock(bid);
-	metadata.firstFree = b.next;
-	std::cout << "First free has changed to " << metadata.firstFree << std::endl;
-    	b.next = 0;
-	writeBlock(b);
-	return bid;
+    uint64_t bid;
+    Block b;
+    // Free list is empty.  Grow the filesystem.
+    if (metadata.firstFree == 0) {
+        growFilesystem();
+    }
+    // We know there is space available
+    bid = metadata.firstFree;
+    b = loadBlock(bid);
+    metadata.firstFree = b.next;
+    std::cout << "First free has changed to " << metadata.firstFree << std::endl;
+    b.next = 0;
+    writeBlock(b);
+    return bid;
 }
 
 /*
@@ -367,9 +398,9 @@ void Storage::Filesystem::readMetadata() {
     memcpy(&metadata.numFiles, buffer + pos, sizeof(uint64_t));
     pos += sizeof(uint64_t);
 
-	memcpy(&metadata.firstFree, buffer + pos, sizeof(uint64_t));
-        std::cout << "First free: " << metadata.firstFree << std::endl;
-	pos += sizeof(uint64_t);
+    memcpy(&metadata.firstFree, buffer + pos, sizeof(uint64_t));
+    std::cout << "First free: " << metadata.firstFree << std::endl;
+    pos += sizeof(uint64_t);
 
     // */
     HashmapReader<uint64_t> reader(metadata.file, this);
