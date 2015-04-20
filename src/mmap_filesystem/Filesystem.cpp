@@ -76,7 +76,7 @@ File Storage::Filesystem::open_file(std::string name) {
    Write data to a file.
    */
 
-#define ALT 0
+#define ALT 1
 
 #if ALT 
 void Storage::Filesystem::write(File *file, const char *data, uint64_t len) {
@@ -107,7 +107,9 @@ void Storage::Filesystem::write(File *file, const char *data, uint64_t len) {
             writeBlock(block);
             block = loadBlock( next );
         }
-    }	
+    }
+    // Write last block
+    writeBlock(block);
     file->size = len;
 }
 #else
