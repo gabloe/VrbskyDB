@@ -176,12 +176,13 @@ std::vector<std::string> Storage::Filesystem::getFilenames() {
 
 bool Storage::Filesystem::deleteFile(File *file) {
     if (metadata.files.count(file->name)) {
-	metadata.files.erase(file->name);
+        metadata.files.erase(file->name);
         addToFreeList(file->block);
-	writeMetadata();
-	return true;
+        metadata.numFiles--;
+        writeMetadata();
+        return true;
     } else {
-	return false;
+        return false;
     }
 }
 
@@ -444,7 +445,7 @@ void Storage::Filesystem::writeMetadata() {
     uint64_t pos = 0;
     uint64_t files_size = 0;
 
-    //printJunk();
+    printJunk();
     
     uint64_t test = filesystem.numPages + metadata.firstFree + metadata.numFiles;
 

@@ -158,7 +158,7 @@ void updateProjectList(std::string pname, META &meta) {
         std::string val = itr->GetString();
         if (!val.compare(pname)) {
             found = true;
-	    break;
+            break;
         }
     }
 
@@ -203,7 +203,7 @@ void insertDocuments(rapidjson::Document &docs, std::string pname, META &meta, F
         uuidHash = hash(proj_uuid, proj_uuid.size());
         std::string emptyArray("[]");
         //meta.put(uuidHash, emptyArray);
-	std::string u_h = std::to_string(uuidHash);
+        std::string u_h = std::to_string(uuidHash);
         meta[u_h] = emptyArray;
     } else {
         std::string proj_uuid;
@@ -216,9 +216,9 @@ void insertDocuments(rapidjson::Document &docs, std::string pname, META &meta, F
     // If it's an array of documents.  Iterate over them and insert each document.
     if (docs.GetType() == rapidjson::kArrayType) {
         for (rapidjson::SizeType i = 0; i < docs.Size(); ++i) {
-	    rapidjson::Document d;
-	    std::string data = toString(&docs[i]);
-	    d.Parse(data.c_str());
+            rapidjson::Document d;
+            std::string data = toString(&docs[i]);
+            d.Parse(data.c_str());
             insertDocument(d, uuidHash, meta, fs);
         }
     } else if (docs.GetType() == rapidjson::kObjectType) {
@@ -347,7 +347,7 @@ int projectFields(rapidjson::Document *src, rapidjson::Value *dest, rapidjson::D
 void aggregateField(rapidjson::Value *result, rapidjson::Value *data, std::string function) {
     if (!data->IsNumber()) return;
     std::map<std::string, std::function<void(rapidjson::Value*,rapidjson::Value&)>>  funcMap =
-       {{ "SUM", sumAggregate},
+    {{ "SUM", sumAggregate},
         { "AVG", sumAggregate}, // Special case
         { "MIN", minAggregate},
         { "MAX", maxAggregate}
@@ -357,7 +357,7 @@ void aggregateField(rapidjson::Value *result, rapidjson::Value *data, std::strin
 
     // Convert the result to an integer if it should be.
     if (fmod(x, 1) == 0.0) {
-	*result = rapidjson::Value((int)x);
+        *result = rapidjson::Value((int)x);
     }
 }
 
@@ -407,23 +407,23 @@ rapidjson::Value processAggregate(rapidjson::Value *src, const rapidjson::Value 
 }
 
 bool validateSpecialValueCompare(std::string val) {
-	int numSpecials = sizeof(SpecialValueComparisons) / sizeof(SpecialValueComparisons[0]);
-	for (int i=0; i<numSpecials; ++i) {
-		if (SpecialValueComparisons[i].compare(val) == 0) {
-			return true;
-		}
-	}
-	return false;
+    int numSpecials = sizeof(SpecialValueComparisons) / sizeof(SpecialValueComparisons[0]);
+    for (int i=0; i<numSpecials; ++i) {
+        if (SpecialValueComparisons[i].compare(val) == 0) {
+            return true;
+        }
+    }
+    return false;
 }
 
 bool validateSpecialKeyCompare(std::string val) {
-	int numSpecials = sizeof(SpecialKeyComparisons) / sizeof(SpecialKeyComparisons[0]);
-	for (int i=0; i<numSpecials; ++i) {
-		if (SpecialKeyComparisons[i].compare(val) == 0) {
-			return true;
-		}
-	}
-	return false;
+    int numSpecials = sizeof(SpecialKeyComparisons) / sizeof(SpecialKeyComparisons[0]);
+    for (int i=0; i<numSpecials; ++i) {
+        if (SpecialKeyComparisons[i].compare(val) == 0) {
+            return true;
+        }
+    }
+    return false;
 }
 
 // First is the value from the condition.  It may contain special fields... #gt, #lt
@@ -434,35 +434,35 @@ bool sameValues(rapidjson::Value &first, rapidjson::Value &second, rapidjson::Do
 
     // Could be a special condition.
     if (first.GetType() == rapidjson::kObjectType && second.GetType() != rapidjson::kObjectType) {
-	for (rapidjson::Value::MemberIterator it = first.MemberBegin(); it != first.MemberEnd(); ++it) {
-		specialCompare = it->name.GetString();
-		if (specialCompare[0] == '#') {
-			foundSpecial = true;
-			specialValue = rapidjson::Value(first[specialCompare.c_str()], allocator);
-			break;
-		}
-	}
-	if (!foundSpecial) {
-		return false;
-	}
+        for (rapidjson::Value::MemberIterator it = first.MemberBegin(); it != first.MemberEnd(); ++it) {
+            specialCompare = it->name.GetString();
+            if (specialCompare[0] == '#') {
+                foundSpecial = true;
+                specialValue = rapidjson::Value(first[specialCompare.c_str()], allocator);
+                break;
+            }
+        }
+        if (!foundSpecial) {
+            return false;
+        }
     } else {
-	if (first.GetType() != second.GetType()) {
-		return false;
-	}
+        if (first.GetType() != second.GetType()) {
+            return false;
+        }
     }
 
     rapidjson::Value condition;
     rapidjson::Type type;
     if (foundSpecial) {
 
-	type = specialValue.GetType();
-	if (!validateSpecialValueCompare(specialCompare) || type != second.GetType()) {
-		return false;
-	}
-	condition = rapidjson::Value(specialValue, allocator);
+        type = specialValue.GetType();
+        if (!validateSpecialValueCompare(specialCompare) || type != second.GetType()) {
+            return false;
+        }
+        condition = rapidjson::Value(specialValue, allocator);
     } else {
-	type = first.GetType();
-	condition = rapidjson::Value(first, allocator);
+        type = first.GetType();
+        condition = rapidjson::Value(first, allocator);
     }
 
     switch (type) {
@@ -475,33 +475,33 @@ bool sameValues(rapidjson::Value &first, rapidjson::Value &second, rapidjson::Do
             {
                 std::string firstStr = condition.GetString();
                 std::string secondStr = second.GetString();
-		if (foundSpecial) {
-			if (!specialCompare.compare("#gt")) {
-                		return secondStr.compare(firstStr) > 0;
-			} else if (!specialCompare.compare("#lt")) {
-                		return secondStr.compare(firstStr) < 0;
-			} else if (!specialCompare.compare("#eq")) {
-                		return firstStr.compare(secondStr) == 0;
-			} else if (!specialCompare.compare("#contains")) {
-				return secondStr.find(firstStr) != std::string::npos;
-			} else if (!specialCompare.compare("#starts")) {
-				if (secondStr.length() < firstStr.length()) {
-					return false;
-				} else {
-					return secondStr.compare(0, firstStr.length(), firstStr) == 0;
-				}
-			} else if (!specialCompare.compare("#ends")) {
-				if (secondStr.length() < firstStr.length()) {
-					return false;
-				} else {
-					return secondStr.compare(secondStr.length() - firstStr.length(), firstStr.length(), firstStr) == 0;
-				}
+                if (foundSpecial) {
+                    if (!specialCompare.compare("#gt")) {
+                        return secondStr.compare(firstStr) > 0;
+                    } else if (!specialCompare.compare("#lt")) {
+                        return secondStr.compare(firstStr) < 0;
+                    } else if (!specialCompare.compare("#eq")) {
+                        return firstStr.compare(secondStr) == 0;
+                    } else if (!specialCompare.compare("#contains")) {
+                        return secondStr.find(firstStr) != std::string::npos;
+                    } else if (!specialCompare.compare("#starts")) {
+                        if (secondStr.length() < firstStr.length()) {
+                            return false;
+                        } else {
+                            return secondStr.compare(0, firstStr.length(), firstStr) == 0;
+                        }
+                    } else if (!specialCompare.compare("#ends")) {
+                        if (secondStr.length() < firstStr.length()) {
+                            return false;
+                        } else {
+                            return secondStr.compare(secondStr.length() - firstStr.length(), firstStr.length(), firstStr) == 0;
+                        }
 
-			}
-		} else {
-                	return firstStr.compare(secondStr) == 0;
-		}
-		break;
+                    }
+                } else {
+                    return firstStr.compare(secondStr) == 0;
+                }
+                break;
             }
         case rapidjson::kNumberType:
             {
@@ -517,31 +517,31 @@ bool sameValues(rapidjson::Value &first, rapidjson::Value &second, rapidjson::Do
                 } else {
                     secondNum = second.GetDouble();
                 }
-		
-		if (foundSpecial) {
-			if (!specialCompare.compare("#gt")) {
-                		return secondNum > firstNum;
-			} else if (!specialCompare.compare("#lt")) {
-                		return secondNum < firstNum;
-			} else if (!specialCompare.compare("#eq")) {
-                		return secondNum == firstNum;
-			}
-		} else {
-                	return firstNum == secondNum;
-		}
-		break;
+
+                if (foundSpecial) {
+                    if (!specialCompare.compare("#gt")) {
+                        return secondNum > firstNum;
+                    } else if (!specialCompare.compare("#lt")) {
+                        return secondNum < firstNum;
+                    } else if (!specialCompare.compare("#eq")) {
+                        return secondNum == firstNum;
+                    }
+                } else {
+                    return firstNum == secondNum;
+                }
+                break;
             }
         case rapidjson::kFalseType:
             {
-		//TODO: Maybe #eq should be supported here
-		if (foundSpecial) return false;
+                //TODO: Maybe #eq should be supported here
+                if (foundSpecial) return false;
                 return true;
                 break;
             }
         case rapidjson::kTrueType:
             {
-		//TODO: Maybe #eq should be supported here
-		if (foundSpecial) return false;
+                //TODO: Maybe #eq should be supported here
+                if (foundSpecial) return false;
                 return true;
                 break;
             }
@@ -561,8 +561,8 @@ bool sameValues(rapidjson::Value &first, rapidjson::Value &second, rapidjson::Do
             }
         case rapidjson::kArrayType:
             {
-		// TODO: should the special comparisons work on arrays somehow?
-		if (foundSpecial) return false;
+                // TODO: should the special comparisons work on arrays somehow?
+                if (foundSpecial) return false;
                 if (condition.Size() != second.Size()) {
                     return false;
                 }
@@ -580,92 +580,92 @@ bool sameValues(rapidjson::Value &first, rapidjson::Value &second, rapidjson::Do
 bool documentMatchesConditions(rapidjson::Document &doc, rapidjson::Document &conditions) {
     for (rapidjson::Value::ConstMemberIterator condIt = conditions.MemberBegin(); condIt != conditions.MemberEnd(); ++condIt) {
         std::string condKey = condIt->name.GetString();
-	// Special case for special key comparisons
-	if (validateSpecialKeyCompare(condKey)) {
-		rapidjson::Value &v = conditions[condKey.c_str()];
-		if (v.GetType() != rapidjson::kObjectType) {
-			return false;
-		}
-		std::string key = v.MemberBegin()->name.GetString();
-		rapidjson::Value &ve = v[key.c_str()];
+        // Special case for special key comparisons
+        if (validateSpecialKeyCompare(condKey)) {
+            rapidjson::Value &v = conditions[condKey.c_str()];
+            if (v.GetType() != rapidjson::kObjectType) {
+                return false;
+            }
+            std::string key = v.MemberBegin()->name.GetString();
+            rapidjson::Value &ve = v[key.c_str()];
 
-		// Special case fot exists... 
-		if (condKey.compare("#exists") == 0) {
-			if (!doc.HasMember(key.c_str()) && ve.GetType() == rapidjson::kTrueType) {
-				return false;
-			} else if (doc.HasMember(key.c_str()) && ve.GetType() == rapidjson::kFalseType) {
-				return false;
-			} else {
-				continue;
-			}
-		}
+            // Special case fot exists... 
+            if (condKey.compare("#exists") == 0) {
+                if (!doc.HasMember(key.c_str()) && ve.GetType() == rapidjson::kTrueType) {
+                    return false;
+                } else if (doc.HasMember(key.c_str()) && ve.GetType() == rapidjson::kFalseType) {
+                    return false;
+                } else {
+                    continue;
+                }
+            }
 
-		// Everything else relies on the existence of the key
-		if (doc.HasMember(key.c_str())) {
-			rapidjson::Value &specVal = doc[key.c_str()];
-			if (condKey.compare("#isnull") == 0) {
-				if (specVal.GetType() == rapidjson::kNullType && ve.GetType() == rapidjson::kFalseType) {
-					return false;
-				} else if (specVal.GetType() != rapidjson::kNullType && ve.GetType() == rapidjson::kTrueType) {
-					return false;
-				}
-			} else if (condKey.compare("#isstr") == 0) {
-				if (specVal.GetType() == rapidjson::kStringType && ve.GetType() == rapidjson::kFalseType) {
-					return false;
-				} else if (specVal.GetType() != rapidjson::kStringType && ve.GetType() == rapidjson::kTrueType) {
-					return false;
-				}
-			} else if (condKey.compare("#isnum") == 0) {
-				if (specVal.GetType() == rapidjson::kNumberType && ve.GetType() == rapidjson::kFalseType) {
-					return false;
-				} else if (specVal.GetType() != rapidjson::kNumberType && ve.GetType() == rapidjson::kTrueType) {
-					return false;
-				}
-			} else if (condKey.compare("#isbool") == 0) {
-				if ((specVal.GetType() == rapidjson::kFalseType || specVal.GetType() == rapidjson::kTrueType) && 
-				     ve.GetType() == rapidjson::kFalseType) {
-					return false;
-				} else if ((specVal.GetType() != rapidjson::kFalseType && specVal.GetType() != rapidjson::kTrueType) && 
-				     ve.GetType() == rapidjson::kTrueType) {
-					return false;
-				}
-			} else if (condKey.compare("#isobj") == 0) {
-				if (specVal.GetType() == rapidjson::kObjectType && ve.GetType() == rapidjson::kFalseType) {
-					return false;
-				} else if (specVal.GetType() != rapidjson::kObjectType && ve.GetType() == rapidjson::kTrueType) {
-					return false;
-				}
-			} else if (condKey.compare("#isarray") == 0) {
-				if (specVal.GetType() == rapidjson::kArrayType && ve.GetType() == rapidjson::kFalseType) {
-					return false;
-				} else if (specVal.GetType() != rapidjson::kArrayType && ve.GetType() == rapidjson::kTrueType) {
-					return false;
-				}
-			}
-		} else {
-			return false;
-		}
-	} else {
-		if (!doc.HasMember(condKey.c_str())) {
-		    return false;
-		}
-		rapidjson::Value &condVal = conditions[condKey.c_str()];
-		rapidjson::Value &docVal = doc[condKey.c_str()];
-		if (!sameValues(condVal, docVal, conditions.GetAllocator())) {
-		    return false;
-		}
-	}
+            // Everything else relies on the existence of the key
+            if (doc.HasMember(key.c_str())) {
+                rapidjson::Value &specVal = doc[key.c_str()];
+                if (condKey.compare("#isnull") == 0) {
+                    if (specVal.GetType() == rapidjson::kNullType && ve.GetType() == rapidjson::kFalseType) {
+                        return false;
+                    } else if (specVal.GetType() != rapidjson::kNullType && ve.GetType() == rapidjson::kTrueType) {
+                        return false;
+                    }
+                } else if (condKey.compare("#isstr") == 0) {
+                    if (specVal.GetType() == rapidjson::kStringType && ve.GetType() == rapidjson::kFalseType) {
+                        return false;
+                    } else if (specVal.GetType() != rapidjson::kStringType && ve.GetType() == rapidjson::kTrueType) {
+                        return false;
+                    }
+                } else if (condKey.compare("#isnum") == 0) {
+                    if (specVal.GetType() == rapidjson::kNumberType && ve.GetType() == rapidjson::kFalseType) {
+                        return false;
+                    } else if (specVal.GetType() != rapidjson::kNumberType && ve.GetType() == rapidjson::kTrueType) {
+                        return false;
+                    }
+                } else if (condKey.compare("#isbool") == 0) {
+                    if ((specVal.GetType() == rapidjson::kFalseType || specVal.GetType() == rapidjson::kTrueType) && 
+                            ve.GetType() == rapidjson::kFalseType) {
+                        return false;
+                    } else if ((specVal.GetType() != rapidjson::kFalseType && specVal.GetType() != rapidjson::kTrueType) && 
+                            ve.GetType() == rapidjson::kTrueType) {
+                        return false;
+                    }
+                } else if (condKey.compare("#isobj") == 0) {
+                    if (specVal.GetType() == rapidjson::kObjectType && ve.GetType() == rapidjson::kFalseType) {
+                        return false;
+                    } else if (specVal.GetType() != rapidjson::kObjectType && ve.GetType() == rapidjson::kTrueType) {
+                        return false;
+                    }
+                } else if (condKey.compare("#isarray") == 0) {
+                    if (specVal.GetType() == rapidjson::kArrayType && ve.GetType() == rapidjson::kFalseType) {
+                        return false;
+                    } else if (specVal.GetType() != rapidjson::kArrayType && ve.GetType() == rapidjson::kTrueType) {
+                        return false;
+                    }
+                }
+            } else {
+                return false;
+            }
+        } else {
+            if (!doc.HasMember(condKey.c_str())) {
+                return false;
+            }
+            rapidjson::Value &condVal = conditions[condKey.c_str()];
+            rapidjson::Value &docVal = doc[condKey.c_str()];
+            if (!sameValues(condVal, docVal, conditions.GetAllocator())) {
+                return false;
+            }
+        }
     }
     return true;
 }
 
 void deleteFields(rapidjson::Document *doc, rapidjson::Document *fields) {
-	for (rapidjson::Value::ConstValueIterator it = fields->Begin(); it != fields->End(); it++) {
-		const rapidjson::Value &field = *it;
-		if (doc->HasMember(field.GetString())) {
-			doc->RemoveMember(field.GetString());
-		}
-	}
+    for (rapidjson::Value::ConstValueIterator it = fields->Begin(); it != fields->End(); it++) {
+        const rapidjson::Value &field = *it;
+        if (doc->HasMember(field.GetString())) {
+            doc->RemoveMember(field.GetString());
+        }
+    }
 }
 
 // Update the fields of the array of documents
@@ -681,7 +681,7 @@ void update(rapidjson::Document &docArray, rapidjson::Document &updates, rapidjs
         File file1 = fs.open_file(dID);
         char *c = fs.read(&file1);
         std::string docTxt = std::string(c,file1.size);
-	free(c);
+        free(c);
 
         // Parse the document
         rapidjson::Document doc;
@@ -695,26 +695,26 @@ void update(rapidjson::Document &docArray, rapidjson::Document &updates, rapidjs
                 continue;
             }
         }
-	
-	// Insert or update the fields
-	for (rapidjson::Value::ConstMemberIterator update = updates.MemberBegin(); update != updates.MemberEnd(); ++update) {
-		std::string key = update->name.GetString();
-		if (doc.HasMember(key.c_str())) {
-			doc.RemoveMember(key.c_str());
-		}
-		rapidjson::Value k(key.c_str(), doc.GetAllocator());
-		rapidjson::Value &v_tmp = updates[key.c_str()];
-		rapidjson::Value v(v_tmp, doc.GetAllocator());
-		doc.AddMember(k,v, doc.GetAllocator());
-	}
-	File file2 = fs.open_file(dID);
-	std::string data = toString(&doc);
-	fs.write(&file2, data.c_str(), data.size());
 
-	// In case a limit is being used, pre-empt may be necessary
-	if (limit > 0 && ++num == limit) {
-		break;
-	}
+        // Insert or update the fields
+        for (rapidjson::Value::ConstMemberIterator update = updates.MemberBegin(); update != updates.MemberEnd(); ++update) {
+            std::string key = update->name.GetString();
+            if (doc.HasMember(key.c_str())) {
+                doc.RemoveMember(key.c_str());
+            }
+            rapidjson::Value k(key.c_str(), doc.GetAllocator());
+            rapidjson::Value &v_tmp = updates[key.c_str()];
+            rapidjson::Value v(v_tmp, doc.GetAllocator());
+            doc.AddMember(k,v, doc.GetAllocator());
+        }
+        File file2 = fs.open_file(dID);
+        std::string data = toString(&doc);
+        fs.write(&file2, data.c_str(), data.size());
+
+        // In case a limit is being used, pre-empt may be necessary
+        if (limit > 0 && ++num == limit) {
+            break;
+        }
     }
 }
 
@@ -747,7 +747,7 @@ void ddelete(rapidjson::Document &docArray, rapidjson::Document &origFields, rap
         File file1 = fs.open_file(dID);
         char *c = fs.read(&file1);
         std::string docTxt = std::string(c,file1.size);
-	free(c);
+        free(c);
 
         // Parse the document
         rapidjson::Document doc;
@@ -758,7 +758,7 @@ void ddelete(rapidjson::Document &docArray, rapidjson::Document &origFields, rap
             // Check if the document contains the values specified in where clause.
             // If not, move on to the next document.
             if (!documentMatchesConditions(doc, whereDoc)) {
-		++docID;
+                ++docID;
                 continue;       
             }
         }
@@ -766,25 +766,25 @@ void ddelete(rapidjson::Document &docArray, rapidjson::Document &origFields, rap
         // Iterate over the desired fields
         if (selectAll) {
             // Delete document 
-	    //bool success = fs.deleteFile(&file1);
-	    //if (success) {
-	    	docArray.Erase(docID);
-            //}
-	    goto next;
+            bool success = fs.deleteFile(&file1);
+            if (success) {
+                docArray.Erase(docID);
+            }
+            goto next;
         } else {
             deleteFields(&doc, &fields);
-	    std::string newData = toString(&doc);
-	    File file2 = fs.open_file(dID);
-	    fs.write(&file2, newData.c_str(), newData.size());
+            std::string newData = toString(&doc);
+            File file2 = fs.open_file(dID);
+            fs.write(&file2, newData.c_str(), newData.size());
         }
 
-	++docID;
+        ++docID;
 
 next:
-	// If a limit is being used then we may need to pre-empt.
-	if (limit > 0 && ++num == limit) {
-		break;
-	}
+        // If a limit is being used then we may need to pre-empt.
+        if (limit > 0 && ++num == limit) {
+            break;
+        }
     }
 }
 
@@ -822,7 +822,7 @@ rapidjson::Document select(rapidjson::Document &docArray, rapidjson::Document &o
         File file = fs.open_file(dID);
         char *c = fs.read(&file);
         std::string docTxt = std::string(c,file.size);
-	free(c);
+        free(c);
 
         // Parse the document
         rapidjson::Document doc;
@@ -852,10 +852,10 @@ rapidjson::Document select(rapidjson::Document &docArray, rapidjson::Document &o
             array.PushBack(docVal, result.GetAllocator());
         }
 
-	// If a limit is being used then we may need to preempt.
-	if (limit > 0 && ++num == limit) {
-		break;
-	}
+        // If a limit is being used then we may need to preempt.
+        if (limit > 0 && ++num == limit) {
+            break;
+        }
     }
 
     for (rapidjson::Value::ConstValueIterator agg = aggregates.Begin(); agg != aggregates.End(); ++agg) {
@@ -937,12 +937,12 @@ void execute(Parsing::Query &q, META &meta, FILESYSTEM &fs, bool print = true) {
             {
                 std::string project = *q.project;
                 uint64_t pHash = hash(project, project.size());
-		std::string p_h = std::to_string(pHash);
+                std::string p_h = std::to_string(pHash);
                 if (meta.count(p_h) > 0) {
                     std::string pid;
                     pid = meta[p_h];
                     uint64_t docsHash = hash(pid, pid.size());
-		    std::string d_h = std::to_string(docsHash);
+                    std::string d_h = std::to_string(docsHash);
                     if (meta.count(d_h) > 0) {
                         std::string docs;
                         docs = meta[d_h];
@@ -971,13 +971,13 @@ void execute(Parsing::Query &q, META &meta, FILESYSTEM &fs, bool print = true) {
             {
                 std::string project = *q.project;
                 uint64_t pHash = hash(project, project.size());
-		std::string p_h = std::to_string(pHash);
+                std::string p_h = std::to_string(pHash);
                 if (meta.count(p_h)) {
                     std::string pid;
                     //meta.get(pHash, pid);
                     pid = meta[p_h];
                     uint64_t docsHash = hash(pid, pid.size());
-		    std::string d_h = std::to_string(docsHash);
+                    std::string d_h = std::to_string(docsHash);
                     if (meta.count(d_h)) {
                         std::string docs;
                         docs = meta[d_h];
@@ -996,7 +996,7 @@ void execute(Parsing::Query &q, META &meta, FILESYSTEM &fs, bool print = true) {
             {
                 std::string key("__PROJECTS__");
                 uint64_t keyHash = hash(key, key.size());
-		std::string k_h = std::to_string(keyHash);
+                std::string k_h = std::to_string(keyHash);
                 if (meta.count(k_h)) {
                     std::string arr;
                     arr = meta[k_h];
@@ -1014,13 +1014,13 @@ void execute(Parsing::Query &q, META &meta, FILESYSTEM &fs, bool print = true) {
             {
                 std::string project = *q.project;
                 uint64_t pHash = hash(project, project.size());
-		std::string p_h = std::to_string(pHash);
+                std::string p_h = std::to_string(pHash);
                 if (meta.count(p_h)) {
                     std::string pid;
                     //meta.get(pHash, pid);
                     pid = meta[p_h];
                     uint64_t docsHash = hash(pid, pid.size());
-		    std::string d_h = std::to_string(docsHash);
+                    std::string d_h = std::to_string(docsHash);
                     if (meta.count(d_h)) {
                         std::string docs;
                         //meta.get(docsHash, docs);
@@ -1247,9 +1247,9 @@ int main(int argc, char **argv) {
     File meta_file = fs->open_file("__DB_METADATA__");
     Storage::HashmapReader<std::string> meta_reader(meta_file, fs);
     if (meta_file.size > 0) {
-	meta = new std::map<std::string, std::string>(meta_reader.read());
+        meta = new std::map<std::string, std::string>(meta_reader.read());
     } else {
-	meta = new std::map<std::string, std::string>();
+        meta = new std::map<std::string, std::string>();
     }
     std::string line;
     int count = 0;
@@ -1273,7 +1273,7 @@ int main(int argc, char **argv) {
             }
             printf("%.1f%% done.\r", percent*100);
         }
-    	std::cout << "\n";
+        std::cout << "\n";
     }
 
     std::cout << "Welcome to VrbskyDB v" << MAJOR_VERSION << "." << MINOR_VERSION  << std::endl;
@@ -1283,11 +1283,11 @@ int main(int argc, char **argv) {
     std::string queryLogFile("queries.log");
 
     if (file_exists(queryLogFile.c_str())) {
-	read_history(queryLogFile.c_str());
+        read_history(queryLogFile.c_str());
     } else {
-	std::fstream out(queryLogFile.c_str(), std::fstream::out);
-	out.flush();
-	out.close();
+        std::fstream out(queryLogFile.c_str(), std::fstream::out);
+        out.flush();
+        out.close();
     }
     std::cout << "Enter a query (q to quit):" << std::endl;
     while (1) {
@@ -1308,7 +1308,7 @@ int main(int argc, char **argv) {
         Parsing::Parser p(q);
         Parsing::Query *query = p.parse();
         if (query) {
-	    // If the query parses, add it to a log.
+            // If the query parses, add it to a log.
             append_history(1, queryLogFile.c_str());
             execute( *query, *meta, *fs );
             delete query;
