@@ -367,8 +367,7 @@ void Storage::Filesystem::initMetadata() {
 
 void Storage::Filesystem::readMetadata() {
     uint64_t pos = 0;
-    uint64_t offset = 3 * sizeof(uint64_t);
-    // Read numPages (first position)
+    uint64_t offset = 3 * sizeof(uint64_t); // Skip ID, next, and length
     memcpy(&filesystem.numPages,    filesystem.data + offset , sizeof(uint64_t) );
 
     if (filesystem.numPages > 1) {
@@ -391,15 +390,12 @@ void Storage::Filesystem::readMetadata() {
     char *buffer = read(&metadata.file);
     // Skip numPages, numFiles, and firstFree
     pos = 1 * sizeof(uint64_t);
-    //pos = 3 * sizeof(uint64_t);
-    // /*
     memcpy(&metadata.numFiles, buffer + pos, sizeof(uint64_t));
     pos += sizeof(uint64_t);
 
     memcpy(&metadata.firstFree, buffer + pos, sizeof(uint64_t));
     pos += sizeof(uint64_t);
 
-    // */
     HashmapReader<uint64_t> reader(metadata.file, this);
     metadata.files = reader.read_buffer(buffer, pos, metadata_size);
     free(buffer);

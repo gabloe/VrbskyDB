@@ -28,6 +28,7 @@ namespace Storage {
 				memcpy(&val, buffer + pos, sizeof(T));
 				pos += sizeof(T);
 		
+                std::cout << "Reading file: " << key << std::endl;
 				result[key] = val;
 			}
 			return result;
