@@ -425,6 +425,9 @@ void Storage::Filesystem::writeMetadata() {
     uint64_t files_size = 0;
 
     //printJunk();
+    
+    uint64_t test = filesystem.numPages + metadata.firstFree + metadata.numFiles;
+
 
     char *files = writer.write_buffer(metadata.files, &files_size);
     size += files_size;
@@ -447,7 +450,14 @@ void Storage::Filesystem::writeMetadata() {
     pos += files_size;
 
     write(&metadata.file, buf, size);
-
+    test -= (filesystem.numPages + metadata.firstFree + metadata.numFiles);
+    if(test) {
+        std::cout << "Writing again" << std::endl;
+        memcpy(buf + 0 * sizeof(uint64_t), &filesystem.numPages, sizeof(uint64_t));
+        memcpy(buf + 1 * sizeof(uint64_t), &metadata.numFiles, sizeof(uint64_t));
+        memcpy(buf + 2 * sizeof(uint64_t), &metadata.firstFree, sizeof(uint64_t));
+        write(&metadata.file, buf, size);
+    }
     free(files);
     free(buf);
 }
