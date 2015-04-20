@@ -20,10 +20,9 @@ struct Block {
 	uint64_t id;
 	uint64_t used_space;
 	uint64_t next;
-	bool dirty;
 	char buffer[BLOCK_SIZE];
 };
-#define BLOCK_SIZE_ACTUAL (3*sizeof(uint64_t) + 1 + BLOCK_SIZE)
+#define BLOCK_SIZE_ACTUAL (3*sizeof(uint64_t)) + BLOCK_SIZE
 #define PAGESIZE BLOCK_SIZE_ACTUAL * BLOCKS_PER_PAGE
 
 #ifdef __APPLE__

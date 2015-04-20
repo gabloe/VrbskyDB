@@ -41,8 +41,7 @@ namespace Storage {
 				memcpy(buffer+pos, &val, sizeof(T));
 				pos += sizeof(T);
 			}
-            // TODO: Shrink?
-			//buffer = (char*)realloc(buffer, pos);
+			buffer = (char*)realloc(buffer, pos);
 			*size = pos;
 			return buffer;
 		}
