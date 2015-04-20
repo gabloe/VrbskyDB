@@ -171,6 +171,7 @@ std::vector<std::string> Storage::Filesystem::getFilenames() {
    */
 
 char *Storage::Filesystem::read(File *file) {
+    std::cout << "Reading" << std::endl;
     if (file->size == 0) {
         return NULL;
     }
