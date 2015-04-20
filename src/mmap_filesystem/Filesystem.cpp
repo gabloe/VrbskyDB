@@ -444,7 +444,7 @@ void Storage::Filesystem::writeMetadata() {
     uint64_t pos = 0;
     uint64_t files_size = 0;
 
-    printJunk();
+    //printJunk();
     
     uint64_t test = filesystem.numPages + metadata.firstFree + metadata.numFiles;
 
