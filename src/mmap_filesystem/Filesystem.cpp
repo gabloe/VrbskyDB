@@ -134,7 +134,6 @@ std::vector<std::string> Storage::Filesystem::getFilenames() {
 */
 
 char *Storage::Filesystem::read(File *file) {
-    Assert( "Filesize is too big" , file->size , file->size < 1000 );
 	if (file->size == 0) {
 		return NULL;
 	}
@@ -377,7 +376,6 @@ void Storage::Filesystem::writeMetadata() {
 
 	char *files = writer.write_buffer(metadata.files, &files_size);
 	size += files_size;
-    Assert( "Size is too big" , size < 20000 );
 	char *buf = (char*)malloc(size);
 
     // Write numPages first
