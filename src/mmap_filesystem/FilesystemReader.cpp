@@ -33,17 +33,20 @@ int main(int argc, char **argv) {
 	std::cout << "\t# files: " << numFiles << std::endl;
 	std::cout << "\tFirst free block: " << firstFree << std::endl;
 	std::cout << "\tData: " << data << std::endl;
+	std::cout << "\tTotal number of blocks: " << numPages * BLOCKS_PER_PAGE << std::endl;
 	for (uint64_t page = 0; page < numPages; ++page) {
 		for (uint64_t block=0; block < BLOCKS_PER_PAGE; ++block) {
 			in.read(reinterpret_cast<char*>(&bid), sizeof(uint64_t));
 			in.read(reinterpret_cast<char*>(&usedSpace), sizeof(uint64_t));
 			in.read(reinterpret_cast<char*>(&next), sizeof(uint64_t));
 			in.read(data, BLOCK_SIZE);
-			std::cout << "Block:" << std::endl;
-			std::cout << "\tBlock ID: " << bid << std::endl;
-			std::cout << "\tUsed space: " << usedSpace << std::endl;
-			std::cout << "\tNext: " << next << std::endl;
-			std::cout << "\tData: " << data << std::endl;
+			if (usedSpace > 0) {
+				std::cout << "Block:" << std::endl;
+				std::cout << "\tBlock ID: " << bid << std::endl;
+				std::cout << "\tUsed space: " << usedSpace << std::endl;
+				std::cout << "\tNext: " << next << std::endl;
+				std::cout << "\tData: " << data << std::endl;
+			}
 		}
 	}
 	in.close();

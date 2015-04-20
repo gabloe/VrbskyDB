@@ -146,14 +146,13 @@ void Storage::Filesystem::write(File *file, const char *data, uint64_t len) {
 #endif
 
 void Storage::Filesystem::addToFreeList(uint64_t block) {
-    Block b = loadBlock(block);
-    writeBlock(b);
     if (metadata.firstFree == 0) {
         metadata.firstFree = block;
     } else {
         Block b = loadBlock(metadata.firstFree);
         while (b.next != 0) {
             b = loadBlock(b.next);
+	    b.used_space = 0;
         }
         b.next = block;
         writeBlock(b);

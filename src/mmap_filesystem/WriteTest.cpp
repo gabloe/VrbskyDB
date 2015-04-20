@@ -56,8 +56,8 @@ void write( std::string prefix , int limit ) {
 }
 
 int main(void) {
-    write( "herp" , 50000 );
-    validate("herp" , 50000 );
+    write( "herp" , 100 );
+    validate("herp" , 100 );
     printFiles(10);
     return 0;
 }

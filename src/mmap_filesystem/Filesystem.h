@@ -11,7 +11,7 @@
 #include <iostream>
 #include <vector>
 
-const uint64_t BLOCK_SIZE  = 64;
+const uint64_t BLOCK_SIZE  = 16;
 const uint64_t BLOCKS_PER_PAGE = 128;
 
 #define UNUSED(X)
