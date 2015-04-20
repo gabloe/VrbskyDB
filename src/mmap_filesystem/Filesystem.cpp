@@ -337,6 +337,8 @@ void Storage::Filesystem::readMetadata() {
 	memcpy(&filesystem.numPages,    filesystem.data + offset , sizeof(uint64_t) );
 	std::cout << "num pages:" << filesystem.numPages << std::endl;
 
+    std::cout << "First free: " << metadata.firstFree << std::endl;
+
 	if (filesystem.numPages > 1) {
 		filesystem.data = (char*)t_mremap(filesystem.fd,
 						filesystem.data, 
@@ -355,14 +357,16 @@ void Storage::Filesystem::readMetadata() {
 	metadata.file = File("__METADATA__", 1, metadata_size);
 
 	char *buffer = read(&metadata.file);
-	pos = sizeof(uint64_t);
-
+    // Skip numPages, numFiles, and firstFree
+	pos = 1 * sizeof(uint64_t);
+	//pos = 3 * sizeof(uint64_t);
+    // /*
 	memcpy(&metadata.numFiles, buffer + pos, sizeof(uint64_t));
 	pos += sizeof(uint64_t);
 
 	memcpy(&metadata.firstFree, buffer + pos, sizeof(uint64_t));
 	pos += sizeof(uint64_t);
-
+    // */
 	HashmapReader<uint64_t> reader(metadata.file, this);
 	metadata.files = reader.read_buffer(buffer, pos, metadata_size);
 	free(buffer);
