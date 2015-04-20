@@ -8,7 +8,7 @@
 
 int main(void) {
 	Storage::Filesystem *fs = new Storage::Filesystem("data.db");
-	for (int i=0; i<11; i++) {
+	for (int i=0; i<20; i++) {
 		std::string name(std::to_string(i));
 		File f = fs->open_file(name);
         if( f.size > 0 ) {

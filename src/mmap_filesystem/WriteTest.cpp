@@ -5,14 +5,19 @@
 #include "HashmapWriter.h"
 #include "HashmapReader.h"
 
-int main(void) {
+void write( std::string prefix ) {
 	Storage::Filesystem *fs = new Storage::Filesystem("data.db");
 	std::string lorem("{\"A\": 1};");
 	for (int i=0; i<10; i++) {
-		std::string name(std::to_string(i));
+		std::string name( prefix + std::to_string(i));
 		File f = fs->open_file(name);
 		fs->write(&f, lorem.c_str(), lorem.size());
 	}
 	fs->shutdown();
     delete fs;
+}
+
+int main(void) {
+    write( "herp" );
+    write( "derp" );
 }
