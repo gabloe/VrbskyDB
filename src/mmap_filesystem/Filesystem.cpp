@@ -99,22 +99,26 @@ void Storage::Filesystem::write(File *file, const char *data, uint64_t len) {
         to_write -= t_w;
         pos += t_w;
 
+        // If we have more to write we need 
+        // to go to the next block
         if( to_write > 0 ) {
-            uint64_t next;
-            if ( block.next == 0) { 
-                next = getBlock();
-            }else {
-                next = block.next;
+            if ( block.next == 0) { // Need a new block 
+                block.next = getBlock();
+            }else { // already havea new block
+                block.next = block.next;
             }
-            block.next = next;
             writeBlock(block);
-            block = loadBlock( next );
+            block = loadBlock( block.next );
         }
     }
+
+    // if the last block has more blocks connected we need
+    // to put those on the free list.
     if( block.next != 0 ) {
         addToFreeList( block.next );
         block.next = 0;
     }
+
     // Write last block
     writeBlock(block);
     file->size = len;
