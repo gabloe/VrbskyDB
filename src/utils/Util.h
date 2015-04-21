@@ -3,21 +3,23 @@
 #define UTIL_H_
 
 #include <cstdint>
+#include <algorithm>
+#include <string>
 
 namespace Storage {
 
     static void Write64( char *buffer , uint64_t &pos , uint64_t value ) {
-        memcpy( buffer + pos , &value , sizeof(uint64_t) );
+        std::copy( &value , &value + sizeof(uint64_t) , buffer + pos );
         pos += sizeof(uint64_t);
     }
 
     static void WriteString( char *buffer , uint64_t &pos , std::string& value ) {
-        memcpy( buffer + pos , value.c_str() , value.size() );
+        std::copy( value.begin() , value.end() , buffer + pos );
         pos += value.size();
     }
 
     static void WriteRaw( char *buffer , uint64_t &pos , const char* value , uint64_t length ) {
-        memcpy( buffer + pos , value , length );
+        std::copy( value , value + length , buffer + pos );
         pos += length;
     }
 
@@ -44,6 +46,9 @@ namespace Storage {
             static const char* Bytes( K &k ) {
                 return reinterpret_cast<char*>(&k);
             }
+            static const std::string Name() {
+                return std::string( typeid(K).name() );
+            }
         };
     template <>
         struct Type<std::string> {
@@ -55,6 +60,9 @@ namespace Storage {
             }
             static const char* Bytes( std::string &msg ) {
                 return msg.c_str();
+            }
+            static const std::string Name() {
+                return "std::string";
             }
         };
 

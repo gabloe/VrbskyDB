@@ -22,6 +22,7 @@
 #define RAPIDJSON_BIGINTEGER_H_
 
 #include "../rapidjson.h"
+#include <cstring>
 
 #if defined(_MSC_VER) && defined(_M_AMD64)
 #include <intrin.h> // for _umul128

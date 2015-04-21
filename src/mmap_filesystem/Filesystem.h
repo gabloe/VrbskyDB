@@ -13,6 +13,8 @@
 
 const uint64_t BLOCK_SIZE  = 128;
 const uint64_t BLOCKS_PER_PAGE = 32;
+const uint64_t BLOCK_SIZE_ACTUAL = 3 * sizeof(uint64_t) + BLOCK_SIZE;
+const uint64_t PAGESIZE = BLOCK_SIZE_ACTUAL * BLOCKS_PER_PAGE;
 
 #ifndef UNUSED
 #define UNUSED(X)
@@ -24,8 +26,6 @@ struct Block {
 	uint64_t next;
 	char buffer[BLOCK_SIZE];
 };
-#define BLOCK_SIZE_ACTUAL (3*sizeof(uint64_t) + BLOCK_SIZE)
-#define PAGESIZE BLOCK_SIZE_ACTUAL * BLOCKS_PER_PAGE
 
 #ifdef __APPLE__
 inline int bsd_fallocate(int, off_t, off_t);

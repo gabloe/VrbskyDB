@@ -1,9 +1,9 @@
 #ifndef DBMS_H_
 #define DBMS_H_
 
+#include <rapidjson/document.h>
 #include "../parsing/Parser.h"
 #include "../storage/LinearHash.h"
-#include <rapidjson/document.h>
 #include "../mmap_filesystem/Filesystem.h"
 
 #define LENGTH(A) sizeof(A)/sizeof(A[0])

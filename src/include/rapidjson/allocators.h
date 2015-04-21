@@ -22,6 +22,7 @@
 #define RAPIDJSON_ALLOCATORS_H_
 
 #include "rapidjson.h"
+#include <cstring>
 
 RAPIDJSON_NAMESPACE_BEGIN
 

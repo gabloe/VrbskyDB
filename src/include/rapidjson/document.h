@@ -27,6 +27,7 @@
 #include "internal/meta.h"
 #include "internal/strfunc.h"
 #include <new>      // placement new
+#include <cstring>
 
 #ifdef _MSC_VER
 RAPIDJSON_DIAG_PUSH

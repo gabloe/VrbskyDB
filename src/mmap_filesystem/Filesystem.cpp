@@ -111,6 +111,10 @@ void Storage::Filesystem::write(File *file, const char *data, uint64_t len) {
             block = loadBlock( next );
         }
     }
+    if( block.next != 0 ) {
+        addToFreeList( block.next );
+        block.next = 0;
+    }
     // Write last block
     writeBlock(block);
     file->size = len;
@@ -177,6 +181,7 @@ std::vector<std::string> Storage::Filesystem::getFilenames() {
 bool Storage::Filesystem::deleteFile(File *file) {
     if (metadata.files.count(file->name)) {
         metadata.files.erase(file->name);
+        Assert( "Did not remove?" , metadata.files.count(file->name) == 0 );
         addToFreeList(file->block);
         metadata.numFiles--;
         return true;
@@ -446,6 +451,7 @@ void Storage::Filesystem::writeMetadata() {
 
     uint64_t test = filesystem.numPages + metadata.firstFree + metadata.numFiles;
 
+    //printJunk();
 
     char *files = writer.write_buffer(metadata.files, &files_size);
     size += files_size;

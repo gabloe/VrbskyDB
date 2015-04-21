@@ -6,7 +6,8 @@
 #include <map>
 
 #include "../mmap_filesystem/Filesystem.h"
-#include "../mmap_filesystem/Util.h"
+#include "../utils/Util.h"
+#include "../assert/Assert.h"
 
 namespace Storage {
     template <typename T>
@@ -29,9 +30,10 @@ namespace Storage {
                         uint64_t value_size = Type<T>::Size(val);
 
                         // Re-grow to fit
-                        if (pos + (key_size + sizeof(uint64_t) + value_size) > buf_size) {
-                            buf_size += key_size + sizeof(uint64_t) + value_size;
+                        if (pos + (key_size + 2*sizeof(uint64_t) + value_size) > buf_size) {
+                            buf_size += key_size + 2*sizeof(uint64_t) + value_size;
                             buf_size *= 2;
+                            Assert( "New  size is 0?" , buf_size > 0 );
                             buffer = (char*)realloc(buffer, buf_size);
                         }
 
