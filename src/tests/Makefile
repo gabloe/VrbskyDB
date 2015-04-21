@@ -1,7 +1,12 @@
 OUT=../../bin/
 OBJECTS=../objects/
 CC=g++
+UNAME := $(shell uname -s)
+ifeq ($(UNAME), Darwin)
+CFLAGS=-std=c++11 -O3 -Wall -Wextra -g
+else
 CFLAGS=-std=c++11 -O3 -Wall -Wextra -g -luuid
+endif
 INCLUDE_DIR=../include/
 INCLUDES=-I$(INCLUDE_DIR)
 OS_OBJS=$(OBJECTS)File.o $(OBJECTS)FileSystem.o $(OBJECTS)FileReader.o $(OBJECTS)FileWriter.o
