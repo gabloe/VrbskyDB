@@ -30,7 +30,7 @@ void read( std::string prefix , int limit ) {
 }
 
 int main(int argc, char *argv[]) {
-    int limit = 100;
+    int limit = 10;
     if( argc == 2 ) {
         limit = atoi( argv[1] );
     }

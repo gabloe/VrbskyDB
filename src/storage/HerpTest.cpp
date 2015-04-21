@@ -33,6 +33,6 @@ int main(int argc, char *argv[]) {
         ++seen;
         check[kvp.second] = true;
     }
-    Assert( "Missing some" , seen == HowMany );
+    Assert( "Missing some" , HowMany - seen , seen == HowMany );
     return 0;
 }

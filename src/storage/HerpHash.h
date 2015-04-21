@@ -22,8 +22,12 @@ namespace Storage {
             return Buckets;
         }
 
-        uint64_t Which(KEY &k) {
-            return hash_fn(k) % Buckets;
+        std::map<KEY,VALUE>& Which(KEY &k) {
+            return maps[hash_fn(k) % Buckets];
+        }
+        
+        void save( std::map<KEY,VALUE>& m , KEY &k ) {
+            maps[hash_fn(k) % Buckets] = m;
         }
 
         HerpHash() {
@@ -33,24 +37,28 @@ namespace Storage {
         }
 
         HerpHash(const HerpHash& other) {
-            this->maps = other.maps;
+            for( int i = 0 ; i < Buckets; ++i) {
+                auto m = other.maps[i];
+                maps[i] = m;
+            }
         }
 
         ~HerpHash() {
         }
 
         void put( KEY k , VALUE v ) {
-            std::map<KEY,VALUE>& m = maps[Which(k)];
+            auto m = Which(k);
             m[k] = v;
+            save( m , k );
         }
 
         VALUE get( KEY k) {
-            std::map<KEY,VALUE>& m = maps[Which(k)];
+            auto m = Which(k);
             return m[k];
         }
 
         bool contains( KEY k ) {
-            std::map<KEY,VALUE>& m = maps[Which(k)];
+            auto m = Which(k);
             return m.count(k) > 0;
         }
 
@@ -75,22 +83,24 @@ namespace Storage {
 
                     while( m_curr == m_end ) {
                         ++curr;
-                        if( curr == end ) break;
-
-                        m_curr = (*curr).begin();
-                        m_end = (*curr).end();
+                        if( curr == end ) {
+                            break;
+                        }
+                        auto c = *curr;
+                        m_curr = c.begin();
+                        m_end = c.end();
                     }
                 }
 
                 HerpIterator( ITER curr, ITER end ) : curr(curr) , end(end) {
                     if( curr == end ) return;
-                    m_curr = (*curr).begin();
-                    m_end = (*curr).end();
-
+                    auto c = *curr;
+                    m_curr = c.begin();
+                    m_end = c.end();
                     m_next();
                 }
 
-                HerpIterator(const HerpIterator& other) : 
+                HerpIterator( const HerpIterator& other) : 
                     curr(other.curr), end(other.end),
                     m_curr(other.m_curr), m_end(other.m_end) {}
 
