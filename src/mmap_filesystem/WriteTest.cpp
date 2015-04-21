@@ -8,11 +8,13 @@
 #include "HashmapWriter.h"
 #include "HashmapReader.h"
 
+const std::string db_name = "data.db";
+
 void validate(std::string prefix , int howMany) {
     bool *tests = new bool[howMany];
     for( int i = 0 ; i < howMany; ++i) tests[i] = false;
 
-	Storage::Filesystem *fs = new Storage::Filesystem("data.db");
+	Storage::Filesystem *fs = new Storage::Filesystem( db_name );
     auto files = fs->getFilenames();
     int count = 0;
     for( auto n = files.begin() ; n != files.end() ; ++n ) {
@@ -39,7 +41,7 @@ void validate(std::string prefix , int howMany) {
 }
 
 void printFiles(int limit) {
-	Storage::Filesystem *fs = new Storage::Filesystem("data.db");
+	Storage::Filesystem *fs = new Storage::Filesystem( db_name );
     auto files = fs->getFilenames();
     for( auto n = files.begin() ; limit-- && n != files.end() ; ++n ) {
         File f = fs->open_file( *n );
@@ -50,7 +52,7 @@ void printFiles(int limit) {
 }
 
 void write( std::string prefix , int limit ) {
-	Storage::Filesystem *fs = new Storage::Filesystem("data.db");
+	Storage::Filesystem *fs = new Storage::Filesystem( db_name );
 	std::string lorem("{\"A\": 1};");
 	for (int i=0; i < limit; i++) {
 		std::string name( prefix + std::to_string(i));

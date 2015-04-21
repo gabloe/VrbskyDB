@@ -13,6 +13,13 @@
 #include "HashmapReader.h"
 #include "HashmapWriter.h"
 
+#define printJunk(MSG) {   \
+    std::cout << MSG << std::endl;\
+    std::cout << "\tNumPages: " << filesystem.numPages << std::endl;\
+    std::cout << "\tnumFiles: " << metadata.numFiles << std::endl;\
+    std::cout << "\tfirstFree: " << metadata.firstFree << std::endl;\
+}
+
 #define SET_FREE(SPOT,NEW) {    \
     SPOT = NEW;                 \
 }
@@ -159,15 +166,13 @@ void Storage::Filesystem::write(File *file, const char *data, uint64_t len) {
 void Storage::Filesystem::addToFreeList(uint64_t block) {
     if (metadata.firstFree == 0) {
         SET_FREE(metadata.firstFree,block);
-        //metadata.firstFree = block;
     } else {
-        // Go to last block and append
+        // Append to end
         Block b = loadBlock(metadata.firstFree);
         while (b.next != 0) {
             b = loadBlock(b.next);
         }
         SET_FREE(b.next,block);
-        //b.next = block;
         writeBlock(b);
     }
 }
@@ -262,9 +267,12 @@ Block Storage::Filesystem::loadBlock(uint64_t blockID) {
 
 void Storage::Filesystem::writeBlock(Block block) {
     uint64_t id = block.id - 1;
+
+    // How can this even happen?
     while (id >= filesystem.numPages * BLOCKS_PER_PAGE) {
         growFilesystem();
     }
+
     uint64_t pos = id * BLOCK_SIZE_ACTUAL;
     memcpy(filesystem.data + pos, &block.id, sizeof(uint64_t));
     pos += sizeof(uint64_t);
@@ -313,20 +321,24 @@ void Storage::Filesystem::growFilesystem() {
    */
 
 uint64_t Storage::Filesystem::getBlock() {
-    uint64_t bid;
-    Block b;
+
     // Free list is empty.  Grow the filesystem.
     if (metadata.firstFree == 0) {
         growFilesystem();
     }
 
     // We know there is space available
-    bid = metadata.firstFree;
-    b = loadBlock(bid);
+    uint64_t bid = metadata.firstFree;
+    Block b = loadBlock(bid);
+
+    // update free list
     SET_FREE(metadata.firstFree,b.next);
-    //metadata.firstFree = b.next;
+
+    // update block
     b.next = 0;
+    b.used_space = 0;
     writeBlock(b);
+
     return bid;
 }
 
@@ -363,15 +375,16 @@ void Storage::Filesystem::initFilesystem(bool initialFill) {
 
 void Storage::Filesystem::chainPage(uint64_t startBlock) {
     Block b;
+    uint64_t i;
     b.used_space = 0;
     std::fill( b.buffer , b.buffer + BLOCK_SIZE, 0 );
-    for (uint64_t i=0; i<BLOCKS_PER_PAGE; ++i) {
+    for (i=0; i<BLOCKS_PER_PAGE - 1; ++i) {
         b.id = i + startBlock;
-        b.next = b.id+1;
+        b.next = b.id + 1;
         writeBlock(b);
     }
     // The last block in the chain should point to 0
-    b = loadBlock(b.id-1);
+    b.id = i + startBlock;
     b.next = 0;
     writeBlock(b);
 }
@@ -384,7 +397,6 @@ void Storage::Filesystem::initMetadata() {
     // Initial values
     metadata.numFiles = 0;
     SET_FREE(metadata.firstFree,1);
-    //metadata.firstFree = 1;
     filesystem.numPages = 1;
 }
 
@@ -395,7 +407,8 @@ void Storage::Filesystem::initMetadata() {
 void Storage::Filesystem::readMetadata() {
     uint64_t pos = 0;
     uint64_t offset = 3 * sizeof(uint64_t); // Skip ID, next, and length
-    memcpy(&filesystem.numPages,    filesystem.data + offset , sizeof(uint64_t) );
+    filesystem.numPages = Read64( filesystem.data , offset );
+
 
     if (filesystem.numPages > 1) {
         filesystem.data = (char*)t_mremap(filesystem.fd,
@@ -411,79 +424,59 @@ void Storage::Filesystem::readMetadata() {
 
 
     Block b = loadBlock(1);
-    uint64_t tmpData = 0;
     uint64_t metadata_size = calculateSize(b);
+    std::cout << "datasize: " << metadata_size - 3 * sizeof(uint64_t) << std::endl;
+
     metadata.file = File("__METADATA__", 1, metadata_size);
 
     char *buffer = read(&metadata.file);
-    // Skip numPages
-    pos = 1 * sizeof(uint64_t);
-    memcpy(&metadata.numFiles, buffer + pos, sizeof(uint64_t));
-    pos += sizeof(uint64_t);
+    filesystem.numPages = Read64( buffer , pos );
+    metadata.numFiles = Read64( buffer , pos );
+    metadata.firstFree = Read64( buffer , pos );
 
-    memcpy(&tmpData, buffer + pos, sizeof(uint64_t));
-    SET_FREE(metadata.firstFree,tmpData);
-    pos += sizeof(uint64_t);
+    printJunk("ReadMetaData");
 
+    Assert( "position is wrong" , pos == 3 * sizeof(uint64_t) );
     HashmapReader<uint64_t> reader(metadata.file, this);
     metadata.files = reader.read_buffer(buffer, pos, metadata_size);
     free(buffer);
-    if( 0 ) {
-        std::cout << "Reading Metadata" << std::endl;
-        std::cout << "\tnum pages:" << filesystem.numPages << std::endl;
-        std::cout << "\tnum files:" << metadata.numFiles << std::endl;
-        std::cout << "\tFirst free: " << metadata.firstFree << std::endl;
-        std::cout << "\tRead size is " << metadata_size << std::endl;
-    }
 }
 
 /*
    Write the metadata to disk.
    */
-#define printJunk() {   \
-    std::cout << "Writing metadata" << std::endl;\
-    std::cout << "\tNumPages: " << filesystem.numPages << std::endl;\
-    std::cout << "\tnumFiles: " << metadata.numFiles << std::endl;\
-    std::cout << "\tfirstFree: " << metadata.firstFree << std::endl;\
-}
 
 void Storage::Filesystem::writeMetadata() {
-    HashmapWriter<uint64_t> writer(metadata.file, this);	
-    uint64_t size = 3 * sizeof(uint64_t);
-    uint64_t pos = 0;
-    uint64_t files_size = 0;
+    printJunk("writeMetadata");
 
-    uint64_t test = filesystem.numPages + metadata.firstFree + metadata.numFiles;
+    uint64_t size,pos,files_size = 0;
+    HashmapWriter<uint64_t> writer(metadata.file, this);
+    char *files,*buf;
 
-    //printJunk();
+    files = writer.write_buffer(metadata.files, &files_size);
 
-    char *files = writer.write_buffer(metadata.files, &files_size);
-    size += files_size;
-    char *buf = (char*)malloc(size);
+    size = 3 * sizeof(uint64_t) + files_size;
+    buf = (char*)malloc(size);
 
     // Write numPages first
-    memcpy(buf+pos, &filesystem.numPages, sizeof(uint64_t));
-    pos += sizeof(uint64_t);
+    pos = 0;
+    Write64(buf , pos , filesystem.numPages);
+    Write64(buf , pos , metadata.numFiles);
+    Write64(buf , pos , metadata.firstFree);
+    WriteRaw( buf , pos , files , files_size );
 
-    // Write numFiles second
-    memcpy(buf+pos, &metadata.numFiles, sizeof(uint64_t));
-    pos += sizeof(uint64_t);
-
-    // Write firstFree third
-    memcpy(buf+pos, &metadata.firstFree, sizeof(uint64_t));
-    pos += sizeof(uint64_t);
-
-    // Write data fourth
-    memcpy(buf+pos, files, files_size);
-    pos += files_size;
-
+    uint64_t test = filesystem.numPages + metadata.firstFree + metadata.numFiles;
     write(&metadata.file, buf, size);
-
     test -= (filesystem.numPages + metadata.firstFree + metadata.numFiles);
+
+    std::cout << "bytes to write " << files_size << std::endl;
+
     if(test) {
-        memcpy(buf + 0 * sizeof(uint64_t), &filesystem.numPages, sizeof(uint64_t));
-        memcpy(buf + 1 * sizeof(uint64_t), &metadata.numFiles, sizeof(uint64_t));
-        memcpy(buf + 2 * sizeof(uint64_t), &metadata.firstFree, sizeof(uint64_t));
+        pos = 0;
+        Write64(buf , pos , filesystem.numPages);
+        Write64(buf , pos , metadata.numFiles);
+        Write64(buf , pos , metadata.firstFree);
+        printJunk("writeMetadata2");
         write(&metadata.file, buf, size);
     }
     free(files);
