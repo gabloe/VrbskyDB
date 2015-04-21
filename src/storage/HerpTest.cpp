@@ -14,7 +14,7 @@ int main(int argc, char *argv[]) {
         HowMany = atoi( argv[1] );
     }
 
-    HowMany = std::max( HowMany, (uint64_t)0 );
+    HowMany = std::min( HowMany, (uint64_t)100000000 );
 
     bool *check = new bool[HowMany];
 
@@ -33,6 +33,9 @@ int main(int argc, char *argv[]) {
         ++seen;
         check[kvp.second] = true;
     }
-    Assert( "Missing some" , HowMany - seen , seen == HowMany );
+    Assert( "Seen not the same as placed" , HowMany - seen , seen == HowMany );
+
+
+    delete check;
     return 0;
 }

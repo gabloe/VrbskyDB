@@ -17,13 +17,14 @@ void write( std::string prefix , int limit ) {
     }
     Storage::HerpmapWriter<int> writer( f , &fs );
     writer.write( merp );
+    std::cout << "File has size " << f.size << std::endl;
     fs.shutdown();
 }
 
 void read( std::string prefix , int limit ) {
 	Storage::Filesystem fs("data.db");
     File f = fs.open_file( "merp" );
-    std::cout << "The file has size " << f.size << std::endl;
+    std::cout << "File has size " << f.size << std::endl;
     Storage::HerpmapReader<int> reader( f , &fs );
 
     Storage::HerpHash<std::string,int> merp = reader.read(); ;
