@@ -4,6 +4,7 @@
 
 #include <cstdint>
 #include <algorithm>
+#include <list>
 #include <string>
 
 namespace Storage {
@@ -45,7 +46,11 @@ namespace Storage {
                 return *reinterpret_cast<const K*>( data );
             }
             static const char* Bytes( K &k ) {
-                return reinterpret_cast<char*>(&k);
+                uint64_t size = sizeof(K);
+                char *buff = new char[size];
+                char *data = reinterpret_cast<char*>(&k);
+                std::copy( data , data + size , buff );
+                return buff;
             }
             static const std::string Name() {
                 return std::string( typeid(K).name() );
@@ -60,10 +65,45 @@ namespace Storage {
                 return std::string( data , len );
             }
             static const char* Bytes( std::string &msg ) {
-                return msg.c_str();
+                char *buff = new char[msg.size()];
+                return buff;
             }
             static const std::string Name() {
                 return "std::string";
+            }
+        };
+
+    template <>
+        struct Type<std::list<std::string> > {
+            static uint64_t Size( std::list< std::string > &msg ) {
+                uint64_t sum = 0;
+                for( auto herp = msg.begin() ; herp != msg.end() ; ++herp ) {
+                    sum += (*herp).size() + sizeof(uint64_t);
+                }
+                return sum;
+            }
+            static std::list<std::string> Create(const char * data, uint64_t len) {
+                std::list< std::string > ret;
+                uint64_t pos = 0;
+                while( pos < len ) {
+                    uint64_t l = Read64( data , pos );
+                    ret.push_back( ReadString( data , pos , l ) );
+                }
+                return ret;
+            }
+            static const char* Bytes( std::list<std::string> &er ) {
+                int length = Type::Size(er);
+                char *buff = new char[length];
+                uint64_t pos = 0;
+                for( auto i = er.begin() ; i != er.end() ; ++i ) {
+                    std::string& s = *i;
+                    Write64( buff , pos , s.size() );
+                    WriteString( buff , pos , s );
+                }
+                return buff;
+            }
+            static const std::string Name() {
+                return "std::list<std::string>";
             }
         };
 
