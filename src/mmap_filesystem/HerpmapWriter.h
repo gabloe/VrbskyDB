@@ -25,6 +25,9 @@ namespace Storage {
                         // data
                         std::string key = (*it).first;
                         T val = (*it).second;
+
+                        std::cout << "Writing: " << key << ": " << val << std::endl;
+
                         // size
                         uint64_t key_size = key.size();
                         uint64_t value_size = Type<T>::Size(val);

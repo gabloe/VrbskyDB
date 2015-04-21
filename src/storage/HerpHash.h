@@ -5,17 +5,20 @@
 
 #include <functional>
 #include <map>
-#include <vector>
+//#include <vector>
+#include <array>
 #include "../utils/Util.h"
 
 namespace Storage {
-    template <typename KEY, typename VALUE,uint64_t Buckets = 1024>
+    template <typename KEY, typename VALUE, uint64_t Buckets = 1024>
     class HerpHash {
         public:
 
         class HerpIterator;
 
-        std::vector< std::map<KEY,VALUE>* > maps;
+        // Vector of pointers to std::maps
+        std::array< std::map<KEY,VALUE>* , Buckets> maps;
+        //std::vector< std::map<KEY,VALUE>* > maps;
         std::hash<KEY> hash_fn;
 
         std::map<KEY,VALUE>& Which(KEY &k) {
@@ -28,7 +31,8 @@ namespace Storage {
 
         HerpHash() {
             for( int i = 0 ; i < Buckets ; ++i ) {
-                maps.push_back( new std::map<KEY,VALUE>() );
+                maps[i] = new std::map<KEY,VALUE>();
+                //maps.push_back( new std::map<KEY,VALUE>() );
             }
         }
 
@@ -67,7 +71,8 @@ namespace Storage {
 
         class HerpIterator : public std::iterator<std::input_iterator_tag,std::pair<KEY,VALUE> > {
             public:
-                typedef typename std::vector<std::map<KEY,VALUE>* >::iterator ITER;
+                //typedef typename std::vector<std::map<KEY,VALUE>* >::iterator ITER;
+                typedef typename std::array<std::map<KEY,VALUE>* , Buckets>::iterator ITER;
                 typedef typename std::map<KEY,VALUE>::iterator IN;
 
                 ITER curr,end;

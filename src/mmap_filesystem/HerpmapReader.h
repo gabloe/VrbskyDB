@@ -8,7 +8,7 @@
 #include "../utils/Util.h"
 
 namespace Storage {
-    template <class T>
+    template <typename T>
         class HerpmapReader {
             public:
                 HerpmapReader(File &file_, Filesystem *fs_): fs(fs_), file(file_) {}
@@ -26,6 +26,7 @@ namespace Storage {
                         pos += value_size;
 
                         // Save
+                        std::cout << "Reading "  << key << ": " << val << std::endl;
                         result.put( key , val );
                     }
                     return result;
