@@ -25,7 +25,7 @@ void read( std::string prefix , int limit ) {
     for( int value = 0 ; value < limit ; ++value ) {
         std::string key( prefix + std::to_string( value ) );
         int test = merp.get( key );
-        Assert( "Seems we lost some?" , test == value );
+        Assert( "Junk?" , test , value , test == value );
     }
 }
 

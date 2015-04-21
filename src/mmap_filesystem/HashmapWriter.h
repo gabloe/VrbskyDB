@@ -14,6 +14,7 @@ namespace Storage {
         class HashmapWriter {
             public:
                 HashmapWriter(File &file_, Filesystem *fs_): fs(fs_), file(file_) {}
+
                 char *write_buffer(std::map<std::string, T> data, uint64_t *size) {
 
                     uint64_t buf_size = BLOCK_SIZE;
@@ -25,6 +26,7 @@ namespace Storage {
                         // data
                         std::string key = it->first;
                         T val = it->second;
+
                         // size
                         uint64_t key_size = key.size();
                         uint64_t value_size = Type<T>::Size(val);

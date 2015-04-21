@@ -9,7 +9,8 @@
 namespace Storage {
 
     static void Write64( char *buffer , uint64_t &pos , uint64_t value ) {
-        std::copy( &value , &value + sizeof(uint64_t) , buffer + pos );
+        char *herp = reinterpret_cast<char*>(&value);
+        std::copy( herp , herp + sizeof(uint64_t) , buffer + pos );
         pos += sizeof(uint64_t);
     }
 
