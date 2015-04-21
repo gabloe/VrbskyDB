@@ -58,6 +58,25 @@ namespace Storage {
             return *this;
         }
 
+        VALUE&  operator[]( KEY &k ) {
+            return Which(k)[k];
+        }
+
+        size_t count( KEY &k ){
+            return contains( k );
+        }
+
+        void erase() {
+        }
+
+        size_t size() {
+            int s = 0;
+            for( int i = 0 ; i <Buckets; ++i ) {
+                s += maps[i]->size();
+            }
+            return s;
+        }
+
         void put( KEY k , VALUE v ) {
             std::map<KEY,VALUE>& m = Which(k);
             m[k] = v;
@@ -130,6 +149,10 @@ namespace Storage {
                     return operator++();
                 }
 
+                std::pair<const KEY,VALUE>* operator->() const {
+                    return *m_curr;
+                }
+
                 bool operator==(const HerpIterator& rhs) {
                     if( curr != rhs.curr ) return false;    // Not at some position
                     if( curr == end ) return true;         // We are at the end, don't check iter
@@ -140,8 +163,16 @@ namespace Storage {
                     return !(operator==(rhs));
                 }
 
-                std::pair<const KEY,VALUE>& operator*() {
-                    return *m_curr;
+                std::pair<const KEY,VALUE>* operator*() {
+                    return m_curr;
+                }
+
+                KEY first() {
+                    return m_curr->first;
+                }
+
+                VALUE second() {
+                    return m_curr->second;
                 }
 
         };

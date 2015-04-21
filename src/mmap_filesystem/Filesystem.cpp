@@ -73,7 +73,13 @@ uint64_t Storage::Filesystem::getNumFiles() {
 	return metadata.numFiles;
 }
 
+/*
 std::map<std::string, uint64_t> Storage::Filesystem::getFileMap() {
+	return metadata.files;
+}
+*/
+
+Storage::HerpHash<std::string, uint64_t> Storage::Filesystem::getFileMap() {
 	return metadata.files;
 }
 
@@ -116,7 +122,8 @@ void Storage::Filesystem::compact() {
     std::cout << std::endl;
     uint64_t newNumPages = fs->getNumPages();
     uint64_t newNumFiles = fs->getNumFiles();
-    std::map<std::string, uint64_t> newFiles = fs->getFileMap();
+    //std::map<std::string, uint64_t> newFiles = fs->getFileMap();
+    Storage::HerpHash<std::string,uint64_t> newFiles = fs->getFileMap();
     fs->shutdown();
 
     // Unmap the old filesystem

@@ -4,7 +4,8 @@
 #include <string>
 #include <sys/stat.h>
 #include <sys/mman.h>
-#include <map>
+//#include <map>
+#include "../storage/HerpHash.h"
 #include <assert.h>
 #include <fcntl.h>
 #include <unistd.h>
@@ -87,7 +88,8 @@ struct Metadata {
 	uint64_t numFiles;
 	uint64_t firstFree;
 	File file;
-	std::map<std::string, uint64_t> files;
+	//std::map<std::string, uint64_t> files;
+    Storage::HerpHash<std::string,uint64_t> files;
 };
 
 struct FSystem {
@@ -114,7 +116,8 @@ namespace Storage {
 		void write(File*, const char*, uint64_t);
 		bool deleteFile(File*);
 		std::vector<std::string> getFilenames();
-		std::map<std::string, uint64_t> getFileMap();
+		//std::map<std::string, uint64_t> getFileMap();
+        Storage::HerpHash<std::string,uint64_t> getFileMap();
 		void compact();
 		uint64_t getNumPages();
 		uint64_t getNumFiles();
