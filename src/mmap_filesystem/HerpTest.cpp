@@ -10,6 +10,7 @@ void write( std::string prefix , int limit ) {
     Storage::HerpHash<std::string,int> merp;
     for( int value = 0 ; value < limit ; ++value ) {
         std::string key( prefix + std::to_string( value ) );
+        std::cout << "Putting with key " << key << " the value " << value << std::endl;
         merp.put( key , value );
     }
     Storage::HerpmapWriter<int> writer( f , &fs );
@@ -25,7 +26,7 @@ void read( std::string prefix , int limit ) {
     for( int value = 0 ; value < limit ; ++value ) {
         std::string key( prefix + std::to_string( value ) );
         int test = merp.get( key );
-        Assert( "Junk?" , test , value , test == value );
+        std::cout << "With key " << key <<  " we get the value " << test << " and expect " << value << std::endl;
     }
 }
 

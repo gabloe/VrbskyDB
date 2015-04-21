@@ -9,21 +9,17 @@
 #include "../utils/Util.h"
 
 namespace Storage {
-    template <class KEY, class VALUE,uint64_t Buckets = 1024>
+    template <typename KEY, typename VALUE,uint64_t Buckets = 1024>
     class HerpHash {
         public:
 
         class HerpIterator;
 
-        std::vector< std::map<KEY,VALUE> > maps;
+        std::vector< std::map<KEY,VALUE>* > maps;
         std::hash<KEY> hash_fn;
 
-        uint64_t numBuckets(){
-            return Buckets;
-        }
-
         std::map<KEY,VALUE>& Which(KEY &k) {
-            return maps[hash_fn(k) % Buckets];
+            return *maps[hash_fn(k) % Buckets];
         }
         
         void save( std::map<KEY,VALUE>& m , KEY &k ) {
@@ -32,33 +28,32 @@ namespace Storage {
 
         HerpHash() {
             for( int i = 0 ; i < Buckets ; ++i ) {
-                maps.push_back( std::map<KEY,VALUE>() );
+                maps.push_back( new std::map<KEY,VALUE>() );
             }
         }
 
         HerpHash(const HerpHash& other) {
-            for( int i = 0 ; i < Buckets; ++i) {
-                auto m = other.maps[i];
-                maps[i] = m;
-            }
+            maps = other.maps;
         }
 
         ~HerpHash() {
+            for( int i = 0 ; i < Buckets ; ++i ) {
+                delete maps[i];
+            }
         }
 
         void put( KEY k , VALUE v ) {
-            auto m = Which(k);
+            std::map<KEY,VALUE>& m = Which(k);
             m[k] = v;
-            save( m , k );
         }
 
         VALUE get( KEY k) {
-            auto m = Which(k);
+            std::map<KEY,VALUE>& m = Which(k);
             return m[k];
         }
 
         bool contains( KEY k ) {
-            auto m = Which(k);
+            std::map<KEY,VALUE>& m = Which(k);
             return m.count(k) > 0;
         }
 
@@ -72,7 +67,7 @@ namespace Storage {
 
         class HerpIterator : public std::iterator<std::input_iterator_tag,std::pair<KEY,VALUE> > {
             public:
-                typedef typename std::vector<std::map<KEY,VALUE> >::iterator ITER;
+                typedef typename std::vector<std::map<KEY,VALUE>* >::iterator ITER;
                 typedef typename std::map<KEY,VALUE>::iterator IN;
 
                 ITER curr,end;
@@ -87,16 +82,16 @@ namespace Storage {
                             break;
                         }
                         auto c = *curr;
-                        m_curr = c.begin();
-                        m_end = c.end();
+                        m_curr = c->begin();
+                        m_end = c->end();
                     }
                 }
 
                 HerpIterator( ITER curr, ITER end ) : curr(curr) , end(end) {
                     if( curr == end ) return;
                     auto c = *curr;
-                    m_curr = c.begin();
-                    m_end = c.end();
+                    m_curr = c->begin();
+                    m_end = c->end();
                     m_next();
                 }
 

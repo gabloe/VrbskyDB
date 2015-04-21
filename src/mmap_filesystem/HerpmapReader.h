@@ -1,14 +1,14 @@
 #ifndef _HASHMAP_READER_H_
 #define _HASHMAP_READER_H_
 
-#include <string.h>
+#include <string>
 
 #include "../storage/HerpHash.h"
 #include "../mmap_filesystem/Filesystem.h"
 #include "../utils/Util.h"
 
 namespace Storage {
-    template <typename T>
+    template <class T>
         class HerpmapReader {
             public:
                 HerpmapReader(File &file_, Filesystem *fs_): fs(fs_), file(file_) {}
