@@ -44,7 +44,9 @@ namespace Storage {
 
                         // Output value
                         Write64( buffer , pos , value_size );
-                        WriteRaw( buffer , pos , Type<T>::Bytes(val) , value_size );
+                        const char *data = Type<T>::Bytes(val);
+                        WriteRaw( buffer , pos , data , value_size );
+                        delete data;
 
                     }
                     buffer = (char*)realloc(buffer, pos);
