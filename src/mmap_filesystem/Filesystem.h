@@ -114,7 +114,10 @@ namespace Storage {
 		void write(File*, const char*, uint64_t);
 		bool deleteFile(File*);
 		std::vector<std::string> getFilenames();
+		std::map<std::string, uint64_t> getFileMap();
 		void compact();
+		uint64_t getNumPages();
+		uint64_t getNumFiles();
 
 	protected:
 		Metadata metadata;
@@ -139,9 +142,6 @@ namespace Storage {
 		uint64_t calculateSize(Block);
 		void chainPage(uint64_t);
 		void addToFreeList(uint64_t);
-		uint64_t getNumPages();
-		uint64_t getNumFiles();
-		std::map<std::string, uint64_t> getFileMap();
 	};
 }
 

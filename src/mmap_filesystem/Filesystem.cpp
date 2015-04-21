@@ -96,6 +96,8 @@ File Storage::Filesystem::open_file(std::string name) {
 
 void Storage::Filesystem::compact() {
     Filesystem *fs = new Filesystem("_compact.db");
+    uint64_t oldNumFiles = metadata.files.size();
+    uint64_t pos = 0;
     for (auto it = metadata.files.begin(); it != metadata.files.end(); ++it) {
 	std::string key = it->first;
 
@@ -108,7 +110,10 @@ void Storage::Filesystem::compact() {
 	char *buffer = read(&src);
 	File dest = fs->open_file(key);
 	fs->write(&dest, buffer, src.size);
+        std::cout << "Compacting: " << ceil(100 * (long double)pos / oldNumFiles) << "% done.\r";
+	pos++;
     }
+    std::cout << std::endl;
     uint64_t newNumPages = fs->getNumPages();
     uint64_t newNumFiles = fs->getNumFiles();
     std::map<std::string, uint64_t> newFiles = fs->getFileMap();

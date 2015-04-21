@@ -19,6 +19,8 @@
 #include <pretty.h>
 #include <UUID.h>
 
+const uint64_t COMPACT_MARGIN = 0.95;
+
 // Add val to current value of result.
 void sumAggregate(rapidjson::Value *val, rapidjson::Value &result) {
     if (result.IsNull()) {
@@ -1271,7 +1273,7 @@ int main(int argc, char **argv) {
                 percent = (double)count / total;
                 delete query;
             }
-            printf("%.1f%% done.\r", percent*100);
+            printf("%.1f%% done.\r", ceil(percent*100));
         }
         std::cout << "\n";
     }
@@ -1289,6 +1291,9 @@ int main(int argc, char **argv) {
         out.flush();
         out.close();
     }
+
+    uint64_t origNumFiles = fs->getNumFiles();
+
     std::cout << "Enter a query (q to quit):" << std::endl;
     while (1) {
         buf = readline("> ");
@@ -1319,7 +1324,15 @@ int main(int argc, char **argv) {
     meta_writer.write(*meta);
     std::cout << "Goodbye!" << std::endl;
     free(buf);
-    fs->compact();
+
+    // The number of files decresed then compact the fs.
+    if (fs->getNumFiles() < origNumFiles) {
+    	clock_t start, end;
+    	start = std::clock();
+    	fs->compact();
+        end = std::clock();
+        std::cout << "Compaction  Took " << 1000 * (float)(end - start) / CLOCKS_PER_SEC << " milliseconds." << std::endl;
+    }
     fs->shutdown();
 
     delete fs;
