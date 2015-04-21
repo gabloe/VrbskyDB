@@ -37,7 +37,7 @@ Storage::Filesystem::Filesystem(std::string data_): data_fname(data_) {
         create_initial = true;
     }
 
-    filesystem.fd = open(data_fname.c_str(), O_RDWR | O_CREAT, (mode_t)0777);
+    filesystem.fd = open(data_fname.c_str(), O_RDWR | O_CREAT, (mode_t)0644);
     if (filesystem.fd == -1) {
         std::cerr << "Error opening filesystem!" << std::endl;
         exit(1);
@@ -131,7 +131,7 @@ void Storage::Filesystem::compact() {
     std::remove(data_fname.c_str());
     std::rename("_compact.db", data_fname.c_str());
 
-    filesystem.fd = open(data_fname.c_str(), O_RDWR | O_CREAT, (mode_t)0777);
+    filesystem.fd = open(data_fname.c_str(), O_RDWR | O_CREAT, (mode_t)0644);
     if (!filesystem.fd) {
         std::cerr << "Could not reopen filesystem after compact!" << std::endl;
 	exit(1);
