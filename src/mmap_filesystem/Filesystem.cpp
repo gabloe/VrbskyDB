@@ -462,8 +462,6 @@ void Storage::Filesystem::readMetadata() {
     uint64_t offset = 3 * sizeof(uint64_t); // Skip ID, next, and length
     filesystem.numPages = Read64( filesystem.data , offset );
 
-    std::cout << "numPages " << filesystem.numPages << std::endl;
-
     if (filesystem.numPages > 1) {
         filesystem.data = (char*)t_mremap(filesystem.fd,
                 filesystem.data, 
@@ -479,7 +477,6 @@ void Storage::Filesystem::readMetadata() {
 
     Block b = loadBlock(1);
     uint64_t metadata_size = calculateSize(b);
-    std::cout << "datasize: " << metadata_size - 3 * sizeof(uint64_t) << std::endl;
 
     metadata.file = File("__METADATA__", 1, metadata_size);
 
@@ -488,7 +485,7 @@ void Storage::Filesystem::readMetadata() {
     metadata.numFiles = Read64( buffer , pos );
     metadata.firstFree = Read64( buffer , pos );
 
-    printJunk("ReadMetaData");
+    //printJunk("ReadMetaData");
 
     Assert( "position is wrong" , pos == 3 * sizeof(uint64_t) );
     HashmapReader<uint64_t> reader(metadata.file, this);
@@ -522,18 +519,16 @@ void Storage::Filesystem::writeMetadata() {
     WriteRaw(buf, pos , files , files_size );
 
     uint64_t test = filesystem.numPages + metadata.firstFree + metadata.numFiles;
-    printJunk("writeMetadata");
+    //printJunk("writeMetadata");
     write(&metadata.file, buf, size);
     test -= (filesystem.numPages + metadata.firstFree + metadata.numFiles);
-
-    std::cout << "bytes to write " << files_size << std::endl;
 
     if(test) {
         pos = 0;
         Write64(buf , pos , filesystem.numPages);
         Write64(buf , pos , metadata.numFiles);
         Write64(buf , pos , metadata.firstFree);
-        printJunk("writeMetadata2");
+        //printJunk("writeMetadata2");
         write(&metadata.file, buf, size);
     }
     free(files);

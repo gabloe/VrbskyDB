@@ -12,7 +12,6 @@ void write( std::string prefix , int limit ) {
     Storage::HerpHash<std::string,int> merp;
     for( int value = 0 ; value < limit ; ++value ) {
         std::string key( prefix + std::to_string( value ) );
-        std::cout << "Putting with key " << key << " the value " << value << std::endl;
         merp.put( key , value );
     }
     Storage::HerpmapWriter<int> writer( f , &fs );
@@ -29,11 +28,16 @@ void read( std::string prefix , int limit ) {
 
     Storage::HerpHash<std::string,int> merp = reader.read(); ;
 
+    int seen = 0;
+
     for( int value = 0 ; value < limit ; ++value ) {
         std::string key( prefix + std::to_string( value ) );
+        Assert( "Missing" , merp.contains( key ) );
         int test = merp.get( key );
-        std::cout << "With key " << key <<  " we get the value " << test << " and expect " << value << std::endl;
+        Assert( "Returned value does not go with key" , key , test , test == value );
+        ++seen;
     }
+    Assert( "Number seen does not match expected" , seen , limit , seen == limit );
     fs.shutdown();
 }
 

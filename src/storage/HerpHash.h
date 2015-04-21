@@ -18,7 +18,6 @@ namespace Storage {
 
         // Vector of pointers to std::maps
         std::array< std::map<KEY,VALUE>* , Buckets> maps;
-        //std::vector< std::map<KEY,VALUE>* > maps;
         std::hash<KEY> hash_fn;
 
         std::map<KEY,VALUE>& Which(KEY &k) {
@@ -32,18 +31,31 @@ namespace Storage {
         HerpHash() {
             for( int i = 0 ; i < Buckets ; ++i ) {
                 maps[i] = new std::map<KEY,VALUE>();
-                //maps.push_back( new std::map<KEY,VALUE>() );
             }
         }
 
         HerpHash(const HerpHash& other) {
-            maps = other.maps;
+            for( int i = 0 ; i < maps.size(); ++i) {
+                auto o = other.maps[i];
+                auto m = new std::map<KEY,VALUE>(o->begin(), o->end());
+                this->maps[i] = m;
+            }
         }
 
         ~HerpHash() {
-            for( int i = 0 ; i < Buckets ; ++i ) {
+            for( int i = 0 ; i < maps.size() ; ++i ) {
                 delete maps[i];
             }
+        }
+
+        HerpHash& operator=( const HerpHash& rhs) {
+            for( int i = 0 ; i < maps.size(); ++i) {
+                delete maps[i];
+                auto o = rhs.maps[i];
+                auto m = new std::map<KEY,VALUE>(o->begin(), o->end());
+                this->maps[i] = m;
+            }
+            return *this;
         }
 
         void put( KEY k , VALUE v ) {
