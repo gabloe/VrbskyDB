@@ -10,8 +10,11 @@
 
 #include "../assert/Assert.h"
 #include "Filesystem.h"
-#include "HashmapReader.h"
-#include "HashmapWriter.h"
+#include "HerpmapReader.h"
+#include "HerpmapWriter.h"
+//#include "HashmapReader.h"
+//#include "HashmapWriter.h"
+
 
 #define printJunk(MSG) {   \
     std::cout << MSG << std::endl;\
@@ -500,7 +503,7 @@ void Storage::Filesystem::readMetadata() {
     //printJunk("ReadMetaData");
 
     Assert( "position is wrong" , pos == 3 * sizeof(uint64_t) );
-    HashmapReader<uint64_t> reader(metadata.file, this);
+    HerpmapReader<uint64_t> reader(metadata.file, this);
     metadata.files = reader.read_buffer(buffer, pos, metadata_size);
     free(buffer);
 }
@@ -513,7 +516,7 @@ void Storage::Filesystem::writeMetadata() {
 
     // variables
     uint64_t size,pos,files_size;
-    HashmapWriter<uint64_t> writer(metadata.file, this);
+    HerpmapWriter<uint64_t> writer(metadata.file, this);
     char *files,*buf;
 
     // Get files

@@ -66,7 +66,10 @@ namespace Storage {
             return contains( k );
         }
 
-        void erase() {
+        void erase( KEY &k ) {
+            for( int i = 0 ; i < Buckets ; ++i ) {
+                maps[i]->erase( k );
+            }
         }
 
         size_t size() {
@@ -150,7 +153,7 @@ namespace Storage {
                 }
 
                 std::pair<const KEY,VALUE>* operator->() const {
-                    return *m_curr;
+                    return &(*m_curr);
                 }
 
                 bool operator==(const HerpIterator& rhs) {

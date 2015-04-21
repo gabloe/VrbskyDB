@@ -23,8 +23,8 @@ namespace Storage {
                     for (auto it = data.begin(); it != data.end(); ++it) {
 
                         // data
-                        std::string key = (*it).first;
-                        T val = (*it).second;
+                        std::string key = it->first;
+                        T val = it->second;
 
                         // size
                         uint64_t key_size = key.size();

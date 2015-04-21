@@ -5,14 +5,18 @@
 #include <time.h>
 #include <map>
 #include <math.h>
+#include <ctime>
 
 #include "dbms.h"
 #include "../hashing/Hash.h"
 #include "../parsing/Parser.h"
 #include "../parsing/Scanner.h"
 #include "../mmap_filesystem/Filesystem.h"
-#include "../mmap_filesystem/HashmapWriter.h"
-#include "../mmap_filesystem/HashmapReader.h"
+
+#include "../mmap_filesystem/HerpmapWriter.h"
+#include "../mmap_filesystem/HerpmapReader.h"
+//#include "../mmap_filesystem/HashmapWriter.h"
+//#include "../mmap_filesystem/HashmapReader.h"
 
 #include <readline/readline.h>
 #include <readline/history.h>
@@ -1247,11 +1251,13 @@ int main(int argc, char **argv) {
     Storage::Filesystem *fs = new Storage::Filesystem(data_fname);
     META *meta;
     File meta_file = fs->open_file("__DB_METADATA__");
-    Storage::HashmapReader<std::string> meta_reader(meta_file, fs);
+    Storage::HerpmapReader<std::string> meta_reader(meta_file, fs);
     if (meta_file.size > 0) {
-        meta = new std::map<std::string, std::string>(meta_reader.read());
+        //meta = new std::map<std::string, std::string>(meta_reader.read());
+        meta = new Storage::HerpHash<std::string, std::string>(meta_reader.read());
     } else {
-        meta = new std::map<std::string, std::string>();
+        //meta = new std::map<std::string, std::string>();
+        meta = new Storage::HerpHash<std::string, std::string>();
     }
     std::string line;
     int count = 0;
@@ -1320,7 +1326,7 @@ int main(int argc, char **argv) {
         }
         std::cout << std::endl;
     }
-    Storage::HashmapWriter<std::string> meta_writer(meta_file, fs);
+    Storage::HerpmapWriter<std::string> meta_writer(meta_file, fs);
     meta_writer.write(*meta);
     std::cout << "Goodbye!" << std::endl;
     free(buf);

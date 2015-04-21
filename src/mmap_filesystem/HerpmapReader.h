@@ -19,11 +19,7 @@ namespace Storage {
 
                         // key
                         uint64_t key_size = Read64( buffer , pos );
-                        Assert( "Position went to far", pos < size );
-                        Assert( "Position WILL go to far", (pos + key_size) < size );
-
-                        std::string key(buffer + pos , key_size );// = ReadString( buffer , pos , key_size );
-                        pos += key_size;
+                        std::string key = ReadString( buffer , pos , key_size );
 
                         // Value
                         uint64_t value_size = Read64( buffer , pos );
