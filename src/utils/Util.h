@@ -24,13 +24,13 @@ namespace Storage {
         pos += length;
     }
 
-    static uint64_t Read64( char *buffer , uint64_t &pos ) {
-        uint64_t result = *reinterpret_cast<uint64_t*>(buffer + pos);
+    static uint64_t Read64( const char *buffer , uint64_t &pos ) {
+        uint64_t result = *reinterpret_cast<const uint64_t*>(buffer + pos);
         pos += sizeof(uint64_t);
         return result;
     }
 
-    static std::string ReadString( char * buffer , uint64_t &pos , uint64_t len ) {
+    static std::string ReadString( const char * buffer , uint64_t &pos , uint64_t len ) {
         std::string str( buffer + pos , len );
         pos += len;
         return str;
@@ -41,8 +41,8 @@ namespace Storage {
             static uint64_t Size( K ) {
                 return sizeof(K);
             }
-            static K Create( char* data , uint64_t  ) {
-                return *reinterpret_cast<K*>( data );
+            static K Create( const char* data , uint64_t  ) {
+                return *reinterpret_cast<const K*>( data );
             }
             static const char* Bytes( K &k ) {
                 return reinterpret_cast<char*>(&k);
@@ -56,7 +56,7 @@ namespace Storage {
             static uint64_t Size( std::string &msg ) {
                 return msg.size();
             }
-            static std::string Create(char * data, uint64_t len ) {
+            static std::string Create(const char * data, uint64_t len ) {
                 return std::string( data , len );
             }
             static const char* Bytes( std::string &msg ) {
