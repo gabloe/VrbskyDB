@@ -1319,6 +1319,7 @@ int main(int argc, char **argv) {
     meta_writer.write(*meta);
     std::cout << "Goodbye!" << std::endl;
     free(buf);
+    fs->compact();
     fs->shutdown();
 
     delete fs;

@@ -65,6 +65,18 @@ uint64_t Storage::Filesystem::calculateSize(Block b) {
     return size;
 }
 
+uint64_t Storage::Filesystem::getNumPages() {
+	return filesystem.numPages;
+}
+
+uint64_t Storage::Filesystem::getNumFiles() {
+	return metadata.numFiles;
+}
+
+std::map<std::string, uint64_t> Storage::Filesystem::getFileMap() {
+	return metadata.files;
+}
+
 /*
    Load file metadata, size and first block location.
    If the file doesn't exist, create it.
@@ -80,6 +92,47 @@ File Storage::Filesystem::open_file(std::string name) {
     } else {
         return createNewFile(name);
     }
+}
+
+void Storage::Filesystem::compact() {
+    Filesystem *fs = new Filesystem("_compact.db");
+    for (auto it = metadata.files.begin(); it != metadata.files.end(); ++it) {
+	std::string key = it->first;
+
+	// Don't copy over the metadata
+	if (key.compare("_METADATA_") == 0) {
+		continue;
+	}
+
+	File src = open_file(key);
+	char *buffer = read(&src);
+	File dest = fs->open_file(key);
+	fs->write(&dest, buffer, src.size);
+    }
+    uint64_t newNumPages = fs->getNumPages();
+    uint64_t newNumFiles = fs->getNumFiles();
+    std::map<std::string, uint64_t> newFiles = fs->getFileMap();
+    fs->shutdown();
+
+    // Unmap the old filesystem
+    munmap(filesystem.data, filesystem.numPages * PAGESIZE);
+
+    metadata.files = newFiles;
+    filesystem.numPages = newNumPages; 
+    metadata.numFiles = newNumFiles; 
+
+    // Close the old filesystem
+    close(filesystem.fd);
+    std::remove(data_fname.c_str());
+    std::rename("_compact.db", data_fname.c_str());
+
+    filesystem.fd = open(data_fname.c_str(), O_RDWR | O_CREAT, (mode_t)0777);
+    if (!filesystem.fd) {
+        std::cerr << "Could not reopen filesystem after compact!" << std::endl;
+	exit(1);
+    }
+
+    initFilesystem(false); 
 }
 
 /*
@@ -489,7 +542,7 @@ void Storage::Filesystem::writeMetadata() {
 
 /*
    Unmap the filesystem.
-   */
+*/
 
 void Storage::Filesystem::shutdown() {
     writeMetadata();
