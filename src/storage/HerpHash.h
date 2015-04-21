@@ -32,6 +32,10 @@ namespace Storage {
             }
         }
 
+        HerpHash(const HerpHash& other) {
+            this->maps = other.maps;
+        }
+
         ~HerpHash() {
         }
 

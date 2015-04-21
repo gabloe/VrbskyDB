@@ -3,18 +3,18 @@
 
 #include <string>
 #include <cstring>
-#include <map>
 
+#include "../storage/HerpHash.h"
 #include "../mmap_filesystem/Filesystem.h"
 #include "../utils/Util.h"
 #include "../assert/Assert.h"
 
 namespace Storage {
     template <typename T>
-        class HashmapWriter {
+        class HerpmapWriter {
             public:
-                HashmapWriter(File &file_, Filesystem *fs_): fs(fs_), file(file_) {}
-                char *write_buffer(std::map<std::string, T> data, uint64_t *size) {
+                HerpmapWriter(File &file_, Filesystem *fs_): fs(fs_), file(file_) {}
+                char *write_buffer(Storage::HerpHash<std::string, T> data, uint64_t *size) {
 
                     uint64_t buf_size = BLOCK_SIZE;
                     uint64_t pos = 0;
@@ -23,8 +23,8 @@ namespace Storage {
                     for (auto it = data.begin(); it != data.end(); ++it) {
 
                         // data
-                        std::string key = it->first;
-                        T val = it->second;
+                        std::string key = (*it).first;
+                        T val = (*it).second;
                         // size
                         uint64_t key_size = key.size();
                         uint64_t value_size = Type<T>::Size(val);
@@ -50,12 +50,12 @@ namespace Storage {
                     *size = pos;
                     return buffer;
                 }
-                uint64_t write(std::map<std::string, T> data) {
+                uint64_t write(Storage::HerpHash<std::string, T> data) {
                     char *buffer;
                     uint64_t size;
                     buffer = write_buffer(data, &size);			
                     fs->write(&file,buffer,size);
-                    free(buffer);
+		    free(buffer);
                     return size;
                 }
             private:

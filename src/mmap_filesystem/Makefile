@@ -5,22 +5,26 @@ INCLUDE_DIR=../include/
 INCLUDES=-I$(INCLUDE_DIR)
 OBJECTS=$(OUT)mmap_filesystem.o
 
-mmap_filesystem.o: $(OUT) Filesystem.cpp Filesystem.h
+
+$(OUT)mmap_filesystem.o: $(OUT) Filesystem.cpp Filesystem.h
 	$(CC) $(CFLAGS) $(INCLUDES) -c Filesystem.cpp -o$(OUT)mmap_filesystem.o
 
-test: readtest writetest CreateTest fsreader
+test: ReadTest WriteTest CreateTest FSReader HerpTest
 
-fsreader: FilesystemReader.cpp mmap_filesystem.o
+FSReader: FilesystemReader.cpp $(OUT)mmap_filesystem.o
 	$(CC) $(CFLAGS) $(INCLUDES) FilesystemReader.cpp $(OBJECTS) -oFSReader
 
-CreateTest: CreateTest.cpp mmap_filesystem.o
+CreateTest: CreateTest.cpp $(OUT)mmap_filesystem.o
 	$(CC) $(CFLAGS) $(INCLUDES) CreateTest.cpp $(OBJECTS) -oCreateTest
 
-readtest: ReadTest.cpp mmap_filesystem.o
+ReadTest: ReadTest.cpp $(OUT)mmap_filesystem.o
 	$(CC) $(CFLAGS) $(INCLUDES) ReadTest.cpp $(OBJECTS) -oReadTest
 
-writetest: WriteTest.cpp mmap_filesystem.o
+WriteTest: WriteTest.cpp $(OUT)mmap_filesystem.o
 	$(CC) $(CFLAGS) $(INCLUDES) WriteTest.cpp $(OBJECTS) -oWriteTest
+
+HerpTest: HerpTest.cpp $(OUT)mmap_filesystem.o
+	$(CC) $(CFLAGS) $(INCLUDES) HerpTest.cpp $(OBJECTS) -oHerpTest
 
 $(OUT):
 	mkdir $(OUT)
@@ -32,5 +36,6 @@ clean:
 	rm -f WriteTest
 	rm -f CreateTest
 	rm -f FSReader
+	rm -f HerpTest
 
 .PHONY: clean
