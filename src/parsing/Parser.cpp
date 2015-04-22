@@ -290,6 +290,7 @@ rapidjson::Document *Parsing::Parser::fieldList() {
 
 bool Parsing::Parser::aggregate(rapidjson::Document *doc) {
 	std::string funct(Parsing::Parser::sc.nextToken());
+	std::cout << "Function: " << funct << std::endl;
 	char c = Parsing::Parser::sc.nextChar();
 	if (c != '(') {
 		std::cout << "PARSING ERROR: Expected open parenthesis, found '" << c << "'." << std::endl;
@@ -344,8 +345,8 @@ bool Parsing::Parser::aggregatePending() {
 	bool result = false;
 	int numAggregates = sizeof(Aggregates) / sizeof(std::string);
 	for (int i=0; i<numAggregates; ++i) {
-        toLower(token);
-		if (icompare(token,Aggregates[i])) {
+        	toLower(token);
+		if (!icompare(token,Aggregates[i])) {
 			result = true;
 		}
 	}
