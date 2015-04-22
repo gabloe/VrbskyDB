@@ -5,9 +5,9 @@ int main(void) {
 	std::ifstream infile("queries");
 	std::string line;
 	while (std::getline(infile, line)) {
+		std::cout << "Query: " << line << std::endl;
 		Parsing::Parser p(line);
 		Parsing::Query *q = p.parse();
-		std::cout << "Query: " << line << std::endl;
 		if (q) {
 			q->print();
 		} else {
