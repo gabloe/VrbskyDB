@@ -153,7 +153,7 @@ void updateProjectList(std::string &pname, META &meta) {
     // Only add the project if it is not found
     if (!found) {
         data.push_back(pname);
-        meta[key] = data;
+        //meta[key] = data;
     }
 }
 
@@ -170,11 +170,10 @@ void updateProjectList(std::string &pname, META &meta) {
  */
 
 void insertDocuments(rapidjson::Document &docs, std::string pname, META &meta, FILESYSTEM &fs) {
-    std::vector<std::string> data;
-
-    if (meta.count(pname) > 0) {
-        data = meta[pname];
+    if( meta.count(pname) == 0 ) {
+        meta[pname] = std::vector<std::string>();
     }
+    std::vector<std::string>& data = meta[pname];
 
     updateProjectList(pname, meta);
 
