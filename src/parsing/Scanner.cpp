@@ -4,6 +4,14 @@
 
 #include "Scanner.h"
 
+#define append(BUF,POS,VAL) {           \
+    if(POS==len) {                      \
+        len = 2 * len;                  \
+        BUF = (char*)realloc(BUF,len);  \
+    }                                   \
+    BUF[POS] = VAL;                     \
+    ++POS;                              \
+}
 
 namespace Parsing {
 	char Scanner::nextChar() {
@@ -12,7 +20,8 @@ namespace Parsing {
 		return query.at(pos);
 	}
 
-	std::string Scanner::nextToken() {
+	//std::string Scanner::nextToken() {
+	const char* Scanner::nextToken() {
 		SKIPWHITESPACE();
         int buf_pos = 0;
 		while (spot < query.size()) {
@@ -24,14 +33,13 @@ namespace Parsing {
 			} else if (t == ' ') {
 				break;
 			}
-            if( buf_pos == len ) {
-                len *= 2;
-                buffer = (char*)realloc( buffer , len );
-            }
-            buffer[buf_pos] = t;
-            ++buf_pos;
+
+            append(buffer,buf_pos,t);
 		}
-		return std::string( buffer, buf_pos );
+        // Null terminate
+        buffer[buf_pos] = '\0';
+        return buffer;
+		//return std::string( buffer, buf_pos );
 	}
 
 	void Scanner::push_back(std::string val) {
@@ -44,14 +52,19 @@ namespace Parsing {
 		spot -= spots;
 	}
 
-	std::string Scanner::nextJSON() {
+	//std::string Scanner::nextJSON() {
+	const char* Scanner::nextJSON() {
 		SKIPWHITESPACE();
-		size_t pos = spot;
+
         int buf_pos = 0;
-		spot++;
+
+		size_t pos = spot;
 		char t = query.at(pos);
 		bool matchSquare = false;
 		bool matchBrace = false;
+
+		spot++;
+
 		if (t == '{') {
 			matchBrace = true;
 		} else if (t == '[') {
@@ -60,14 +73,12 @@ namespace Parsing {
 			std::cout << "Found " << t << std::endl;
 			throw std::runtime_error("SCAN ERROR: Expected open brace.");
 		}
+
 		int numOpen = 1;
 		int numClosed = 0;
-        if( buf_pos == len ) {
-            len *= 2;
-            buffer = (char*)realloc( buffer , len );
-        }
-        buffer[buf_pos] = t;
-        ++buf_pos;
+
+        append( buffer , buf_pos , t );
+
 		while (numOpen > numClosed && spot < query.size()) {
 			pos = spot;
 			spot++;
@@ -80,20 +91,20 @@ namespace Parsing {
 			      (t == ']' && matchSquare) ) {
 				numClosed++;
 			}
-            if( buf_pos == len ) {
-                len *= 2;
-                buffer = (char*)realloc( buffer , len );
-            }
-            buffer[buf_pos] = t;
-            ++buf_pos;
+
+            append( buffer , buf_pos , t );
+
 		}
 		if (numOpen != numClosed) {
 			throw std::runtime_error("SCAN ERROR: Unmatched braces.");
 		}
-		return std::string( buffer , buf_pos );;
+        buffer[buf_pos] = '\0';
+        return buffer;
+		//return std::string( buffer , buf_pos );;
 	}
 
-	std::string Scanner::nextString() {
+	//std::string Scanner::nextString() {
+	const char* Scanner::nextString() {
 		SKIPWHITESPACE();
 		int pos = spot;
         int buf_pos = 0;
@@ -112,18 +123,16 @@ namespace Parsing {
 			if (spot == query.size()) {
 				throw std::runtime_error("SCAN ERROR: Expected double quote.");
 			}
-            if( buf_pos == len ) {
-                len *= 2;
-                buffer = (char*)realloc( buffer , len );
-            }
-            buffer[buf_pos] = t;
-            ++buf_pos;
+
+            append(buffer,buf_pos,t);
 		}
-        return std::string( buffer , buf_pos );
+        buffer[buf_pos] = '\0';
+        return buffer;
+        //return std::string( buffer , buf_pos );
 	}
 
 	int Scanner::nextInt() {
-		std::string token = nextToken();
+		std::string token(nextToken());
 		return atoi(token.c_str());
 	}
 

@@ -21,9 +21,9 @@ namespace Parsing {
             free(buffer);
         }
 		char nextChar();
-		std::string nextToken();
-		std::string nextString();
-		std::string nextJSON();
+		const char* nextToken();
+		const char* nextString();
+		const char* nextJSON();
 		int nextInt();
 		void push_back(std::string);
 		void push_back(size_t);
