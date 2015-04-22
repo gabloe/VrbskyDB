@@ -96,7 +96,7 @@ namespace Parsing {
 	std::string Scanner::nextString() {
 		SKIPWHITESPACE();
 		int pos = spot;
-		std::string result = "";
+        int buf_pos = 0;
 		spot++;
 		char t = query.at(pos);
 		if (t != '\"') {
@@ -112,9 +112,14 @@ namespace Parsing {
 			if (spot == query.size()) {
 				throw std::runtime_error("SCAN ERROR: Expected double quote.");
 			}
-			result = result + t;
+            if( buf_pos == len ) {
+                len *= 2;
+                buffer = (char*)realloc( buffer , len );
+            }
+            buffer[buf_pos] = t;
+            ++buf_pos;
 		}
-		return result;
+        return std::string( buffer , buf_pos );
 	}
 
 	int Scanner::nextInt() {
