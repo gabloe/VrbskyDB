@@ -4,6 +4,7 @@
 
 #include "Scanner.h"
 
+
 namespace Parsing {
 	char Scanner::nextChar() {
 		SKIPWHITESPACE();
@@ -13,8 +14,7 @@ namespace Parsing {
 
 	std::string Scanner::nextToken() {
 		SKIPWHITESPACE();
-        std::vector<char> token;
-		//std::string token = "";
+        int buf_pos = 0;
 		while (spot < query.size()) {
 			size_t pos = spot++;
 			char t = query.at(pos);
@@ -24,10 +24,14 @@ namespace Parsing {
 			} else if (t == ' ') {
 				break;
 			}
-            token.push_back( t );
-			//token = token + t;
+            if( buf_pos == len ) {
+                len *= 2;
+                buffer = (char*)realloc( buffer , len );
+            }
+            buffer[buf_pos] = t;
+            ++buf_pos;
 		}
-		return std::string( &token[0] , token.size() );;
+		return std::string( buffer, buf_pos );
 	}
 
 	void Scanner::push_back(std::string val) {
@@ -43,7 +47,7 @@ namespace Parsing {
 	std::string Scanner::nextJSON() {
 		SKIPWHITESPACE();
 		size_t pos = spot;
-		std::string result = "";
+        int buf_pos = 0;
 		spot++;
 		char t = query.at(pos);
 		bool matchSquare = false;
@@ -58,7 +62,12 @@ namespace Parsing {
 		}
 		int numOpen = 1;
 		int numClosed = 0;
-		result += t;
+        if( buf_pos == len ) {
+            len *= 2;
+            buffer = (char*)realloc( buffer , len );
+        }
+        buffer[buf_pos] = t;
+        ++buf_pos;
 		while (numOpen > numClosed && spot < query.size()) {
 			pos = spot;
 			spot++;
@@ -71,18 +80,23 @@ namespace Parsing {
 			      (t == ']' && matchSquare) ) {
 				numClosed++;
 			}
-			result += t;
+            if( buf_pos == len ) {
+                len *= 2;
+                buffer = (char*)realloc( buffer , len );
+            }
+            buffer[buf_pos] = t;
+            ++buf_pos;
 		}
 		if (numOpen != numClosed) {
 			throw std::runtime_error("SCAN ERROR: Unmatched braces.");
 		}
-		return result;
+		return std::string( buffer , buf_pos );;
 	}
 
 	std::string Scanner::nextString() {
 		SKIPWHITESPACE();
 		int pos = spot;
-		std::string result = "";
+        int buf_pos = 0;
 		spot++;
 		char t = query.at(pos);
 		if (t != '\"') {
@@ -98,9 +112,14 @@ namespace Parsing {
 			if (spot == query.size()) {
 				throw std::runtime_error("SCAN ERROR: Expected double quote.");
 			}
-			result = result + t;
+            if( buf_pos == len ) {
+                len *= 2;
+                buffer = (char*)realloc( buffer , len );
+            }
+            buffer[buf_pos] = t;
+            ++buf_pos;
 		}
-		return result;
+        return std::string( buffer , buf_pos );
 	}
 
 	int Scanner::nextInt() {

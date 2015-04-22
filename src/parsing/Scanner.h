@@ -13,7 +13,13 @@
 namespace Parsing {
 	class Scanner {
 	public:
-		Scanner(std::string query_): query(query_), spot(0) {}
+		Scanner(std::string query_): query(query_), spot(0) {
+            len = 512;
+            buffer = (char*)malloc( len );
+        }
+        ~Scanner() {
+            free(buffer);
+        }
 		char nextChar();
 		std::string nextToken();
 		std::string nextString();
@@ -27,6 +33,8 @@ namespace Parsing {
 		size_t spot;
 		void skipWhiteSpace();
 		void unSkipWhiteSpace();
+        char *buffer;
+        int len = 0;
 	};
 }
 
