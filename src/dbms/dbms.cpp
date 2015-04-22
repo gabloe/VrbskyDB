@@ -678,7 +678,7 @@ void update(std::vector<std::string>* docs, rapidjson::Document &updates, rapidj
 
 
 // Delete the fields from the array of documents
-void ddelete(std::vector<std::string> *docs, rapidjson::Document &origFields, rapidjson::Document *where, int limit, FILESYSTEM &fs) {
+void ddelete(std::vector<std::string>& docs, rapidjson::Document &origFields, rapidjson::Document *where, int limit, FILESYSTEM &fs) {
     if (limit == 0) return;
 
     int num = 0;
@@ -698,8 +698,8 @@ void ddelete(std::vector<std::string> *docs, rapidjson::Document &origFields, ra
     }
 
     // Iterate over every document
-    auto docID = docs->begin();
-    while (docID != docs->end()) {
+    auto docID = docs.begin();
+    while (docID != docs.end()) {
         // Open the document
         std::string dID = *docID;
         File file1 = fs.open_file(dID);
@@ -726,7 +726,7 @@ void ddelete(std::vector<std::string> *docs, rapidjson::Document &origFields, ra
             // Delete document 
             bool success = fs.deleteFile(&file1);
             if (success) {
-                docs->erase(docID);
+                docs.erase(docID);
             }
             goto next;
         } else {
@@ -746,7 +746,7 @@ next:
     }
 }
 
-rapidjson::Document select(std::vector<std::string> docs, rapidjson::Document &origFields, rapidjson::Document *where, int limit, FILESYSTEM &fs) {
+rapidjson::Document select(std::vector<std::string> &docs, rapidjson::Document &origFields, rapidjson::Document *where, int limit, FILESYSTEM &fs) {
     rapidjson::Document result;
     result.SetObject();
 
@@ -776,10 +776,10 @@ rapidjson::Document select(std::vector<std::string> docs, rapidjson::Document &o
     // Iterate over every document
     for (auto docID = docs.begin(); docID != docs.end(); ++docID) {
         // Open the document
-        std::string dID = *docID;
+        std::string& dID = *docID;
         File file = fs.open_file(dID);
         char *c = fs.read(&file);
-        std::string docTxt = std::string(c,file.size);
+        std::string docTxt(c,file.size);
         free(c);
 
         // Parse the document
@@ -886,7 +886,7 @@ void execute(Parsing::Query &q, META &meta, FILESYSTEM &fs, bool print = true) {
         case Parsing::INSERT:
             {
                 rapidjson::Document &docs = *q.with;
-                std::string project = *q.project;
+                std::string& project = *q.project;
                 // Insert documents in docs into project.
                 insertDocuments(docs, project, meta, fs);
                 break;
@@ -914,8 +914,8 @@ void execute(Parsing::Query &q, META &meta, FILESYSTEM &fs, bool print = true) {
             {
                 std::string project = *q.project;
                 if (meta.count(project)) {
-                    std::vector<std::string> docs = meta[project];
-                    ddelete(&docs, *q.fields, q.where, q.limit, fs);
+                    std::vector<std::string>& docs = meta[project];
+                    ddelete(docs, *q.fields, q.where, q.limit, fs);
                     meta[project] = docs;
                 } else {
                     std::cout << "Project '" << project << "' does not exist!" << std::endl;
