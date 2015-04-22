@@ -7,6 +7,7 @@
 #include <math.h>
 #include <ctime>
 #include <vector>
+#include <cstring>
 
 #include "dbms.h"
 #include "../hashing/Hash.h"
@@ -16,13 +17,10 @@
 
 #include "../mmap_filesystem/HerpmapWriter.h"
 #include "../mmap_filesystem/HerpmapReader.h"
-//#include "../mmap_filesystem/HashmapWriter.h"
-//#include "../mmap_filesystem/HashmapReader.h"
 
-#include <readline/readline.h>
-#include <readline/history.h>
 #include <pretty.h>
 #include <UUID.h>
+#include <linenoise/linenoise.h>
 
 // Add val to current value of result.
 void sumAggregate(rapidjson::Value *val, rapidjson::Value &result) {
@@ -960,203 +958,25 @@ void execute(Parsing::Query &q, META &meta, FILESYSTEM &fs, bool print = true) {
     //dumpToFile(meta_fname, meta);
 }
 
-/*
- *      Begin autocompletion methods for Readline library.
- */
+void completion(const char *buf, linenoiseCompletions *lc) {
+    if (buf == NULL || strlen(buf) == 0) return;
+    char *token = std::strtok((char *)buf, " ");
 
-int myNewline(int UNUSED(count), int UNUSED(key)) {
-    if (rl_line_buffer[strlen(rl_line_buffer)-1] == ';' ||
-            strcmp(rl_line_buffer, "q") == 0) {
-        rl_done = 1;
-        std::cout << "\n";
-    } else { 
-        std::cout << "\n> ";
-    }
-    return 0;
-}
-
-void * xmalloc (int size) {
-    void *buf;
-
-    buf = malloc (size);
-    if (!buf) {
-        fprintf (stderr, "Error: Out of memory. Exiting.'n");
-        exit (1);
+    int size;
+    std::string *options;
+    if (token == Parsing::Commands[0]) {  // CREATE
+        size = sizeof(Parsing::CreateArgs) / sizeof(Parsing::CreateArgs[0]);
+        options = (std::string*)&Parsing::CreateArgs[0];
     }
 
-    return buf;
-}
-
-char * dupstr (char* s) {
-    char *r;
-
-    r = (char*) xmalloc ((strlen (s) + 1));
-    strcpy (r, s);
-    return (r);
-}
-
-
-char *matcher( const char *text , int state, unsigned int &list_index , unsigned int &len , const std::string stuff[] , unsigned int length ) {
-    char *name;
-    if (!state) {
-        list_index = 0;
-        len = strlen(text);
+    for (int i=0; i < size ; ++i) {
+        linenoiseAddCompletion(lc, options[i].c_str());
     }
-
-    while (list_index < length) {
-        name = (char *)stuff[list_index++].c_str();
-        if (!strncasecmp(name, text, len)) {
-            return (dupstr(name));
-        }
-    }
-
-    /* If no names matched, then return NULL. */
-    return ((char *)NULL);
 }
-
-
-char *cmdMatcher(const char *text, int state) {
-    static unsigned int list_index, len;
-    return matcher( text , state, list_index , len, Parsing::Commands , LENGTH(Parsing::Commands) );
-}
-
-char *createMatcher(const char *text, int state) {
-    static unsigned int list_index, len;
-    return matcher( text , state, list_index , len, Parsing::CreateArgs , LENGTH(Parsing::CreateArgs) );
-}
-
-char *selectFromMatcher(const char *text, int state) {
-    static unsigned int list_index, len;
-    return matcher( text , state, list_index , len, Parsing::SelectFromArgs , LENGTH(Parsing::SelectFromArgs) );
-}
-
-char *selectMatcher(const char *text, int state) {
-    static unsigned int list_index, len;
-    return matcher( text , state, list_index , len, Parsing::SelectArgs , LENGTH(Parsing::SelectArgs) );
-}
-
-char *insertMatcher(const char *text, int state) {
-    static unsigned int list_index, len;
-    return matcher( text , state, list_index , len, Parsing::InsertArgs , LENGTH(Parsing::InsertArgs) );
-}
-
-char *insertIntoMatcher(const char *text, int state) {
-    static unsigned int list_index, len;
-    return matcher( text , state, list_index , len, Parsing::InsertIntoArgs , LENGTH(Parsing::InsertIntoArgs) );
-}
-
-char *showMatcher(const char *text, int state) {
-    static unsigned int list_index, len;
-    return matcher( text , state, list_index , len, Parsing::ShowArgs , LENGTH(Parsing::ShowArgs) );
-}
-
-char *deleteMatcher(const char *text, int state) {
-    static unsigned int list_index, len;
-    return matcher( text , state, list_index , len, Parsing::DeleteArgs , LENGTH(Parsing::DeleteArgs) );
-}
-
-char *deleteFromMatcher(const char *text, int state) {
-    static unsigned int list_index, len;
-    return matcher( text , state, list_index , len, Parsing::DeleteFromArgs , LENGTH(Parsing::DeleteFromArgs) );
-}
-
-char *updateMatcher(const char *text, int state) {
-    static unsigned int list_index, len;
-    return matcher( text , state, list_index , len, Parsing::UpdateArgs , LENGTH(Parsing::UpdateArgs) );
-}
-
-char *updateWithMatcher(const char *text, int state) {
-    static unsigned int list_index, len;
-    return matcher( text , state, list_index , len, Parsing::UpdateWithArgs , LENGTH(Parsing::UpdateWithArgs) );
-}
-
-std::vector<std::string> split(const char *str, char c = ' ') {
-    std::vector<std::string> result;
-    do {
-        const char *begin = str;
-        while(*str != c && *str) {
-            str++;
-        }
-
-        result.push_back(std::string(begin, str));
-    } while ('\0' != *str++);
-
-    return result;
-}
-
-static char **myAutoComplete(const char * text, int start, int UNUSED(end)) {
-    char **matches = (char **)NULL;
-    if (start == 0) {
-        matches = rl_completion_matches((char *)text, &cmdMatcher);
-    } else {
-        // TODO: Make this more robust...
-
-        char *copy = (char *)malloc(strlen(rl_line_buffer) + 1);
-        strcpy(copy, rl_line_buffer);
-
-        std::vector<std::string> tokens = split((const char *)copy);
-
-        if (!strcasecmp(tokens[0].c_str(), "create")) {
-            if (tokens.size() == 2) {
-                matches = rl_completion_matches((char *)tokens.back().c_str(), &createMatcher);
-            }
-        } else if (!strcasecmp(tokens[0].c_str(), "select")) {
-            if (tokens.size() == 2) {       
-                matches = rl_completion_matches((char *)tokens.back().c_str(), &selectMatcher);
-            } else if (tokens.size() == 4) {
-                matches = rl_completion_matches((char *)tokens.back().c_str(), &selectFromMatcher);
-            }
-        } else if (!strcasecmp(tokens[0].c_str(), "insert")) {
-            if (tokens.size() == 2) {
-                matches = rl_completion_matches((char *)tokens.back().c_str(), &insertMatcher);
-            } else if (tokens.size() == 4) {
-                matches = rl_completion_matches((char *)tokens.back().c_str(), &insertIntoMatcher);
-            }
-        } else if (!strcasecmp(tokens[0].c_str(), "delete")) {
-            if (tokens.size() == 2) {
-                matches = rl_completion_matches((char *)tokens.back().c_str(), &deleteMatcher);
-            } else if (tokens.size() == 4) {
-                matches = rl_completion_matches((char *)tokens.back().c_str(), &deleteFromMatcher);
-            }
-        } else if (!strcasecmp(tokens[0].c_str(), "update")) {
-            if (tokens.size() == 2) {
-                matches = rl_completion_matches((char *)tokens.back().c_str(), &updateMatcher);
-            } else if (tokens.size() == 4) {
-                matches = rl_completion_matches((char *)tokens.back().c_str(), &updateWithMatcher);
-            }
-        }
-
-        free(copy);
-    }
-
-    return matches;
-}
-
-int myCompletion(int UNUSED(count), int UNUSED(key)) {
-    return rl_complete_internal('@');
-}
-
-char *myDummy(const char *UNUSED(count), int UNUSED(key)) {
-    return (char*)NULL;
-}
-
-int start_readline(void) {
-    // Enable limited autocomplete
-    rl_attempted_completion_function = myAutoComplete;
-    rl_completion_entry_function = myDummy;
-    rl_bind_key('\t', myCompletion);    
-
-    // Handle multi-line input
-    rl_bind_key('\r', myNewline);
-    rl_bind_key('\n', myNewline);
-
-    return 0;
-}
-
 
 int main(int argc, char **argv) {
     std::string data_fname("data.db");
-    char *buf;
+
     Storage::Filesystem *fs = new Storage::Filesystem(data_fname);
     META *meta;
     File meta_file = fs->open_file("__DB_METADATA__");
@@ -1167,9 +987,12 @@ int main(int argc, char **argv) {
     } else {
         //meta = new std::map<std::string, std::string>();
         meta = new Storage::HerpHash<std::string, std::vector<std::string>>();
+
     }
-    std::string line;
+
     int count = 0;
+
+    std::string line;
     if (argc > 1) {
         std::ifstream dataFile;
         dataFile.open(argv[1]);
@@ -1195,12 +1018,10 @@ int main(int argc, char **argv) {
 
     std::cout << "Welcome to VrbskyDB v" << MAJOR_VERSION << "." << MINOR_VERSION  << std::endl;
 
-    rl_startup_hook = start_readline;
-
     std::string queryLogFile("queries.log");
 
     if (file_exists(queryLogFile.c_str())) {
-        read_history(queryLogFile.c_str());
+        linenoiseHistoryLoad(queryLogFile.c_str());
     } else {
         std::fstream out(queryLogFile.c_str(), std::fstream::out);
         out.flush();
@@ -1209,31 +1030,29 @@ int main(int argc, char **argv) {
 
     uint64_t origNumFiles = fs->getNumFiles();
 
+    linenoiseSetMultiLine(1);
+    linenoiseSetCompletionCallback(completion);
+
     std::cout << "Enter a query (q to quit):" << std::endl;
+    char *buf;
     while (1) {
-        buf = readline("> ");
-
-        if (buf == NULL) {
-            break;
-        }
-        if (buf[0] != 0) {
-            add_history(buf);
+        buf = linenoise("> ");
+	if (buf == NULL || strcmp(buf, "q") == 0) {
+		break;
         }
 
-        std::string q(buf);
-        if (!q.compare("q")) {
-            break;
-        }
-
+	std::string q(buf);
         Parsing::Parser p(q);
         Parsing::Query *query = p.parse();
         if (query) {
             // If the query parses, add it to a log.
-            append_history(1, queryLogFile.c_str());
+            linenoiseHistoryAdd(buf);
+            linenoiseHistorySave(queryLogFile.c_str());
             execute( *query, *meta, *fs );
             delete query;
         }
         std::cout << std::endl;
+        free(buf);
     }
     Storage::HerpmapWriter<std::vector<std::string>> meta_writer(meta_file, fs);
     meta_writer.write(*meta);

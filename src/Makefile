@@ -2,16 +2,20 @@ OUT=../bin/
 OBJECTS=./objects/
 CC=g++
 CFLAGS=--std=c++11 -O3 -Wall -Wextra
-INCLUDES += -I ./include/
+INCLUDE_DIR = ./include/
+INCLUDES += -I $(INCLUDE_DIR)
 systemName = $(shell uname)
 ifeq ($(systemName), Darwin)
-   LIBS += -L/opt/local/lib -lreadline
+   LIBS += -L/opt/local/lib
 else
-   LIBS += -luuid -lreadline
+   LIBS += -luuid
 endif
 
-binary: $(OUT) $(OBJECTS) PARSINGT DBMST MMAP_FS
+binary: $(OUT) $(OBJECTS) PARSINGT DBMST MMAP_FS LINENOISE
 	$(CC) $(CFLAGS) $(INCLUDES) -o $(OUT)dbms $(OBJECTS)*.o $(LIBS) 
+
+LINENOISE:
+	$(CC) $(CFLAGS) -c $(INCLUDE_DIR)linenoise/linenoise.c -o $(OBJECTS)linenoise.o
 
 MMAP_FS:
 	make -C mmap_filesystem
