@@ -47,7 +47,7 @@ namespace Parsing {
 	std::string Scanner::nextJSON() {
 		SKIPWHITESPACE();
 		size_t pos = spot;
-		std::string result = "";
+        int buf_pos = 0;
 		spot++;
 		char t = query.at(pos);
 		bool matchSquare = false;
@@ -62,7 +62,12 @@ namespace Parsing {
 		}
 		int numOpen = 1;
 		int numClosed = 0;
-		result += t;
+        if( buf_pos == len ) {
+            len *= 2;
+            buffer = (char*)realloc( buffer , len );
+        }
+        buffer[buf_pos] = t;
+        ++buf_pos;
 		while (numOpen > numClosed && spot < query.size()) {
 			pos = spot;
 			spot++;
@@ -75,12 +80,17 @@ namespace Parsing {
 			      (t == ']' && matchSquare) ) {
 				numClosed++;
 			}
-			result += t;
+            if( buf_pos == len ) {
+                len *= 2;
+                buffer = (char*)realloc( buffer , len );
+            }
+            buffer[buf_pos] = t;
+            ++buf_pos;
 		}
 		if (numOpen != numClosed) {
 			throw std::runtime_error("SCAN ERROR: Unmatched braces.");
 		}
-		return result;
+		return std::string( buffer , buf_pos );;
 	}
 
 	std::string Scanner::nextString() {
