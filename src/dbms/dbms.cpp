@@ -976,7 +976,12 @@ int main(int argc, char **argv) {
 
     int count = 0;
 
+    bool exitEarly = false;
     std::string line;
+    char *buf;
+    std::string queryLogFile("queries.log");
+    uint64_t origNumFiles = fs->getNumFiles();
+
     if (argc > 1) {
         std::ifstream dataFile;
         dataFile.open(argv[1]);
@@ -987,6 +992,10 @@ int main(int argc, char **argv) {
         while (dataFile.good()) {
             line.clear();
             std::getline(dataFile, line);
+	    if (line.compare("q") == 0) {
+		std::cout << std::endl;
+		goto end;
+            }
             Parsing::Parser p(line);
             Parsing::Query *query = p.parse();
             if (query) {
@@ -1002,8 +1011,6 @@ int main(int argc, char **argv) {
 
     std::cout << "Welcome to VrbskyDB v" << MAJOR_VERSION << "." << MINOR_VERSION  << std::endl;
 
-    std::string queryLogFile("queries.log");
-
     if (file_exists(queryLogFile.c_str())) {
         linenoiseHistoryLoad(queryLogFile.c_str());
     } else {
@@ -1012,12 +1019,9 @@ int main(int argc, char **argv) {
         out.close();
     }
 
-    uint64_t origNumFiles = fs->getNumFiles();
-
     linenoiseSetMultiLine(1);
 
     std::cout << "Enter a query (q to quit):" << std::endl;
-    char *buf;
     while (1) {
         buf = linenoise("> ");
 	if (buf == NULL || strcmp(buf, "q") == 0) {
@@ -1037,6 +1041,9 @@ int main(int argc, char **argv) {
         std::cout << std::endl;
         free(buf);
     }
+
+end:
+
     Storage::HerpmapWriter<std::vector<std::string>> meta_writer(meta_file, fs);
     meta_writer.write(*meta);
     std::cout << "Goodbye!" << std::endl;
