@@ -1,6 +1,8 @@
 #ifndef DBMS_H_
 #define DBMS_H_
 
+#define RAPIDJSON_SSE2
+
 #include <rapidjson/document.h>
 #include <vector>
 #include "../parsing/Parser.h"
