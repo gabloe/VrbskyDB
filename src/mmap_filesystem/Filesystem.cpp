@@ -7,6 +7,7 @@
 #include <string.h>
 #include <vector>
 #include <algorithm>
+#include <cmath>
 
 #include "../assert/Assert.h"
 #include "Filesystem.h"

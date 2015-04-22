@@ -6,6 +6,7 @@
 #include <map>
 #include <math.h>
 #include <ctime>
+#include <vector>
 
 #include "dbms.h"
 #include "../hashing/Hash.h"
@@ -22,8 +23,6 @@
 #include <readline/history.h>
 #include <pretty.h>
 #include <UUID.h>
-
-const uint64_t COMPACT_MARGIN = 0.95;
 
 // Add val to current value of result.
 void sumAggregate(rapidjson::Value *val, rapidjson::Value &result) {
@@ -85,25 +84,16 @@ void maxAggregate(rapidjson::Value *val, rapidjson::Value &result) {
  *
  */
 
-void appendDocToProject(uint64_t projectHash, std::string doc, META &meta) {
-    std::string p_h = std::to_string(projectHash);
-    if (meta.count(p_h) > 0) {
+void appendDocToProject(std::string project, std::string doc, META &meta) {
+    std::vector<std::string> data;
+    if (meta.count(project) > 0) {
         // Get the previous array of docs
-        std::string data;
-        data = meta[p_h];
-
-        // Parse the array and insert new document ID
-        rapidjson::Document d;
-        d.Parse(data.c_str());
-        rapidjson::Value v;
-        v.SetString(doc.c_str(), d.GetAllocator());
-        d.PushBack(v, d.GetAllocator());
-
-        // Save the new array in meta
-        std::string newData = toString(&d);
-        //meta.put(projectHash, newData);
-        meta[p_h] = newData;
+        data = meta[project];
+	data.push_back(doc);
+    } else {
+	data.push_back(doc);
     }
+    meta[project] = data;
 }
 
 /*
@@ -120,7 +110,7 @@ void appendDocToProject(uint64_t projectHash, std::string doc, META &meta) {
  *
  */
 
-void insertDocument(rapidjson::Document &doc, uint64_t projHash, META &meta, FILESYSTEM &fs) {
+void insertDocument(rapidjson::Document &doc, std::string project, META &meta, FILESYSTEM &fs) {
     std::string docUUID = newUUID();
 
     rapidjson::Value dID(docUUID.c_str(), doc.GetAllocator());
@@ -131,7 +121,7 @@ void insertDocument(rapidjson::Document &doc, uint64_t projHash, META &meta, FIL
     File file = fs.open_file(docUUID.c_str());
     fs.write(&file, data.c_str(), data.size());
 
-    appendDocToProject(projHash, docUUID, meta);
+    appendDocToProject(project, docUUID, meta);
 }
 
 /*
@@ -143,43 +133,30 @@ void insertDocument(rapidjson::Document &doc, uint64_t projHash, META &meta, FIL
 
 void updateProjectList(std::string pname, META &meta) {
     std::string key("__PROJECTS__");
-    uint64_t keyHash = hash(key, key.size());
-    std::string k_h = std::to_string(keyHash);
-    if (meta.count(k_h) == 0) {
-        meta[k_h] =  "[]";
+
+    std::vector<std::string> data;
+    if (meta.count(key) == 0) {
+	data.push_back(pname);
+	meta[key] = data;
+	return;
+    } else {
+	data = meta[key];
     }
-
-    // Get the array of project names
-    std::string arr;
-    //meta.get(keyHash, arr);
-    arr = meta[k_h];
-
-    // Parse the array into a JSON object
-    rapidjson::Document d;
-    d.Parse(arr.c_str());
 
     // Check if the project already exists
     bool found = false;
-    for (rapidjson::Value::ConstValueIterator itr = d.Begin(); itr != d.End(); ++itr) {
-        std::string val = itr->GetString();
-        if (!val.compare(pname)) {
-            found = true;
-            break;
-        }
+    for (auto it = data.begin(); it != data.end(); ++it) {
+	std::string v = *it;
+	if (v.compare(pname) == 0) {
+		found = true;
+		break;
+	}
     }
 
     // Only add the project if it is not found
     if (!found) {
-        // Create a new entry for the project name
-        rapidjson::Value project;
-        project.SetString(pname.c_str(), d.GetAllocator());
-
-        // Insert the project name into the array
-        d.PushBack(project, d.GetAllocator());
-
-        // Update the metadata with the modified array
-        //meta.put(keyHash, toString(&d));
-        meta[k_h] = toString(&d);
+	data.push_back(pname);
+        meta[key] = data;
     }
 }
 
@@ -196,25 +173,10 @@ void updateProjectList(std::string pname, META &meta) {
  */
 
 void insertDocuments(rapidjson::Document &docs, std::string pname, META &meta, FILESYSTEM &fs) {
-    uint64_t projectHash = hash(pname, pname.size());
-    std::string p_h = std::to_string(projectHash);
-    uint64_t uuidHash;
-    if (meta.count(p_h) == 0) {
-        // project doesn't exist.  Create a UUID for it.
-        std::string proj_uuid = newUUID();
-        //meta.put(projectHash, proj_uuid);
-        meta[p_h] = proj_uuid;
+    std::vector<std::string> data;
 
-        // Insert an empty array.  This array will eventuall contain document uuid's
-        uuidHash = hash(proj_uuid, proj_uuid.size());
-        std::string emptyArray("[]");
-        //meta.put(uuidHash, emptyArray);
-        std::string u_h = std::to_string(uuidHash);
-        meta[u_h] = emptyArray;
-    } else {
-        std::string proj_uuid;
-        proj_uuid = meta[p_h];
-        uuidHash = hash(proj_uuid, proj_uuid.size());
+    if (meta.count(pname) > 0) {
+        data = meta[pname];
     }
 
     updateProjectList(pname, meta);
@@ -225,12 +187,11 @@ void insertDocuments(rapidjson::Document &docs, std::string pname, META &meta, F
             rapidjson::Document d;
             std::string data = toString(&docs[i]);
             d.Parse(data.c_str());
-            insertDocument(d, uuidHash, meta, fs);
+            insertDocument(d, pname, meta, fs);
         }
     } else if (docs.GetType() == rapidjson::kObjectType) {
-        insertDocument(docs, uuidHash, meta, fs);
+        insertDocument(docs, pname, meta, fs);
     }
-
 }
 
 // Assume doc is an array or an object.
@@ -675,15 +636,15 @@ void deleteFields(rapidjson::Document *doc, rapidjson::Document *fields) {
 }
 
 // Update the fields of the array of documents
-void update(rapidjson::Document &docArray, rapidjson::Document &updates, rapidjson::Document *where, int limit, FILESYSTEM &fs) {
+void update(std::vector<std::string>* docs, rapidjson::Document &updates, rapidjson::Document *where, int limit, FILESYSTEM &fs) {
     if (limit == 0) return;
 
     int num = 0;
 
     // Iterate over every document
-    for (rapidjson::Value::ConstValueIterator docID = docArray.Begin(); docID != docArray.End(); ++docID) {
+    for (auto docID = docs->begin(); docID != docs->end(); ++docID) {
         // Open the document
-        std::string dID = docID->GetString();
+        std::string dID = *docID;
         File file1 = fs.open_file(dID);
         char *c = fs.read(&file1);
         std::string docTxt = std::string(c,file1.size);
@@ -726,7 +687,7 @@ void update(rapidjson::Document &docArray, rapidjson::Document &updates, rapidjs
 
 
 // Delete the fields from the array of documents
-void ddelete(rapidjson::Document &docArray, rapidjson::Document &origFields, rapidjson::Document *where, int limit, FILESYSTEM &fs) {
+void ddelete(std::vector<std::string> *docs, rapidjson::Document &origFields, rapidjson::Document *where, int limit, FILESYSTEM &fs) {
     if (limit == 0) return;
 
     int num = 0;
@@ -746,10 +707,10 @@ void ddelete(rapidjson::Document &docArray, rapidjson::Document &origFields, rap
     }
 
     // Iterate over every document
-    rapidjson::Value::ConstValueIterator docID = docArray.Begin();
-    while (docID != docArray.End()) {
+    auto docID = docs->begin();
+    while (docID != docs->end()) {
         // Open the document
-        std::string dID = docID->GetString();
+        std::string dID = *docID;
         File file1 = fs.open_file(dID);
         char *c = fs.read(&file1);
         std::string docTxt = std::string(c,file1.size);
@@ -774,7 +735,7 @@ void ddelete(rapidjson::Document &docArray, rapidjson::Document &origFields, rap
             // Delete document 
             bool success = fs.deleteFile(&file1);
             if (success) {
-                docArray.Erase(docID);
+                docs->erase(docID);
             }
             goto next;
         } else {
@@ -794,7 +755,7 @@ next:
     }
 }
 
-rapidjson::Document select(rapidjson::Document &docArray, rapidjson::Document &origFields, rapidjson::Document *where, int limit, FILESYSTEM &fs) {
+rapidjson::Document select(std::vector<std::string> docs, rapidjson::Document &origFields, rapidjson::Document *where, int limit, FILESYSTEM &fs) {
     rapidjson::Document result;
     result.SetObject();
 
@@ -803,7 +764,7 @@ rapidjson::Document select(rapidjson::Document &docArray, rapidjson::Document &o
     rapidjson::Value array;
     array.SetArray();
 
-    array.Reserve(docArray.Size(), result.GetAllocator());
+    array.Reserve(docs.size(), result.GetAllocator());
 
     bool selectAll = false;
 
@@ -822,9 +783,9 @@ rapidjson::Document select(rapidjson::Document &docArray, rapidjson::Document &o
     int num = 0;
 
     // Iterate over every document
-    for (rapidjson::Value::ConstValueIterator docID = docArray.Begin(); docID != docArray.End(); ++docID) {
+    for (auto docID = docs.begin(); docID != docs.end(); ++docID) {
         // Open the document
-        std::string dID = docID->GetString();
+        std::string dID = *docID;
         File file = fs.open_file(dID);
         char *c = fs.read(&file);
         std::string docTxt = std::string(c,file.size);
@@ -942,32 +903,17 @@ void execute(Parsing::Query &q, META &meta, FILESYSTEM &fs, bool print = true) {
         case Parsing::SELECT:
             {
                 std::string project = *q.project;
-                uint64_t pHash = hash(project, project.size());
-                std::string p_h = std::to_string(pHash);
-                if (meta.count(p_h) > 0) {
-                    std::string pid;
-                    pid = meta[p_h];
-                    uint64_t docsHash = hash(pid, pid.size());
-                    std::string d_h = std::to_string(docsHash);
-                    if (meta.count(d_h) > 0) {
-                        std::string docs;
-                        docs = meta[d_h];
-                        rapidjson::Document docArray;
-                        docArray.Parse(docs.c_str());
-                        rapidjson::Document data = select(docArray, *q.fields, q.where, q.limit, fs);
-                        if (data.HasMember("_result")) {
-                            rapidjson::Value &array = data["_result"];
-                            if (array.Size() == 0) {
-                                std::cout << "Result Empty!" << std::endl;	
-                            } else {
-                                std::cout << toPrettyString(&data) << std::endl;
-                                std::cout << array.Size() << " records returned." << std::endl; 
-                            }
-                        } else {
-                            // Not sure how this would happen...
-                            std::cout << "Error occured during operation." << std::endl;
-                        }
-                    }
+                if (meta.count(project) > 0) {
+			rapidjson::Document data = select(meta[project], *q.fields, q.where, q.limit, fs);
+			if (data.HasMember("_result")) {
+			    rapidjson::Value &array = data["_result"];
+			    if (array.Size() == 0) {
+				std::cout << "Result Empty!" << std::endl;	
+			    } else {
+				std::cout << toPrettyString(&data) << std::endl;
+				std::cout << array.Size() << " records returned." << std::endl; 
+			    }
+			}
                 } else {
                     std::cout << "Project '" << project << "' does not exist!" << std::endl;
                 }
@@ -976,23 +922,10 @@ void execute(Parsing::Query &q, META &meta, FILESYSTEM &fs, bool print = true) {
         case Parsing::DELETE:
             {
                 std::string project = *q.project;
-                uint64_t pHash = hash(project, project.size());
-                std::string p_h = std::to_string(pHash);
-                if (meta.count(p_h)) {
-                    std::string pid;
-                    //meta.get(pHash, pid);
-                    pid = meta[p_h];
-                    uint64_t docsHash = hash(pid, pid.size());
-                    std::string d_h = std::to_string(docsHash);
-                    if (meta.count(d_h)) {
-                        std::string docs;
-                        docs = meta[d_h];
-                        rapidjson::Document docArray;
-                        docArray.Parse(docs.c_str());
-                        ddelete(docArray, *q.fields, q.where, q.limit, fs);
-                        std::string newDocArray = toString(&docArray);
-                        meta[d_h] = newDocArray;
-                    }
+                if (meta.count(project)) {
+			std::vector<std::string> docs = meta[project];
+                        ddelete(&docs, *q.fields, q.where, q.limit, fs);
+                        meta[project] = docs;
                 } else {
                     std::cout << "Project '" << project << "' does not exist!" << std::endl;
                 }
@@ -1001,16 +934,13 @@ void execute(Parsing::Query &q, META &meta, FILESYSTEM &fs, bool print = true) {
         case Parsing::SHOW:
             {
                 std::string key("__PROJECTS__");
-                uint64_t keyHash = hash(key, key.size());
-                std::string k_h = std::to_string(keyHash);
-                if (meta.count(k_h)) {
-                    std::string arr;
-                    arr = meta[k_h];
-                    if (!arr.compare("[]")) {
-                        std::cout << "No projects found!" << std::endl;
-                    } else {
-                        std::cout << toPrettyString(arr) << std::endl;
-                    }
+                if (meta.count(key)) {
+                    std::vector<std::string> list = meta[key];
+		    std::cout << "[" << std::endl;
+		    for (auto it = list.begin() ; it != list.end() ; ++it) {
+			std::cout << "\t" << *it << std::endl;
+		    }
+		    std::cout << "]" << std::endl;
                 } else {
                     std::cout << "No projects found!" << std::endl;
                 }
@@ -1019,23 +949,11 @@ void execute(Parsing::Query &q, META &meta, FILESYSTEM &fs, bool print = true) {
         case Parsing::UPDATE:
             {
                 std::string project = *q.project;
-                uint64_t pHash = hash(project, project.size());
-                std::string p_h = std::to_string(pHash);
-                if (meta.count(p_h)) {
-                    std::string pid;
-                    //meta.get(pHash, pid);
-                    pid = meta[p_h];
-                    uint64_t docsHash = hash(pid, pid.size());
-                    std::string d_h = std::to_string(docsHash);
-                    if (meta.count(d_h)) {
-                        std::string docs;
-                        //meta.get(docsHash, docs);
-                        docs = meta[d_h];
-                        rapidjson::Document docArray;
-                        docArray.Parse(docs.c_str());
+                if (meta.count(project)) {
+			std::vector<std::string> docs = meta[project];
                         rapidjson::Document &updates = *q.with;
-                        update(docArray, updates, q.where, q.limit, fs);
-                    }
+                        update(&docs, updates, q.where, q.limit, fs);
+			meta[project] = docs;
                 } else {
                     std::cout << "Project '" << project << "' does not exist!" << std::endl;
                 }
@@ -1251,13 +1169,13 @@ int main(int argc, char **argv) {
     Storage::Filesystem *fs = new Storage::Filesystem(data_fname);
     META *meta;
     File meta_file = fs->open_file("__DB_METADATA__");
-    Storage::HerpmapReader<std::string> meta_reader(meta_file, fs);
+    Storage::HerpmapReader<std::vector<std::string>> meta_reader(meta_file, fs);
     if (meta_file.size > 0) {
         //meta = new std::map<std::string, std::string>(meta_reader.read());
-        meta = new Storage::HerpHash<std::string, std::string>(meta_reader.read());
+        meta = new Storage::HerpHash<std::string, std::vector<std::string>>(meta_reader.read());
     } else {
         //meta = new std::map<std::string, std::string>();
-        meta = new Storage::HerpHash<std::string, std::string>();
+        meta = new Storage::HerpHash<std::string, std::vector<std::string>>();
     }
     std::string line;
     int count = 0;
@@ -1326,7 +1244,7 @@ int main(int argc, char **argv) {
         }
         std::cout << std::endl;
     }
-    Storage::HerpmapWriter<std::string> meta_writer(meta_file, fs);
+    Storage::HerpmapWriter<std::vector<std::string>> meta_writer(meta_file, fs);
     meta_writer.write(*meta);
     std::cout << "Goodbye!" << std::endl;
     free(buf);

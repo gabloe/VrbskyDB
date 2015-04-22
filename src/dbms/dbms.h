@@ -2,6 +2,7 @@
 #define DBMS_H_
 
 #include <rapidjson/document.h>
+#include <vector>
 #include "../parsing/Parser.h"
 #include "../mmap_filesystem/Filesystem.h"
 #include "../storage/HerpHash.h"
@@ -18,7 +19,7 @@
 
 //typedef Storage::LinearHash<uint64_t> INDICES;
 //typedef Storage::LinearHash<std::string> META;
-typedef Storage::HerpHash<std::string,std::string> META;
+typedef Storage::HerpHash<std::string,std::vector<std::string>> META;
 //typedef std::map<std::string,std::string> META;
 typedef Storage::Filesystem FILESYSTEM;
 
