@@ -17,12 +17,11 @@
 #define MAJOR_VERSION 0
 #define MINOR_VERSION 1
 
+const uint64_t Num_Buckets = 2048;
+
 //void execute(Parsing::Query &, Storage::LinearHash<std::string> &);
 
-//typedef Storage::LinearHash<uint64_t> INDICES;
-//typedef Storage::LinearHash<std::string> META;
-typedef Storage::HerpHash<std::string,std::vector<std::string>> META;
-//typedef std::map<std::string,std::string> META;
+typedef Storage::HerpHash<std::string,std::vector<std::string>, Num_Buckets> META;
 typedef Storage::Filesystem FILESYSTEM;
 
 std::string SpecialValueComparisons[] = { "#gt", "#lt", "#eq", "#contains", "#starts", "#ends" };

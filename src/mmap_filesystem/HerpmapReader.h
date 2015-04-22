@@ -8,12 +8,12 @@
 #include "../utils/Util.h"
 
 namespace Storage {
-    template <typename T>
+    template <typename T,uint64_t Buckets=1024>
         class HerpmapReader {
             public:
                 HerpmapReader(File &file_, Filesystem *fs_): fs(fs_), file(file_) {}
-                Storage::HerpHash<std::string, T> read_buffer(const char *buffer, uint64_t pos, uint64_t size) {
-                    Storage::HerpHash<std::string,T> result;
+                Storage::HerpHash<std::string, T,Buckets> read_buffer(const char *buffer, uint64_t pos, uint64_t size) {
+                    Storage::HerpHash<std::string,T,Buckets> result;
                     while (pos < size) {
                         Assert( "Position went to far", pos < size );
 
@@ -31,8 +31,8 @@ namespace Storage {
                     }
                     return result;
                 }
-                Storage::HerpHash<std::string,T> read() {
-                    Storage::HerpHash<std::string,T> result;
+                Storage::HerpHash<std::string,T,Buckets> read() {
+                    Storage::HerpHash<std::string,T,Buckets> result;
                     char *buffer = fs->read(&file);
                     result = read_buffer(buffer, 0, file.size);
                     free(buffer);

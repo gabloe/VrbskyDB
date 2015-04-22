@@ -10,11 +10,11 @@
 #include "../assert/Assert.h"
 
 namespace Storage {
-    template <typename T>
+    template <typename T,uint64_t Buckets = 1024>
         class HerpmapWriter {
             public:
                 HerpmapWriter(File &file_, Filesystem *fs_): fs(fs_), file(file_) {}
-                char *write_buffer(Storage::HerpHash<std::string, T> data, uint64_t *size) {
+                char *write_buffer(Storage::HerpHash<std::string, T,Buckets> data, uint64_t *size) {
 
                     uint64_t buf_size = BLOCK_SIZE;
                     uint64_t pos = 0;
@@ -53,7 +53,7 @@ namespace Storage {
                     *size = pos;
                     return buffer;
                 }
-                uint64_t write(Storage::HerpHash<std::string, T> data) {
+                uint64_t write(Storage::HerpHash<std::string, T,Buckets> data) {
                     char *buffer;
                     uint64_t size;
                     buffer = write_buffer(data, &size);			

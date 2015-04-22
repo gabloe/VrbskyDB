@@ -953,7 +953,12 @@ void execute(Parsing::Query &q, META &meta, FILESYSTEM &fs, bool print = true) {
     }
     if (print) {
         end = std::clock();
-        std::cout << "Done!  Took " << 1000 * (float)(end - start) / CLOCKS_PER_SEC << " milliseconds." << std::endl;
+        double time = (double)(end - start) / CLOCKS_PER_SEC;
+        if( time > 1.0 ) {
+            std::cout << "Done!  Took " << time << " seconds." << std::endl;
+        }else {
+            std::cout << "Done!  Took " << 1000 * time << " milliseconds." << std::endl;
+        }
     }
     //dumpToFile(meta_fname, meta);
 }
@@ -964,13 +969,13 @@ int main(int argc, char **argv) {
     Storage::Filesystem *fs = new Storage::Filesystem(data_fname);
     META *meta;
     File meta_file = fs->open_file("__DB_METADATA__");
-    Storage::HerpmapReader<std::vector<std::string>> meta_reader(meta_file, fs);
+    Storage::HerpmapReader<std::vector<std::string>,Num_Buckets> meta_reader(meta_file, fs);
     if (meta_file.size > 0) {
         //meta = new std::map<std::string, std::string>(meta_reader.read());
-        meta = new Storage::HerpHash<std::string, std::vector<std::string>>(meta_reader.read());
+        meta = new META(meta_reader.read());
     } else {
         //meta = new std::map<std::string, std::string>();
-        meta = new Storage::HerpHash<std::string, std::vector<std::string>>();
+        meta = new META();
 
     }
 
@@ -1043,7 +1048,7 @@ int main(int argc, char **argv) {
 
 end:
 
-    Storage::HerpmapWriter<std::vector<std::string>> meta_writer(meta_file, fs);
+    Storage::HerpmapWriter<std::vector<std::string>,Num_Buckets> meta_writer(meta_file, fs);
     meta_writer.write(*meta);
     std::cout << "Goodbye!" << std::endl;
     free(buf);
@@ -1054,7 +1059,12 @@ end:
         start = std::clock();
         fs->compact();
         end = std::clock();
-        std::cout << "Compaction  Took " << 1000 * (float)(end - start) / CLOCKS_PER_SEC << " milliseconds." << std::endl;
+        double time = (double)(end-start) / CLOCKS_PER_SEC;
+        if( time > 1.0 ) {
+            std::cout << "Compaction  Took " << time << " seconds." << std::endl;
+        }else {
+            std::cout << "Compaction  Took " << 1000 * time << " milliseconds." << std::endl;
+        }
     }
     fs->shutdown();
 

@@ -12,8 +12,8 @@
 #include <iostream>
 #include <vector>
 
-const uint64_t BLOCK_SIZE  = 128;
-const uint64_t BLOCKS_PER_PAGE = 32;
+const uint64_t BLOCK_SIZE  = 256;
+const uint64_t BLOCKS_PER_PAGE = 128;
 const uint64_t BLOCK_SIZE_ACTUAL = 3 * sizeof(uint64_t) + BLOCK_SIZE;
 const uint64_t PAGESIZE = BLOCK_SIZE_ACTUAL * BLOCKS_PER_PAGE;
 
