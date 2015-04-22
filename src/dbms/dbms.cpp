@@ -84,16 +84,14 @@ void maxAggregate(rapidjson::Value *val, rapidjson::Value &result) {
  *
  */
 
-void appendDocToProject(std::string project, std::string doc, META &meta) {
-    std::vector<std::string> data;
+void appendDocToProject(std::string &project, std::string &doc, META &meta) {
     if (meta.count(project) > 0) {
-        // Get the previous array of docs
-        data = meta[project];
-	data.push_back(doc);
+        meta[project].push_back(doc);
     } else {
-	data.push_back(doc);
+        std::vector<std::string> data;
+        data.push_back(doc);
+        meta[project] = data;
     }
-    meta[project] = data;
 }
 
 /*
@@ -110,7 +108,7 @@ void appendDocToProject(std::string project, std::string doc, META &meta) {
  *
  */
 
-void insertDocument(rapidjson::Document &doc, std::string project, META &meta, FILESYSTEM &fs) {
+void insertDocument(rapidjson::Document &doc, std::string &project, META &meta, FILESYSTEM &fs) {
     std::string docUUID = newUUID();
 
     rapidjson::Value dID(docUUID.c_str(), doc.GetAllocator());
@@ -131,31 +129,30 @@ void insertDocument(rapidjson::Document &doc, std::string project, META &meta, F
  *
  */
 
-void updateProjectList(std::string pname, META &meta) {
+void updateProjectList(std::string &pname, META &meta) {
     std::string key("__PROJECTS__");
 
-    std::vector<std::string> data;
     if (meta.count(key) == 0) {
-	data.push_back(pname);
-	meta[key] = data;
-	return;
-    } else {
-	data = meta[key];
+        std::vector<std::string> data;
+        data.push_back(pname);
+        meta[key] = data;
+        return;
     }
+    std::vector<std::string>& data = meta[key];
 
     // Check if the project already exists
     bool found = false;
     for (auto it = data.begin(); it != data.end(); ++it) {
-	std::string v = *it;
-	if (v.compare(pname) == 0) {
-		found = true;
-		break;
-	}
+        std::string v = *it;
+        if (v.compare(pname) == 0) {
+            found = true;
+            break;
+        }
     }
 
     // Only add the project if it is not found
     if (!found) {
-	data.push_back(pname);
+        data.push_back(pname);
         meta[key] = data;
     }
 }
@@ -904,16 +901,16 @@ void execute(Parsing::Query &q, META &meta, FILESYSTEM &fs, bool print = true) {
             {
                 std::string project = *q.project;
                 if (meta.count(project) > 0) {
-			rapidjson::Document data = select(meta[project], *q.fields, q.where, q.limit, fs);
-			if (data.HasMember("_result")) {
-			    rapidjson::Value &array = data["_result"];
-			    if (array.Size() == 0) {
-				std::cout << "Result Empty!" << std::endl;	
-			    } else {
-				std::cout << toPrettyString(&data) << std::endl;
-				std::cout << array.Size() << " records returned." << std::endl; 
-			    }
-			}
+                    rapidjson::Document data = select(meta[project], *q.fields, q.where, q.limit, fs);
+                    if (data.HasMember("_result")) {
+                        rapidjson::Value &array = data["_result"];
+                        if (array.Size() == 0) {
+                            std::cout << "Result Empty!" << std::endl;	
+                        } else {
+                            std::cout << toPrettyString(&data) << std::endl;
+                            std::cout << array.Size() << " records returned." << std::endl; 
+                        }
+                    }
                 } else {
                     std::cout << "Project '" << project << "' does not exist!" << std::endl;
                 }
@@ -923,9 +920,9 @@ void execute(Parsing::Query &q, META &meta, FILESYSTEM &fs, bool print = true) {
             {
                 std::string project = *q.project;
                 if (meta.count(project)) {
-			std::vector<std::string> docs = meta[project];
-                        ddelete(&docs, *q.fields, q.where, q.limit, fs);
-                        meta[project] = docs;
+                    std::vector<std::string> docs = meta[project];
+                    ddelete(&docs, *q.fields, q.where, q.limit, fs);
+                    meta[project] = docs;
                 } else {
                     std::cout << "Project '" << project << "' does not exist!" << std::endl;
                 }
@@ -936,11 +933,11 @@ void execute(Parsing::Query &q, META &meta, FILESYSTEM &fs, bool print = true) {
                 std::string key("__PROJECTS__");
                 if (meta.count(key)) {
                     std::vector<std::string> list = meta[key];
-		    std::cout << "[" << std::endl;
-		    for (auto it = list.begin() ; it != list.end() ; ++it) {
-			std::cout << "\t" << *it << std::endl;
-		    }
-		    std::cout << "]" << std::endl;
+                    std::cout << "[" << std::endl;
+                    for (auto it = list.begin() ; it != list.end() ; ++it) {
+                        std::cout << "\t" << *it << std::endl;
+                    }
+                    std::cout << "]" << std::endl;
                 } else {
                     std::cout << "No projects found!" << std::endl;
                 }
@@ -950,10 +947,10 @@ void execute(Parsing::Query &q, META &meta, FILESYSTEM &fs, bool print = true) {
             {
                 std::string project = *q.project;
                 if (meta.count(project)) {
-			std::vector<std::string> docs = meta[project];
-                        rapidjson::Document &updates = *q.with;
-                        update(&docs, updates, q.where, q.limit, fs);
-			meta[project] = docs;
+                    std::vector<std::string> docs = meta[project];
+                    rapidjson::Document &updates = *q.with;
+                    update(&docs, updates, q.where, q.limit, fs);
+                    meta[project] = docs;
                 } else {
                     std::cout << "Project '" << project << "' does not exist!" << std::endl;
                 }
@@ -1251,9 +1248,9 @@ int main(int argc, char **argv) {
 
     // The number of files decresed then compact the fs.
     if (fs->getNumFiles() < origNumFiles) {
-    	clock_t start, end;
-    	start = std::clock();
-    	fs->compact();
+        clock_t start, end;
+        start = std::clock();
+        fs->compact();
         end = std::clock();
         std::cout << "Compaction  Took " << 1000 * (float)(end - start) / CLOCKS_PER_SEC << " milliseconds." << std::endl;
     }
