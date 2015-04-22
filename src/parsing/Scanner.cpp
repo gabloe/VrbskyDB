@@ -4,6 +4,7 @@
 
 #include "Scanner.h"
 
+
 namespace Parsing {
 	char Scanner::nextChar() {
 		SKIPWHITESPACE();
@@ -13,8 +14,7 @@ namespace Parsing {
 
 	std::string Scanner::nextToken() {
 		SKIPWHITESPACE();
-        std::vector<char> token;
-		//std::string token = "";
+        int buf_pos = 0;
 		while (spot < query.size()) {
 			size_t pos = spot++;
 			char t = query.at(pos);
@@ -24,10 +24,14 @@ namespace Parsing {
 			} else if (t == ' ') {
 				break;
 			}
-            token.push_back( t );
-			//token = token + t;
+            if( buf_pos == len ) {
+                len *= 2;
+                buffer = (char*)realloc( buffer , len );
+            }
+            buffer[buf_pos] = t;
+            ++buf_pos;
 		}
-		return std::string( &token[0] , token.size() );;
+		return std::string( buffer, buf_pos );
 	}
 
 	void Scanner::push_back(std::string val) {
