@@ -170,14 +170,6 @@ void updateProjectList(std::string &pname, META &meta) {
  */
 
 void insertDocuments(rapidjson::Document &docs, std::string pname, META &meta, FILESYSTEM &fs) {
-<<<<<<< HEAD
-    if( meta.count(pname) == 0 ) {
-        meta[pname] = std::vector<std::string>();
-    }
-    std::vector<std::string>& data = meta[pname];
-
-=======
->>>>>>> 0a58243a982013ac0dede4b98db4ce4ba1fe1656
     updateProjectList(pname, meta);
 
     // If it's an array of documents.  Iterate over them and insert each document.
