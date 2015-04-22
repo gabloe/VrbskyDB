@@ -765,7 +765,7 @@ rapidjson::Document select(std::vector<std::string> &docs, rapidjson::Document &
     // Check for *
     for (rapidjson::Value::ConstValueIterator it = fields.Begin(); it != fields.End(); ++it) {
         if (it->GetType() != rapidjson::kStringType) continue;
-        std::string& val = it->GetString();
+        std::string val = it->GetString();
         if (val.compare("*") == 0) {
             selectAll = true;
         }
@@ -829,7 +829,7 @@ rapidjson::Document select(std::vector<std::string> &docs, rapidjson::Document &
         int numFields = 0;
         int numDeleted = 0;
         while (tmpField != tmpObj.MemberEnd()) {
-            std::string& key = tmpField->name.GetString();
+            std::string key = tmpField->name.GetString();
             rapidjson::Value &embedded = tmpObj[key.c_str()];
             if (embedded.GetType() == rapidjson::kObjectType && embedded.HasMember("_temporary")) {
                 tmpObj.RemoveMember(tmpField);
