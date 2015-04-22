@@ -29,13 +29,13 @@ namespace Storage {
         }
 
         HerpHash() {
-            for( int i = 0 ; i < Buckets ; ++i ) {
+            for( uint64_t i = 0 ; i < Buckets ; ++i ) {
                 maps[i] = new std::map<KEY,VALUE>();
             }
         }
 
         HerpHash(const HerpHash& other) {
-            for( int i = 0 ; i < maps.size(); ++i) {
+            for( uint64_t i = 0 ; i < maps.size(); ++i) {
                 auto o = other.maps[i];
                 auto m = new std::map<KEY,VALUE>(o->begin(), o->end());
                 this->maps[i] = m;
@@ -43,13 +43,13 @@ namespace Storage {
         }
 
         ~HerpHash() {
-            for( int i = 0 ; i < maps.size() ; ++i ) {
+            for( uint64_t i = 0 ; i < maps.size() ; ++i ) {
                 delete maps[i];
             }
         }
 
         HerpHash& operator=( const HerpHash& rhs) {
-            for( int i = 0 ; i < maps.size(); ++i) {
+            for( uint64_t i = 0 ; i < maps.size(); ++i) {
                 delete maps[i];
                 auto o = rhs.maps[i];
                 auto m = new std::map<KEY,VALUE>(o->begin(), o->end());
@@ -67,14 +67,14 @@ namespace Storage {
         }
 
         void erase( KEY &k ) {
-            for( int i = 0 ; i < Buckets ; ++i ) {
+            for( uint64_t i = 0 ; i < Buckets ; ++i ) {
                 maps[i]->erase( k );
             }
         }
 
         size_t size() {
             int s = 0;
-            for( int i = 0 ; i <Buckets; ++i ) {
+            for( uint64_t i = 0 ; i <Buckets; ++i ) {
                 s += maps[i]->size();
             }
             return s;
