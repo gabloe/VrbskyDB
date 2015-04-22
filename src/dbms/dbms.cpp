@@ -976,9 +976,8 @@ int main(int argc, char **argv) {
 
     int count = 0;
 
-    bool exitEarly = false;
     std::string line;
-    char *buf;
+    char *buf = NULL;
     std::string queryLogFile("queries.log");
     uint64_t origNumFiles = fs->getNumFiles();
 
