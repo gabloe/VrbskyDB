@@ -70,21 +70,15 @@ uint64_t Storage::Filesystem::calculateSize(Block b) {
 }
 
 uint64_t Storage::Filesystem::getNumPages() {
-	return filesystem.numPages;
+    return filesystem.numPages;
 }
 
 uint64_t Storage::Filesystem::getNumFiles() {
-	return metadata.numFiles;
+    return metadata.numFiles;
 }
-
-/*
-std::map<std::string, uint64_t> Storage::Filesystem::getFileMap() {
-	return metadata.files;
-}
-*/
 
 Storage::HerpHash<std::string, uint64_t> Storage::Filesystem::getFileMap() {
-	return metadata.files;
+    return metadata.files;
 }
 
 /*
@@ -109,24 +103,24 @@ void Storage::Filesystem::compact() {
     uint64_t oldNumFiles = metadata.files.size();
     uint64_t pos = 0;
     for (auto it = metadata.files.begin(); it != metadata.files.end(); ++it) {
-	std::string key = it->first;
+        std::string key = it->first;
 
-	// Don't copy over the metadata
-	if (key.compare("_METADATA_") == 0) {
-		continue;
-	}
+        // Don't copy over the metadata
+        if (key.compare("_METADATA_") == 0) {
+            continue;
+        }
 
-	File src = open_file(key);
-	char *buffer = read(&src);
-	File dest = fs->open_file(key);
-	fs->write(&dest, buffer, src.size);
+        File src = open_file(key);
+        char *buffer = read(&src);
+        File dest = fs->open_file(key);
+        fs->write(&dest, buffer, src.size);
         std::cout << "Compacting: " << ceil(100 * (long double)pos / oldNumFiles) << "% done.\r";
-	pos++;
+        pos++;
     }
     std::cout << std::endl;
     uint64_t newNumPages = fs->getNumPages();
     uint64_t newNumFiles = fs->getNumFiles();
-    //std::map<std::string, uint64_t> newFiles = fs->getFileMap();
+
     Storage::HerpHash<std::string,uint64_t> newFiles = fs->getFileMap();
     fs->shutdown();
 
@@ -145,7 +139,7 @@ void Storage::Filesystem::compact() {
     filesystem.fd = open(data_fname.c_str(), O_RDWR | O_CREAT, (mode_t)0644);
     if (!filesystem.fd) {
         std::cerr << "Could not reopen filesystem after compact!" << std::endl;
-	exit(1);
+        exit(1);
     }
 
     initFilesystem(false); 
@@ -553,7 +547,7 @@ void Storage::Filesystem::writeMetadata() {
 
 /*
    Unmap the filesystem.
-*/
+   */
 
 void Storage::Filesystem::shutdown() {
     writeMetadata();

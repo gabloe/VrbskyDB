@@ -143,7 +143,7 @@ void updateProjectList(std::string &pname, META &meta) {
     // Check if the project already exists
     bool found = false;
     for (auto it = data.begin(); it != data.end(); ++it) {
-        std::string v = *it;
+        std::string &v = *it;
         if (v.compare(pname) == 0) {
             found = true;
             break;
@@ -169,7 +169,7 @@ void updateProjectList(std::string &pname, META &meta) {
  *      If the JSON object is a single object, insert the document into the DB.
  */
 
-void insertDocuments(rapidjson::Document &docs, std::string pname, META &meta, FILESYSTEM &fs) {
+void insertDocuments(rapidjson::Document &docs, std::string &pname, META &meta, FILESYSTEM &fs) {
     updateProjectList(pname, meta);
 
     // If it's an array of documents.  Iterate over them and insert each document.
@@ -302,7 +302,7 @@ int projectFields(rapidjson::Document *src, rapidjson::Value *dest, rapidjson::D
     return count;
 }
 
-void aggregateField(rapidjson::Value *result, rapidjson::Value *data, std::string function) {
+void aggregateField(rapidjson::Value *result, rapidjson::Value *data, std::string &function) {
     if (!data->IsNumber()) return;
     std::map<std::string, std::function<void(rapidjson::Value*,rapidjson::Value&)>>  funcMap =
     {{ "SUM", sumAggregate},
@@ -364,7 +364,7 @@ rapidjson::Value processAggregate(rapidjson::Value *src, const rapidjson::Value 
     return obj;
 }
 
-bool validateSpecialValueCompare(std::string val) {
+bool validateSpecialValueCompare(std::string &val) {
     int numSpecials = sizeof(SpecialValueComparisons) / sizeof(SpecialValueComparisons[0]);
     for (int i=0; i<numSpecials; ++i) {
         if (SpecialValueComparisons[i].compare(val) == 0) {
@@ -374,7 +374,7 @@ bool validateSpecialValueCompare(std::string val) {
     return false;
 }
 
-bool validateSpecialKeyCompare(std::string val) {
+bool validateSpecialKeyCompare(std::string &val) {
     int numSpecials = sizeof(SpecialKeyComparisons) / sizeof(SpecialKeyComparisons[0]);
     for (int i=0; i<numSpecials; ++i) {
         if (SpecialKeyComparisons[i].compare(val) == 0) {
@@ -627,13 +627,13 @@ void deleteFields(rapidjson::Document *doc, rapidjson::Document *fields) {
 }
 
 // Update the fields of the array of documents
-void update(std::vector<std::string>* docs, rapidjson::Document &updates, rapidjson::Document *where, int limit, FILESYSTEM &fs) {
+void update(std::vector<std::string>& docs, rapidjson::Document &updates, rapidjson::Document *where, int limit, FILESYSTEM &fs) {
     if (limit == 0) return;
 
     int num = 0;
 
     // Iterate over every document
-    for (auto docID = docs->begin(); docID != docs->end(); ++docID) {
+    for (auto docID = docs.begin(); docID != docs.end(); ++docID) {
         // Open the document
         std::string dID = *docID;
         File file1 = fs.open_file(dID);
@@ -941,9 +941,9 @@ void execute(Parsing::Query &q, META &meta, FILESYSTEM &fs, bool print = true) {
             {
                 std::string project = *q.project;
                 if (meta.count(project)) {
-                    std::vector<std::string> docs = meta[project];
+                    std::vector<std::string>& docs = meta[project];
                     rapidjson::Document &updates = *q.with;
-                    update(&docs, updates, q.where, q.limit, fs);
+                    update( docs, updates, q.where, q.limit, fs);
                     meta[project] = docs;
                 } else {
                     std::cout << "Project '" << project << "' does not exist!" << std::endl;
