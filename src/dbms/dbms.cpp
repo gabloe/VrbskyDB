@@ -958,22 +958,6 @@ void execute(Parsing::Query &q, META &meta, FILESYSTEM &fs, bool print = true) {
     //dumpToFile(meta_fname, meta);
 }
 
-void completion(const char *buf, linenoiseCompletions *lc) {
-    if (buf == NULL || strlen(buf) == 0) return;
-    char *token = std::strtok((char *)buf, " ");
-
-    int size;
-    std::string *options;
-    if (token == Parsing::Commands[0]) {  // CREATE
-        size = sizeof(Parsing::CreateArgs) / sizeof(Parsing::CreateArgs[0]);
-        options = (std::string*)&Parsing::CreateArgs[0];
-    }
-
-    for (int i=0; i < size ; ++i) {
-        linenoiseAddCompletion(lc, options[i].c_str());
-    }
-}
-
 int main(int argc, char **argv) {
     std::string data_fname("data.db");
 
@@ -1031,7 +1015,6 @@ int main(int argc, char **argv) {
     uint64_t origNumFiles = fs->getNumFiles();
 
     linenoiseSetMultiLine(1);
-    linenoiseSetCompletionCallback(completion);
 
     std::cout << "Enter a query (q to quit):" << std::endl;
     char *buf;
