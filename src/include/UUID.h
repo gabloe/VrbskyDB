@@ -7,6 +7,14 @@ extern "C"
 #endif
 }
 
+#define UUID_ALT
+
+#ifdef UUID_ALT
+std::string newUUID() {
+	static uint64_t i;
+	return std::to_string(i++);
+}
+#else
 std::string newUUID()
 {
 std::string res;
@@ -28,3 +36,4 @@ std::string res;
 #endif
     return std::string(s);
 }
+#endif
