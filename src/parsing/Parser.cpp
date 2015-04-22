@@ -12,14 +12,25 @@ Query parser for the NoSQL database management system.
 #include "Scanner.h"
 #include "Parser.h"
 
-std::string toLower(std::string s) {
-	std::string ss = std::string(s);
-	std::transform(ss.begin(), ss.end(), ss.begin(), ::tolower);
-	return ss;
+bool icompare_pred(unsigned char a, unsigned char b)
+{
+        return std::tolower(a) == std::tolower(b);
+}
+
+bool icompare(std::string const& a, std::string const& b)
+{
+        return std::lexicographical_compare(a.begin(), a.end(),
+                                                        b.begin(), b.end(), icompare_pred);
+}
+
+void toLower(std::string &s) {
+	std::transform(s.begin(), s.end(), s.begin(), ::tolower);
 }
 
 Parsing::Query* Parsing::Parser::parse() {
-	std::string token = toLower(Parsing::Parser::sc.nextToken());
+    std::string token( Parsing::Parser::sc.nextToken() );
+    toLower( token );
+
 	Parsing::Query *q = new Parsing::Query();
 	bool result = false;
 	if (!token.compare("create")) {
@@ -61,8 +72,12 @@ Parsing::Query* Parsing::Parser::parse() {
 
 bool Parsing::Parser::create(Parsing::Query &q) {
 	q.command = CREATE;
-	std::string index = toLower(Parsing::Parser::sc.nextToken());
-	std::string on = toLower(Parsing::Parser::sc.nextToken());
+
+    std::string index(Parsing::Parser::sc.nextToken());
+    std::string on(Parsing::Parser::sc.nextToken());
+    toLower( index );
+    toLower( on );
+
 	if (!index.compare("index") && !on.compare("on")) {
 		q.fields = new rapidjson::Document();
 		char c = Parsing::Parser::sc.nextChar();
@@ -73,7 +88,7 @@ bool Parsing::Parser::create(Parsing::Query &q) {
 		} else {
 			arr += '[';
 			Parsing::Parser::sc.push_back(1);
-			std::string field = Parsing::Parser::sc.nextToken();
+			std::string field(Parsing::Parser::sc.nextToken());
 			if (field.find("\"") != 0) {
 				arr += '"';
 			}
@@ -97,7 +112,9 @@ bool Parsing::Parser::create(Parsing::Query &q) {
 
 bool Parsing::Parser::show(Parsing::Query &q) {
 	q.command = SHOW;
-	std::string token = toLower(Parsing::Parser::sc.nextToken());
+    std::string token(Parsing::Parser::sc.nextToken());
+    toLower(token);
+
 	if (!token.compare("projects")) {
 		q.project = new std::string("__PROJECTS__");
 	} else {
@@ -110,7 +127,9 @@ bool Parsing::Parser::show(Parsing::Query &q) {
 bool Parsing::Parser::update(Parsing::Query &q) {
 	q.command = UPDATE;
 	q.project = new std::string(Parsing::Parser::sc.nextToken());
-	std::string with = toLower(Parsing::Parser::sc.nextToken());
+    std::string with(Parsing::Parser::sc.nextToken());
+    toLower(with);
+
 	if (with.compare("with")) {
 		std::cout << "Expected 'with', found '" << with << "." << std::endl;
 		return false;
@@ -122,7 +141,9 @@ bool Parsing::Parser::update(Parsing::Query &q) {
 		std::cout << "PARSING ERROR: Invalid JSON." << std::endl;
 		return false;
 	}
-	std::string where = toLower(Parsing::Parser::sc.nextToken());
+    std::string where(Parsing::Parser::sc.nextToken());
+    toLower(where);
+
 	if (!where.compare("where")) {
 		std::string whereJSON = Parsing::Parser::sc.nextJSON();
 		q.where = new rapidjson::Document();
@@ -146,13 +167,17 @@ bool Parsing::Parser::select(Parsing::Query &q) {
 	if (!q.fields) {
 		return false;
 	}
-	std::string token = Parsing::Parser::sc.nextToken();
-	if (toLower(token).compare("from")) {
+	std::string token(Parsing::Parser::sc.nextToken());
+    toLower(token);
+	if (token.compare("from")) {
 		std::cout << "PARSING ERROR: Expected 'from', found " << token << std::endl;
 		return false;
 	}
+
 	q.project = new std::string(Parsing::Parser::sc.nextToken());
-	std::string where = toLower(Parsing::Parser::sc.nextToken());
+	std::string where(Parsing::Parser::sc.nextToken());
+    toLower(where);
+
 	if (!where.compare("where")) {
 		std::string whereJSON = Parsing::Parser::sc.nextJSON();
 		q.where = new rapidjson::Document();
@@ -176,15 +201,20 @@ bool Parsing::Parser::ddelete(Parsing::Query &q) {
 	if (!q.fields) {
 		return false;
 	}
-	std::string from = toLower(Parsing::Parser::sc.nextToken());
+
+    std::string from(Parsing::Parser::sc.nextToken());
+    toLower(from);
 	if (from.compare("from")) {
 		std::cout << "PARSING ERROR: Expected 'from', found " << from << "." << std::endl;
 		return false;
 	}
+
 	q.project = new std::string(Parsing::Parser::sc.nextToken());
-	std::string where = toLower(Parsing::Parser::sc.nextToken());
+	std::string where(Parsing::Parser::sc.nextToken());
+    toLower(where);
+
 	if (!where.compare("where")) {
-		std::string whereJSON = Parsing::Parser::sc.nextJSON();
+		std::string whereJSON(Parsing::Parser::sc.nextJSON());
 		q.where = new rapidjson::Document();
 		q.where->Parse(whereJSON.c_str());
 		if (q.where->HasParseError()) {
@@ -202,14 +232,16 @@ bool Parsing::Parser::ddelete(Parsing::Query &q) {
 
 bool Parsing::Parser::insert(Parsing::Query &q) {
 	q.command = INSERT;
-	std::string into = Parsing::Parser::sc.nextToken();
-	if (toLower(into).compare("into")) {
+	std::string into(Parsing::Parser::sc.nextToken());
+    toLower(into);
+	if (into.compare("into")) {
 		std::cout << "Expected 'into'.  Found '" << into << "." << std::endl;
 		return false;
 	}
 	q.project = new std::string(Parsing::Parser::sc.nextToken());
-	std::string with = Parsing::Parser::sc.nextToken();
-	if (toLower(with).compare("with")) {
+	std::string with(Parsing::Parser::sc.nextToken());
+    toLower(with);
+	if (with.compare("with")) {
 		std::cout << "Expected 'with'.  Found '" << with << "." << std::endl;
 		return false;
 	}
@@ -242,7 +274,7 @@ rapidjson::Document *Parsing::Parser::fieldList() {
 				return NULL;
 			}
 		} else {
-			std::string field = Parsing::Parser::sc.nextToken();
+			std::string field(Parsing::Parser::sc.nextToken());
 			rapidjson::Value fieldVal;
 			fieldVal.SetString(field.c_str(), keys->GetAllocator());
 			keys->PushBack(fieldVal, keys->GetAllocator());
@@ -257,13 +289,13 @@ rapidjson::Document *Parsing::Parser::fieldList() {
 }
 
 bool Parsing::Parser::aggregate(rapidjson::Document *doc) {
-	std::string funct = Parsing::Parser::sc.nextToken();
+	std::string funct(Parsing::Parser::sc.nextToken());
 	char c = Parsing::Parser::sc.nextChar();
 	if (c != '(') {
 		std::cout << "PARSING ERROR: Expected open parenthesis, found '" << c << "'." << std::endl;
 		return false;
 	}
-	std::string field = Parsing::Parser::sc.nextToken();
+	std::string field(Parsing::Parser::sc.nextToken());
 	c = Parsing::Parser::sc.nextChar();
 	if (c != ')') {
 		std::cout << "PARSING ERROR: Expected closed parenthesis, found '" << c << "'." << std::endl;
@@ -274,7 +306,8 @@ bool Parsing::Parser::aggregate(rapidjson::Document *doc) {
 
 	int numAggregates = sizeof(Aggregates) / sizeof(std::string);
 	for (int i=0; i<numAggregates; ++i) {
-		if (!toLower(funct).compare(toLower(Aggregates[i]))) {
+        toLower(funct);
+		if (icompare(funct,Aggregates[i])) {
 			aggregate = Aggregates[i];
 		}
 	}
@@ -296,9 +329,9 @@ bool Parsing::Parser::aggregate(rapidjson::Document *doc) {
 }
 
 bool Parsing::Parser::limitPending() {
-	std::string limit = Parsing::Parser::sc.nextToken();
+	std::string limit(Parsing::Parser::sc.nextToken());
 	bool found = false;
-	if (!toLower(limit).compare("limit")) {
+	if (!limit.compare("limit")) {
 		found = true;
 	} else {
 		Parsing::Parser::sc.push_back(limit);
@@ -307,11 +340,12 @@ bool Parsing::Parser::limitPending() {
 }
 
 bool Parsing::Parser::aggregatePending() {
-	std::string token = Parsing::Parser::sc.nextToken();
+	std::string token(Parsing::Parser::sc.nextToken());
 	bool result = false;
 	int numAggregates = sizeof(Aggregates) / sizeof(std::string);
 	for (int i=0; i<numAggregates; ++i) {
-		if (!toLower(token).compare(toLower(Aggregates[i]))) {
+        toLower(token);
+		if (icompare(token,Aggregates[i])) {
 			result = true;
 		}
 	}
