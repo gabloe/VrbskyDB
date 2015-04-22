@@ -1,5 +1,7 @@
 #include <iostream>
+#include <vector>
 #include <stdexcept>
+
 #include "Scanner.h"
 
 namespace Parsing {
@@ -11,7 +13,8 @@ namespace Parsing {
 
 	std::string Scanner::nextToken() {
 		SKIPWHITESPACE();
-		std::string token = "";
+        std::vector<char> token;
+		//std::string token = "";
 		while (spot < query.size()) {
 			size_t pos = spot++;
 			char t = query.at(pos);
@@ -21,9 +24,10 @@ namespace Parsing {
 			} else if (t == ' ') {
 				break;
 			}
-			token = token + t;
+            token.push_back( t );
+			//token = token + t;
 		}
-		return token;
+		return std::string( &token[0] , token.size() );;
 	}
 
 	void Scanner::push_back(std::string val) {
