@@ -24,57 +24,6 @@
 #include <UUID.h>
 #include <linenoise/linenoise.h>
 
-// Add val to current value of result.
-void sumAggregate(rapidjson::Value *val, rapidjson::Value &result) {
-    if (result.IsNull()) {
-        result.SetDouble(0.0);
-    }
-
-    double x;
-    if (val->IsInt()) {
-        x = (double)val->GetInt();
-    } else {
-        x = val->GetDouble();
-    }
-    result = rapidjson::Value(result.GetDouble() + x);
-}
-
-// Update result only if val is smaller
-void minAggregate(rapidjson::Value *val, rapidjson::Value &result) {
-    if (result.IsNull()) {
-        result.SetDouble(std::numeric_limits<double>::max());
-    }
-
-    double x;
-    if (val->IsInt()) {
-        x = (double)val->GetInt();
-    } else {
-        x = val->GetDouble();
-    }
-
-    if (x < result.GetDouble()) {
-        result = rapidjson::Value(x);
-    }
-}
-
-// Update result only if val is larger
-void maxAggregate(rapidjson::Value *val, rapidjson::Value &result) {
-    if (result.IsNull()) {
-        result.SetDouble(std::numeric_limits<double>::min());
-    }
-
-    double x;
-    if (val->IsInt()) {
-        x = (double)val->GetInt();
-    } else {
-        x = val->GetDouble();
-    }
-
-    if (x > result.GetDouble()) {
-        result = rapidjson::Value(x);
-    }
-}
-
 /*
  *      appendDocToProject ---
  *      
@@ -302,66 +251,6 @@ int projectFields(rapidjson::Document *src, rapidjson::Value *dest, rapidjson::D
     return count;
 }
 
-void aggregateField(rapidjson::Value *result, rapidjson::Value *data, std::string &function) {
-    if (!data->IsNumber()) return;
-    std::map<std::string, std::function<void(rapidjson::Value*,rapidjson::Value&)>>  funcMap =
-    {{ "SUM", sumAggregate},
-        { "AVG", sumAggregate}, // Special case
-        { "MIN", minAggregate},
-        { "MAX", maxAggregate}
-    };
-    funcMap[function.c_str()](data, *result);
-    double x = result->GetDouble();
-
-    // Convert the result to an integer if it should be.
-    if (fmod(x, 1) == 0.0) {
-        *result = rapidjson::Value((int)x);
-    }
-}
-
-// For each result in src, apply aggregate function.  Return value.
-rapidjson::Value processAggregate(rapidjson::Document *src, const rapidjson::Value *func, rapidjson::Document::AllocatorType &allocator) {
-    rapidjson::Value result;
-    const rapidjson::Value &aggregate = *func;
-
-    // Get the function and field name to aggregate
-    std::string function = aggregate["function"].GetString();
-    std::string field = aggregate["field"].GetString();
-
-    int count = 0;
-    rapidjson::Document &doc = *src;
-
-        if (doc.HasMember(field.c_str())) {
-            rapidjson::Value embValue;
-            rapidjson::Value &embObject = doc[field.c_str()];
-
-            if (embObject.GetType() == rapidjson::kObjectType && embObject.HasMember("_temporary")) {
-                rapidjson::Value &tmp = embObject["_temporary"];
-		src->RemoveMember(field.c_str());
-                embValue = rapidjson::Value(tmp, allocator);
-            } else {
-                embValue = rapidjson::Value(embObject, allocator);
-            }
-
-            aggregateField(&result, &embValue, function);
-            count++;
-        }
-
-    // Special case, handle average aggregate.  Is there a better way to do this?
-    if (function.compare("AVG") == 0 && count > 0) {
-        result = rapidjson::Value(result.GetDouble() / count);
-    }
-
-    // Bundle up the result in an object.
-    rapidjson::Value obj;
-    obj.SetObject();
-    std::string objKey(function + "(" + field + ")");
-    rapidjson::Value k(objKey.c_str(), allocator);
-    rapidjson::Value v(result, allocator);
-    obj.AddMember(k, v, allocator);
-    return obj;
-}
-
 bool validateSpecialValueCompare(std::string &val) {
     int numSpecials = sizeof(SpecialValueComparisons) / sizeof(SpecialValueComparisons[0]);
     for (int i=0; i<numSpecials; ++i) {
@@ -533,8 +422,11 @@ bool sameValues(rapidjson::Value &first, rapidjson::Value &second, rapidjson::Do
     return false;
 }
 
+
+
 bool documentMatchesConditions(rapidjson::Document &doc, rapidjson::Document &conditions) {
-    for (rapidjson::Value::ConstMemberIterator condIt = conditions.MemberBegin(); condIt != conditions.MemberEnd(); ++condIt) {
+    auto condIt = conditions.MemberBegin();
+    while (condIt != conditions.MemberEnd()) {
         std::string condKey = condIt->name.GetString();
         // Special case for special key comparisons
         if (validateSpecialKeyCompare(condKey)) {
@@ -605,12 +497,13 @@ bool documentMatchesConditions(rapidjson::Document &doc, rapidjson::Document &co
             if (!doc.HasMember(condKey.c_str())) {
                 return false;
             }
-            rapidjson::Value &condVal = conditions[condKey.c_str()];
-            rapidjson::Value &docVal = doc[condKey.c_str()];
-            if (!sameValues(condVal, docVal, conditions.GetAllocator())) {
-                return false;
-            }
+	    rapidjson::Value &condVal = conditions[condKey.c_str()];
+	    rapidjson::Value &docVal = doc[condKey.c_str()];
+	    if (!sameValues(condVal, docVal, conditions.GetAllocator())) {
+		return false;
+	    }
         }
+	conditions.RemoveMember(condIt);
     }
     return true;
 }
@@ -645,11 +538,15 @@ void update(std::vector<std::string>& docs, rapidjson::Document &updates, rapidj
 
         if (where) {
             rapidjson::Document &whereDoc = *where;
+	    rapidjson::Document spare;
+	    spare.CopyFrom(whereDoc, spare.GetAllocator());
             // Check if the document contains the values specified in where clause.
             // If not, move on to the next document.
             if (!documentMatchesConditions(doc, whereDoc)) {
+	        whereDoc.CopyFrom(spare, whereDoc.GetAllocator()); 
                 continue;
             }
+	    whereDoc.CopyFrom(spare, whereDoc.GetAllocator()); 
         }
 
         // Insert or update the fields
@@ -711,12 +608,16 @@ void ddelete(std::vector<std::string>& docs, rapidjson::Document &origFields, ra
 
         if (where) {
             rapidjson::Document &whereDoc = *where;
+	    rapidjson::Document spare;
+	    spare.CopyFrom(whereDoc, spare.GetAllocator());
             // Check if the document contains the values specified in where clause.
             // If not, move on to the next document.
             if (!documentMatchesConditions(doc, whereDoc)) {
+	    	whereDoc.CopyFrom(spare, whereDoc.GetAllocator()); 
                 ++docID;
                 continue;       
             }
+	    whereDoc.CopyFrom(spare, whereDoc.GetAllocator()); 
         }
 
         // Iterate over the desired fields
@@ -792,11 +693,15 @@ rapidjson::Document select(std::vector<std::string> &docs, rapidjson::Document &
 
         if (where) {
             rapidjson::Document &whereDoc = *where;
+	    rapidjson::Document spare;
+	    spare.CopyFrom(whereDoc, spare.GetAllocator());
             // Check if the document contains the values specified in where clause.
-            // If not, move on to the next document.
+            // If not, move on to the next document
             if (!documentMatchesConditions(doc, whereDoc)) {
+	        whereDoc.CopyFrom(spare, whereDoc.GetAllocator()); 
                 continue;       
             }
+	    whereDoc.CopyFrom(spare, whereDoc.GetAllocator()); 
         }
 
         int count = 0;
@@ -816,7 +721,11 @@ rapidjson::Document select(std::vector<std::string> &docs, rapidjson::Document &
 		//	If field is marked as temporary, delete it from the document
 		// Else:
 		//	Continue
-		aggregator->handle(&docVal, &*agg, result.GetAllocator());
+		const rapidjson::Value &aggVal = *agg;
+		if (!docVal.HasMember(aggVal["field"].GetString())) {
+			continue;
+		}
+		aggregator->handle(&docVal, &aggVal, result.GetAllocator());
 		count = docVal.MemberBegin()==docVal.MemberEnd()?0:count;
 	}
 
