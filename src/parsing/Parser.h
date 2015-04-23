@@ -4,7 +4,12 @@
 #include <string>
 #include <iostream>
 #include <pretty.h>
+#include <algorithm>
 #include "Scanner.h"
+
+inline void toLower(std::string &s) {
+    std::transform(s.begin(), s.end(), s.begin(), ::tolower);
+}
 
 namespace Parsing {
 	const std::string Aggregates[] = {"AVG", "MIN", "MAX", "SUM" /*, TODO: Others. */};

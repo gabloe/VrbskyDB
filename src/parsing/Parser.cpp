@@ -30,10 +30,6 @@ bool icompare(std::string const& a, std::string const& b)
     return true;
 }
 
-void toLower(std::string &s) {
-    std::transform(s.begin(), s.end(), s.begin(), ::tolower);
-}
-
 Parsing::Query* Parsing::Parser::parse() {
     std::string token( Parsing::Parser::sc.nextToken() );
     toLower( token );
@@ -297,7 +293,6 @@ rapidjson::Document *Parsing::Parser::fieldList() {
 
 bool Parsing::Parser::aggregate(rapidjson::Document *doc) {
     std::string funct(Parsing::Parser::sc.nextToken());
-    std::cout << "Function: " << funct << std::endl;
     char c = Parsing::Parser::sc.nextChar();
     if (c != '(') {
         std::cout << "PARSING ERROR: Expected open parenthesis, found '" << c << "'." << std::endl;

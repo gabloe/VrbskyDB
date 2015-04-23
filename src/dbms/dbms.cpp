@@ -10,7 +10,9 @@
 #include <cstring>
 
 #include "dbms.h"
-#include "../hashing/Hash.h"
+#include "Aggregator.h"
+
+//#include "../hashing/Hash.h"
 #include "../parsing/Parser.h"
 #include "../parsing/Scanner.h"
 #include "../mmap_filesystem/Filesystem.h"
@@ -318,9 +320,8 @@ void aggregateField(rapidjson::Value *result, rapidjson::Value *data, std::strin
 }
 
 // For each result in src, apply aggregate function.  Return value.
-rapidjson::Value processAggregate(rapidjson::Value *src, const rapidjson::Value *func, rapidjson::Document::AllocatorType &allocator) {
+rapidjson::Value processAggregate(rapidjson::Document *src, const rapidjson::Value *func, rapidjson::Document::AllocatorType &allocator) {
     rapidjson::Value result;
-    rapidjson::Value &array = *src;
     const rapidjson::Value &aggregate = *func;
 
     // Get the function and field name to aggregate
@@ -328,15 +329,15 @@ rapidjson::Value processAggregate(rapidjson::Value *src, const rapidjson::Value 
     std::string field = aggregate["field"].GetString();
 
     int count = 0;
-    for (rapidjson::Value::ValueIterator it = array.Begin(); it != array.End(); ++it) {
-        rapidjson::Value &obj = *it;
+    rapidjson::Document &doc = *src;
 
-        if (obj.HasMember(field.c_str())) {
+        if (doc.HasMember(field.c_str())) {
             rapidjson::Value embValue;
-            rapidjson::Value &embObject = obj[field.c_str()];
+            rapidjson::Value &embObject = doc[field.c_str()];
 
             if (embObject.GetType() == rapidjson::kObjectType && embObject.HasMember("_temporary")) {
                 rapidjson::Value &tmp = embObject["_temporary"];
+		src->RemoveMember(field.c_str());
                 embValue = rapidjson::Value(tmp, allocator);
             } else {
                 embValue = rapidjson::Value(embObject, allocator);
@@ -345,7 +346,6 @@ rapidjson::Value processAggregate(rapidjson::Value *src, const rapidjson::Value 
             aggregateField(&result, &embValue, function);
             count++;
         }
-    }
 
     // Special case, handle average aggregate.  Is there a better way to do this?
     if (function.compare("AVG") == 0 && count > 0) {
@@ -771,6 +771,9 @@ rapidjson::Document select(std::vector<std::string> &docs, rapidjson::Document &
 
     int num = 0;
 
+    // Create Aggregator object
+    Aggregator *aggregator = new Aggregator();
+
     // Iterate over every document
     for (auto docID = docs.begin(); docID != docs.end(); ++docID) {
         // Open the document
@@ -804,45 +807,46 @@ rapidjson::Document select(std::vector<std::string> &docs, rapidjson::Document &
         } else {
             count += projectFields(&doc, &docVal, &fields, result.GetAllocator());
         }
+
+        // Iterate over the aggregates.  Process this document
+	for (rapidjson::Value::ConstValueIterator agg = aggregates.Begin(); agg != aggregates.End(); ++agg) {
+		// Check if the document contains a field being aggregated.
+		// If true:
+		//	Pass field to aggregator
+		//	If field is marked as temporary, delete it from the document
+		// Else:
+		//	Continue
+		aggregator->handle(&docVal, &*agg, result.GetAllocator());
+		count = docVal.MemberBegin()==docVal.MemberEnd()?0:count;
+	}
+
         if (count > 0) {
             array.PushBack(docVal, result.GetAllocator());
         }
 
         // If a limit is being used then we may need to preempt.
-        if (limit > 0 && ++num == limit) {
+        if (++num == limit) {
             break;
         }
     }
 
     for (rapidjson::Value::ConstValueIterator agg = aggregates.Begin(); agg != aggregates.End(); ++agg) {
-        const rapidjson::Value &aggVal = *agg;
-        rapidjson::Value aggResult = processAggregate(&array, &aggVal, result.GetAllocator());
-        array.PushBack(aggResult, result.GetAllocator());
+	const rapidjson::Value &a = *agg;
+	std::string func = a["function"].GetString();
+	std::string field = a["field"].GetString();
+	AggregateResult *res = aggregator->getResult(field, func);
+	if (res != NULL) {
+		rapidjson::Value aggRes;
+		aggRes.SetObject();
+		std::string k_txt = func + '(' + field + ')';
+		rapidjson::Value k(k_txt.c_str(), result.GetAllocator());
+		rapidjson::Value v(res->result);
+		aggRes.AddMember(k, v, result.GetAllocator());
+		array.PushBack(aggRes, result.GetAllocator());
+		delete res;
+	}
     }
-
-    rapidjson::Value::ValueIterator tmp = array.Begin();
-    while (tmp != array.End()) {
-        rapidjson::Value &tmpObj = *tmp;
-        rapidjson::Value::MemberIterator tmpField = tmpObj.MemberBegin();
-        int numFields = 0;
-        int numDeleted = 0;
-        while (tmpField != tmpObj.MemberEnd()) {
-            std::string key = tmpField->name.GetString();
-            rapidjson::Value &embedded = tmpObj[key.c_str()];
-            if (embedded.GetType() == rapidjson::kObjectType && embedded.HasMember("_temporary")) {
-                tmpObj.RemoveMember(tmpField);
-                numDeleted++;
-            } else {
-                tmpField++;
-            }
-            numFields++;
-        }
-        if (numDeleted == numFields) {
-            array.Erase(tmp);
-        } else {
-            tmp++;
-        }
-    }
+    delete aggregator;
 
     result.AddMember("_result", array, result.GetAllocator());
 
@@ -963,6 +967,62 @@ void execute(Parsing::Query &q, META &meta, FILESYSTEM &fs, bool print = true) {
     //dumpToFile(meta_fname, meta);
 }
 
+std::vector<std::string> split(const char *str, char c = ' ') {
+    std::vector<std::string> result;
+    do {
+        const char *begin = str;
+        while(*str != c && *str) {
+            str++;
+        }
+        result.push_back(std::string(begin, str));
+    } while ('\0' != *str++);
+
+    result.pop_back();
+
+    return result;
+}
+
+void completion(const char *buf, linenoiseCompletions *lc) {
+    std::vector<std::string> tokens = split(buf);
+    int size = 0;
+    const std::string *options;
+    std::string prefix;
+    
+    if (tokens.size() == 0) {
+        size = sizeof(Parsing::Commands) / sizeof(Parsing::Commands[0]);
+	options = &Parsing::Commands[0];
+	prefix = "";
+    } else if (tokens.size() == 1) {
+	toLower(tokens[0]);
+	if (tokens[0] == "create") {
+		size = sizeof(Parsing::CreateArgs) / sizeof(Parsing::CreateArgs[0]);
+		options = &Parsing::CreateArgs[0];
+                prefix = "CREATE ";
+	} else if (tokens[0] == "insert") {
+		size = sizeof(Parsing::InsertArgs) / sizeof(Parsing::InsertArgs[0]);
+		options = &Parsing::InsertArgs[0];
+		prefix = "INSERT ";
+	} else if (tokens[0] == "select") {
+		size = sizeof(Parsing::SelectArgs) / sizeof(Parsing::SelectArgs[0]);
+		options = &Parsing::SelectArgs[0];
+		prefix = "SELECT ";
+	} else if (tokens[0] == "delete") {
+		size = sizeof(Parsing::DeleteArgs) / sizeof(Parsing::DeleteArgs[0]);
+		options = &Parsing::DeleteArgs[0];
+		prefix = "DELETE ";
+	} else if (tokens[0] == "update") {
+		size = sizeof(Parsing::UpdateArgs) / sizeof(Parsing::UpdateArgs[0]);
+		options = &Parsing::UpdateArgs[0];
+		prefix = "UPDATE ";
+	}
+    }
+
+    std::string stuff = prefix;
+    for (int i=0 ; i<size ; ++i) {
+	linenoiseAddCompletion(lc, (stuff + options[i]).c_str());
+    }
+}
+
 int main(int argc, char **argv) {
     std::string data_fname("data.db");
 
@@ -1024,6 +1084,7 @@ int main(int argc, char **argv) {
     }
 
     linenoiseSetMultiLine(1);
+    linenoiseSetCompletionCallback(completion);
 
     std::cout << "Enter a query (q to quit):" << std::endl;
     while (1) {
