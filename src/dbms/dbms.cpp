@@ -542,11 +542,9 @@ void update(std::vector<std::string>& docs, rapidjson::Document &updates, rapidj
             spare.CopyFrom(whereDoc, spare.GetAllocator());
             // Check if the document contains the values specified in where clause.
             // If not, move on to the next document.
-            if (!documentMatchesConditions(doc, whereDoc)) {
-                whereDoc.CopyFrom(spare, whereDoc.GetAllocator()); 
+            if (!documentMatchesConditions(doc, spare)) {
                 continue;
             }
-            whereDoc.CopyFrom(spare, whereDoc.GetAllocator()); 
         }
 
         // Insert or update the fields
@@ -613,12 +611,10 @@ void ddelete(std::vector<std::string>& docs, rapidjson::Document &origFields, ra
             spare.CopyFrom(whereDoc, spare.GetAllocator());
             // Check if the document contains the values specified in where clause.
             // If not, move on to the next document.
-            if (!documentMatchesConditions(doc, whereDoc)) {
-                whereDoc.CopyFrom(spare, whereDoc.GetAllocator()); 
+            if (!documentMatchesConditions(doc, spare)) {
                 ++docID;
                 continue;       
             }
-            whereDoc.CopyFrom(spare, whereDoc.GetAllocator()); 
         }
 
         // Iterate over the desired fields
@@ -698,11 +694,9 @@ rapidjson::Document select(std::vector<std::string> &docs, rapidjson::Document &
             spare.CopyFrom(whereDoc, spare.GetAllocator());
             // Check if the document contains the values specified in where clause.
             // If not, move on to the next document
-            if (!documentMatchesConditions(doc, whereDoc)) {
-                whereDoc.CopyFrom(spare, whereDoc.GetAllocator()); 
+            if (!documentMatchesConditions(doc, spare)) {
                 continue;       
             }
-            whereDoc.CopyFrom(spare, whereDoc.GetAllocator()); 
         }
 
         int count = 0;
