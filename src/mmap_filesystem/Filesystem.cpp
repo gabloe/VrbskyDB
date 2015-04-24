@@ -103,7 +103,7 @@ void Storage::Filesystem::compact() {
     uint64_t oldNumFiles = metadata.files.size();
     uint64_t pos = 0;
     for (auto it = metadata.files.begin(); it != metadata.files.end(); ++it) {
-        std::string key = it->first;
+        const std::string& key = it->first;
 
         // Don't copy over the metadata
         if (key.compare("_METADATA_") == 0) {
@@ -231,11 +231,12 @@ void Storage::Filesystem::addToFreeList(uint64_t block) {
         SET_FREE(metadata.firstFree,block);
     } else {
         // Append to end
-        Block b = loadBlock(metadata.firstFree);
+        Block b = loadBlock(block);
         while (b.next != 0) {
             b = loadBlock(b.next);
         }
-        SET_FREE(b.next,block);
+        b.next = metadata.firstFree;
+        SET_FREE(metadata.firstFree,block);
         writeBlock(b);
     }
 }
@@ -251,9 +252,7 @@ std::vector<std::string> Storage::Filesystem::getFilenames() {
 }
 
 bool Storage::Filesystem::deleteFile(File *file) {
-    if (metadata.files.count(file->name)) {
-        metadata.files.erase(file->name);
-        Assert( "Did not remove?" , metadata.files.count(file->name) == 0 );
+    if ( metadata.files.erase(file->name ) ) {
         addToFreeList(file->block);
         metadata.numFiles--;
         return true;
@@ -270,7 +269,7 @@ char *Storage::Filesystem::read(File *file) {
     if (file->size == 0) {
         return NULL;
     }
-    char *buffer = (char*)malloc(file->size);
+    char *buffer = (char*)malloc(file->size + 1);
     uint64_t read_size = 0;
     Block block = loadBlock(file->block);
     bool done = false;
@@ -283,6 +282,7 @@ char *Storage::Filesystem::read(File *file) {
             done = true;
         }
     }
+    buffer[file->size] = 0;
     return buffer;
 }
 

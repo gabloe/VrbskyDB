@@ -497,13 +497,13 @@ bool documentMatchesConditions(rapidjson::Document &doc, rapidjson::Document &co
             if (!doc.HasMember(condKey.c_str())) {
                 return false;
             }
-	    rapidjson::Value &condVal = conditions[condKey.c_str()];
-	    rapidjson::Value &docVal = doc[condKey.c_str()];
-	    if (!sameValues(condVal, docVal, conditions.GetAllocator())) {
-		return false;
-	    }
+            rapidjson::Value &condVal = conditions[condKey.c_str()];
+            rapidjson::Value &docVal = doc[condKey.c_str()];
+            if (!sameValues(condVal, docVal, conditions.GetAllocator())) {
+                return false;
+            }
         }
-	conditions.RemoveMember(condIt);
+        conditions.RemoveMember(condIt);
     }
     return true;
 }
@@ -538,25 +538,25 @@ void update(std::vector<std::string>& docs, rapidjson::Document &updates, rapidj
 
         if (where) {
             rapidjson::Document &whereDoc = *where;
-	    rapidjson::Document spare;
-	    spare.CopyFrom(whereDoc, spare.GetAllocator());
+            rapidjson::Document spare;
+            spare.CopyFrom(whereDoc, spare.GetAllocator());
             // Check if the document contains the values specified in where clause.
             // If not, move on to the next document.
             if (!documentMatchesConditions(doc, whereDoc)) {
-	        whereDoc.CopyFrom(spare, whereDoc.GetAllocator()); 
+                whereDoc.CopyFrom(spare, whereDoc.GetAllocator()); 
                 continue;
             }
-	    whereDoc.CopyFrom(spare, whereDoc.GetAllocator()); 
+            whereDoc.CopyFrom(spare, whereDoc.GetAllocator()); 
         }
 
         // Insert or update the fields
         for (rapidjson::Value::ConstMemberIterator update = updates.MemberBegin(); update != updates.MemberEnd(); ++update) {
-            std::string key = update->name.GetString();
-            if (doc.HasMember(key.c_str())) {
-                doc.RemoveMember(key.c_str());
+            auto key = update->name.GetString();
+            if (doc.HasMember(key)) {
+                doc.RemoveMember(key);
             }
-            rapidjson::Value k(key.c_str(), doc.GetAllocator());
-            rapidjson::Value &v_tmp = updates[key.c_str()];
+            rapidjson::Value k(key, doc.GetAllocator());
+            rapidjson::Value &v_tmp = updates[key];
             rapidjson::Value v(v_tmp, doc.GetAllocator());
             doc.AddMember(k,v, doc.GetAllocator());
         }
@@ -596,28 +596,29 @@ void ddelete(std::vector<std::string>& docs, rapidjson::Document &origFields, ra
     auto docID = docs.begin();
     while (docID != docs.end()) {
         // Open the document
-        std::string dID = *docID;
+        std::string& dID = *docID;
         File file1 = fs.open_file(dID);
         char *c = fs.read(&file1);
-        std::string docTxt = std::string(c,file1.size);
-        free(c);
+        //std::string docTxt = std::string(c,file1.size);
 
         // Parse the document
         rapidjson::Document doc;
-        doc.Parse(docTxt.c_str());
+        //doc.Parse(docTxt.c_str());
+        doc.Parse(c);
+        free(c);
 
         if (where) {
             rapidjson::Document &whereDoc = *where;
-	    rapidjson::Document spare;
-	    spare.CopyFrom(whereDoc, spare.GetAllocator());
+            rapidjson::Document spare;
+            spare.CopyFrom(whereDoc, spare.GetAllocator());
             // Check if the document contains the values specified in where clause.
             // If not, move on to the next document.
             if (!documentMatchesConditions(doc, whereDoc)) {
-	    	whereDoc.CopyFrom(spare, whereDoc.GetAllocator()); 
+                whereDoc.CopyFrom(spare, whereDoc.GetAllocator()); 
                 ++docID;
                 continue;       
             }
-	    whereDoc.CopyFrom(spare, whereDoc.GetAllocator()); 
+            whereDoc.CopyFrom(spare, whereDoc.GetAllocator()); 
         }
 
         // Iterate over the desired fields
@@ -693,15 +694,15 @@ rapidjson::Document select(std::vector<std::string> &docs, rapidjson::Document &
 
         if (where) {
             rapidjson::Document &whereDoc = *where;
-	    rapidjson::Document spare;
-	    spare.CopyFrom(whereDoc, spare.GetAllocator());
+            rapidjson::Document spare;
+            spare.CopyFrom(whereDoc, spare.GetAllocator());
             // Check if the document contains the values specified in where clause.
             // If not, move on to the next document
             if (!documentMatchesConditions(doc, whereDoc)) {
-	        whereDoc.CopyFrom(spare, whereDoc.GetAllocator()); 
+                whereDoc.CopyFrom(spare, whereDoc.GetAllocator()); 
                 continue;       
             }
-	    whereDoc.CopyFrom(spare, whereDoc.GetAllocator()); 
+            whereDoc.CopyFrom(spare, whereDoc.GetAllocator()); 
         }
 
         int count = 0;
@@ -714,20 +715,20 @@ rapidjson::Document select(std::vector<std::string> &docs, rapidjson::Document &
         }
 
         // Iterate over the aggregates.  Process this document
-	for (rapidjson::Value::ConstValueIterator agg = aggregates.Begin(); agg != aggregates.End(); ++agg) {
-		// Check if the document contains a field being aggregated.
-		// If true:
-		//	Pass field to aggregator
-		//	If field is marked as temporary, delete it from the document
-		// Else:
-		//	Continue
-		const rapidjson::Value &aggVal = *agg;
-		if (!docVal.HasMember(aggVal["field"].GetString())) {
-			continue;
-		}
-		aggregator->handle(&docVal, &aggVal, result.GetAllocator());
-		count = docVal.MemberBegin()==docVal.MemberEnd()?0:count;
-	}
+        for (rapidjson::Value::ConstValueIterator agg = aggregates.Begin(); agg != aggregates.End(); ++agg) {
+            // Check if the document contains a field being aggregated.
+            // If true:
+            //	Pass field to aggregator
+            //	If field is marked as temporary, delete it from the document
+            // Else:
+            //	Continue
+            const rapidjson::Value &aggVal = *agg;
+            if (!docVal.HasMember(aggVal["field"].GetString())) {
+                continue;
+            }
+            aggregator->handle(&docVal, &aggVal, result.GetAllocator());
+            count = docVal.MemberBegin()==docVal.MemberEnd()?0:count;
+        }
 
         if (count > 0) {
             array.PushBack(docVal, result.GetAllocator());
@@ -740,20 +741,20 @@ rapidjson::Document select(std::vector<std::string> &docs, rapidjson::Document &
     }
 
     for (rapidjson::Value::ConstValueIterator agg = aggregates.Begin(); agg != aggregates.End(); ++agg) {
-	const rapidjson::Value &a = *agg;
-	std::string func = a["function"].GetString();
-	std::string field = a["field"].GetString();
-	AggregateResult *res = aggregator->getResult(field, func);
-	if (res != NULL) {
-		rapidjson::Value aggRes;
-		aggRes.SetObject();
-		std::string k_txt = func + '(' + field + ')';
-		rapidjson::Value k(k_txt.c_str(), result.GetAllocator());
-		rapidjson::Value v(res->result);
-		aggRes.AddMember(k, v, result.GetAllocator());
-		array.PushBack(aggRes, result.GetAllocator());
-		delete res;
-	}
+        const rapidjson::Value &a = *agg;
+        std::string func = a["function"].GetString();
+        std::string field = a["field"].GetString();
+        AggregateResult *res = aggregator->getResult(field, func);
+        if (res != NULL) {
+            rapidjson::Value aggRes;
+            aggRes.SetObject();
+            std::string k_txt = func + '(' + field + ')';
+            rapidjson::Value k(k_txt.c_str(), result.GetAllocator());
+            rapidjson::Value v(res->result);
+            aggRes.AddMember(k, v, result.GetAllocator());
+            array.PushBack(aggRes, result.GetAllocator());
+            delete res;
+        }
     }
     delete aggregator;
 
@@ -896,39 +897,39 @@ void completion(const char *buf, linenoiseCompletions *lc) {
     int size = 0;
     const std::string *options;
     std::string prefix;
-    
+
     if (tokens.size() == 0) {
         size = sizeof(Parsing::Commands) / sizeof(Parsing::Commands[0]);
-	options = &Parsing::Commands[0];
-	prefix = "";
+        options = &Parsing::Commands[0];
+        prefix = "";
     } else if (tokens.size() == 1) {
-	toLower(tokens[0]);
-	if (tokens[0] == "create") {
-		size = sizeof(Parsing::CreateArgs) / sizeof(Parsing::CreateArgs[0]);
-		options = &Parsing::CreateArgs[0];
-                prefix = "CREATE ";
-	} else if (tokens[0] == "insert") {
-		size = sizeof(Parsing::InsertArgs) / sizeof(Parsing::InsertArgs[0]);
-		options = &Parsing::InsertArgs[0];
-		prefix = "INSERT ";
-	} else if (tokens[0] == "select") {
-		size = sizeof(Parsing::SelectArgs) / sizeof(Parsing::SelectArgs[0]);
-		options = &Parsing::SelectArgs[0];
-		prefix = "SELECT ";
-	} else if (tokens[0] == "delete") {
-		size = sizeof(Parsing::DeleteArgs) / sizeof(Parsing::DeleteArgs[0]);
-		options = &Parsing::DeleteArgs[0];
-		prefix = "DELETE ";
-	} else if (tokens[0] == "update") {
-		size = sizeof(Parsing::UpdateArgs) / sizeof(Parsing::UpdateArgs[0]);
-		options = &Parsing::UpdateArgs[0];
-		prefix = "UPDATE ";
-	}
+        toLower(tokens[0]);
+        if (tokens[0] == "create") {
+            size = sizeof(Parsing::CreateArgs) / sizeof(Parsing::CreateArgs[0]);
+            options = &Parsing::CreateArgs[0];
+            prefix = "CREATE ";
+        } else if (tokens[0] == "insert") {
+            size = sizeof(Parsing::InsertArgs) / sizeof(Parsing::InsertArgs[0]);
+            options = &Parsing::InsertArgs[0];
+            prefix = "INSERT ";
+        } else if (tokens[0] == "select") {
+            size = sizeof(Parsing::SelectArgs) / sizeof(Parsing::SelectArgs[0]);
+            options = &Parsing::SelectArgs[0];
+            prefix = "SELECT ";
+        } else if (tokens[0] == "delete") {
+            size = sizeof(Parsing::DeleteArgs) / sizeof(Parsing::DeleteArgs[0]);
+            options = &Parsing::DeleteArgs[0];
+            prefix = "DELETE ";
+        } else if (tokens[0] == "update") {
+            size = sizeof(Parsing::UpdateArgs) / sizeof(Parsing::UpdateArgs[0]);
+            options = &Parsing::UpdateArgs[0];
+            prefix = "UPDATE ";
+        }
     }
 
     std::string stuff = prefix;
     for (int i=0 ; i<size ; ++i) {
-	linenoiseAddCompletion(lc, (stuff + options[i]).c_str());
+        linenoiseAddCompletion(lc, (stuff + options[i]).c_str());
     }
 }
 
@@ -965,9 +966,9 @@ int main(int argc, char **argv) {
         while (dataFile.good()) {
             line.clear();
             std::getline(dataFile, line);
-	    if (line.compare("q") == 0) {
-		std::cout << std::endl;
-		goto end;
+            if (line.compare("q") == 0) {
+                std::cout << std::endl;
+                goto end;
             }
             Parsing::Parser p(line);
             Parsing::Query *query = p.parse();
@@ -998,11 +999,11 @@ int main(int argc, char **argv) {
     std::cout << "Enter a query (q to quit):" << std::endl;
     while (1) {
         buf = linenoise("> ");
-	if (buf == NULL || strcmp(buf, "q") == 0) {
-		break;
+        if (buf == NULL || strcmp(buf, "q") == 0) {
+            break;
         }
 
-	std::string q(buf);
+        std::string q(buf);
         Parsing::Parser p(q);
         Parsing::Query *query = p.parse();
         if (query) {
