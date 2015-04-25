@@ -66,7 +66,7 @@ namespace Storage {
                 return Which(k)[k];
             }
 
-            size_t count( KEY &k ){
+            size_t count( const KEY &k ){
                 return contains( k );
             }
 

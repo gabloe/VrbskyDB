@@ -85,8 +85,20 @@ Storage::HerpHash<std::string, uint64_t> Storage::Filesystem::getFileMap() {
    Load file metadata, size and first block location.
    If the file doesn't exist, create it.
    */
+File Storage::Filesystem::open_file(const std::string& name) {
+    if (metadata.files.count(name)) {
+        uint64_t block = metadata.files[name];
+        Block b = loadBlock(block);
+        uint64_t size = calculateSize(b);
+        File file(name, block, size);
+        return file;
+    } else {
+        return createNewFile(name);
+    }
+}
 
-File Storage::Filesystem::open_file(std::string name) {
+File Storage::Filesystem::open_file( const char* nerm ) {
+    std::string name( nerm );
     if (metadata.files.count(name)) {
         uint64_t block = metadata.files[name];
         Block b = loadBlock(block);

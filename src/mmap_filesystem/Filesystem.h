@@ -111,7 +111,8 @@ namespace Storage {
 	public:
 		Filesystem(std::string);
 		void shutdown();
-		File open_file(std::string);
+		File open_file(const char*);
+		File open_file(const std::string&);
 		char *read(File*);
 		void write(File*, const char*, uint64_t);
 		bool deleteFile(File*);

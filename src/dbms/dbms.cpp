@@ -6,7 +6,6 @@
 #include <map>
 #include <math.h>
 #include <ctime>
-#include <vector>
 #include <cstring>
 
 #include "dbms.h"
@@ -37,7 +36,7 @@ void appendDocToProject(std::string &project, std::string &doc, META &meta) {
     if (meta.count(project) > 0) {
         meta[project].push_back(doc);
     } else {
-        std::vector<std::string> data;
+        DOCDS data;
         data.push_back(doc);
         meta[project] = data;
     }
@@ -82,12 +81,12 @@ void updateProjectList(std::string &pname, META &meta) {
     std::string key("__PROJECTS__");
 
     if (meta.count(key) == 0) {
-        std::vector<std::string> data;
+        DOCDS data;
         data.push_back(pname);
         meta[key] = data;
         return;
     }
-    std::vector<std::string>& data = meta[key];
+    DOCDS& data = meta[key];
 
     // Check if the project already exists
     bool found = false;
@@ -142,17 +141,20 @@ rapidjson::Document processFields(rapidjson::Document &doc, rapidjson::Document 
     // Build an array of unique keys
     for (rapidjson::Value::ConstValueIterator src = doc.Begin(); src != doc.End(); ++src) {
         if (src->IsString()) {
-            std::string srcVal = src->GetString();
+            const char *srcVal = src->GetString();
+            //std::string srcVal = src->GetString();
             bool match = false;
             for (rapidjson::Value::ConstValueIterator dest = newDoc.Begin(); dest != newDoc.End(); ++dest) {
-                std::string destVal = dest->GetString();
-                if (srcVal.compare(destVal) == 0) {
+                const char* destVal = dest->GetString();
+                //std::string destVal = dest->GetString();
+                //if (srcVal.compare(destVal) == 0) {
+                if (strcmp(srcVal,destVal) == 0) {
                     match = true;
                     break;
                 }
             }
             if (!match) {
-                rapidjson::Value newVal(srcVal.c_str(), newDoc.GetAllocator());
+                rapidjson::Value newVal(srcVal, newDoc.GetAllocator());
                 newDoc.PushBack(newVal, newDoc.GetAllocator());
             }
         }
@@ -162,11 +164,13 @@ rapidjson::Document processFields(rapidjson::Document &doc, rapidjson::Document 
     for (rapidjson::Value::ConstValueIterator agg = aggregates.Begin(); agg != aggregates.End(); ++agg) {
         bool found = false;
         const rapidjson::Value &obj = *agg;
-        std::string aggVal = obj["field"].GetString();
+        //std::string aggVal = obj["field"].GetString();
+        const char* aggVal = obj["field"].GetString();
         for (rapidjson::Value::ConstValueIterator src = newDoc.Begin(); src != newDoc.End(); ++src) {
             if (src->IsString()) {
-                std::string srcVal = src->GetString();
-                if (aggVal.compare(srcVal) == 0) {
+                //std::string srcVal = src->GetString();
+                const char* srcVal = src->GetString();
+                if ( strcmp(aggVal,srcVal) == 0) {
                     found = true;
                     break;
                 }
@@ -175,7 +179,7 @@ rapidjson::Document processFields(rapidjson::Document &doc, rapidjson::Document 
         if (!found) {
             rapidjson::Value tmpField;      
             tmpField.SetObject();
-            rapidjson::Value fieldName(aggVal.c_str(), newDoc.GetAllocator());
+            rapidjson::Value fieldName(aggVal, newDoc.GetAllocator());
             tmpField.AddMember("_temporary", fieldName, newDoc.GetAllocator());
             newDoc.PushBack(tmpField, newDoc.GetAllocator());
         }
@@ -184,14 +188,14 @@ rapidjson::Document processFields(rapidjson::Document &doc, rapidjson::Document 
     return newDoc;
 }
 
-rapidjson::Document extractAggregates(rapidjson::Document &fields) {
+inline rapidjson::Document extractAggregates(rapidjson::Document &fields ) {
 
     rapidjson::Document newArray;
     newArray.SetArray();
 
     for (rapidjson::Value::ConstValueIterator it = fields.Begin(); it != fields.End(); ++it) {
         if (it->GetType() == rapidjson::kObjectType) {
-            const rapidjson::Value &v_tmp = *it;
+            const rapidjson::Value& v_tmp = *it;
             rapidjson::Value v(v_tmp, newArray.GetAllocator());
             newArray.PushBack(v, newArray.GetAllocator());
         }
@@ -518,7 +522,7 @@ void deleteFields(rapidjson::Document *doc, rapidjson::Document *fields) {
 }
 
 // Update the fields of the array of documents
-void update(std::vector<std::string>& docs, rapidjson::Document &updates, rapidjson::Document *where, int limit, FILESYSTEM &fs) {
+void update(DOCDS& docs, rapidjson::Document &updates, rapidjson::Document *where, int limit, FILESYSTEM &fs) {
     if (limit == 0) return;
 
     int num = 0;
@@ -526,8 +530,8 @@ void update(std::vector<std::string>& docs, rapidjson::Document &updates, rapidj
     // Iterate over every document
     for (auto docID = docs.begin(); docID != docs.end(); ++docID) {
         // Open the document
-        std::string dID = *docID;
-        File file1 = fs.open_file(dID);
+        const std::string &name = *docID;
+        File file1 = fs.open_file( name );
         char *c = fs.read(&file1);
         std::string docTxt = std::string(c,file1.size);
         free(c);
@@ -558,9 +562,9 @@ void update(std::vector<std::string>& docs, rapidjson::Document &updates, rapidj
             rapidjson::Value v(v_tmp, doc.GetAllocator());
             doc.AddMember(k,v, doc.GetAllocator());
         }
-        File file2 = fs.open_file(dID);
+        //File file2 = fs.open_file(*docID);
         std::string data = toString(&doc);
-        fs.write(&file2, data.c_str(), data.size());
+        fs.write(&file1, data.c_str(), data.size());
 
         // In case a limit is being used, pre-empt may be necessary
         if (limit > 0 && ++num == limit) {
@@ -571,7 +575,7 @@ void update(std::vector<std::string>& docs, rapidjson::Document &updates, rapidj
 
 
 // Delete the fields from the array of documents
-void ddelete(std::vector<std::string>& docs, rapidjson::Document &origFields, rapidjson::Document *where, int limit, FILESYSTEM &fs) {
+void ddelete(DOCDS& docs, rapidjson::Document &origFields, rapidjson::Document *where, int limit, FILESYSTEM &fs) {
     if (limit == 0) return;
 
     int num = 0;
@@ -584,10 +588,16 @@ void ddelete(std::vector<std::string>& docs, rapidjson::Document &origFields, ra
     // Check for *
     for (rapidjson::Value::ConstValueIterator it = fields.Begin(); it != fields.End(); ++it) {
         if (it->GetType() != rapidjson::kStringType) continue;
-        std::string val = it->GetString();
+        const char* val = it->GetString();
+        if( val[0] == '*'  && val[1] == 0 ) {
+            selectAll = true;
+            break;
+        }
+        /*
         if (val.compare("*") == 0) {
             selectAll = true;
         }
+        */
     }
 
     // Iterate over every document
@@ -597,11 +607,9 @@ void ddelete(std::vector<std::string>& docs, rapidjson::Document &origFields, ra
         std::string& dID = *docID;
         File file1 = fs.open_file(dID);
         char *c = fs.read(&file1);
-        //std::string docTxt = std::string(c,file1.size);
 
         // Parse the document
         rapidjson::Document doc;
-        //doc.Parse(docTxt.c_str());
         doc.Parse(c);
         free(c);
 
@@ -622,19 +630,19 @@ void ddelete(std::vector<std::string>& docs, rapidjson::Document &origFields, ra
             // Delete document 
             bool success = fs.deleteFile(&file1);
             if (success) {
-                docs.erase(docID);
+                docs.erase(docID++);
             }
-            goto next;
+ //           goto next;
         } else {
             deleteFields(&doc, &fields);
             std::string newData = toString(&doc);
             File file2 = fs.open_file(dID);
             fs.write(&file2, newData.c_str(), newData.size());
+            ++docID;
         }
 
-        ++docID;
 
-next:
+//next:
         // If a limit is being used then we may need to pre-empt.
         if (limit > 0 && ++num == limit) {
             break;
@@ -642,7 +650,9 @@ next:
     }
 }
 
-rapidjson::Document select(std::vector<std::string> &docs, rapidjson::Document &origFields, rapidjson::Document *where, int limit, FILESYSTEM &fs) {
+
+// Select
+rapidjson::Document select(DOCDS &docs, rapidjson::Document &origFields, rapidjson::Document *where, int limit, FILESYSTEM &fs) {
     rapidjson::Document result;
     result.SetObject();
 
@@ -820,9 +830,9 @@ void execute(Parsing::Query &q, META &meta, FILESYSTEM &fs, bool print = true) {
             {
                 std::string project = *q.project;
                 if (meta.count(project)) {
-                    std::vector<std::string>& docs = meta[project];
+                    DOCDS& docs = meta[project];
                     ddelete(docs, *q.fields, q.where, q.limit, fs);
-                    meta[project] = docs;
+                    //meta[project] = docs;
                 } else {
                     std::cout << "Project '" << project << "' does not exist!" << std::endl;
                 }
@@ -832,7 +842,7 @@ void execute(Parsing::Query &q, META &meta, FILESYSTEM &fs, bool print = true) {
             {
                 std::string key("__PROJECTS__");
                 if (meta.count(key)) {
-                    std::vector<std::string> list = meta[key];
+                    DOCDS& list = meta[key];
                     std::cout << "[" << std::endl;
                     for (auto it = list.begin() ; it != list.end() ; ++it) {
                         std::cout << "\t" << *it << std::endl;
@@ -847,7 +857,7 @@ void execute(Parsing::Query &q, META &meta, FILESYSTEM &fs, bool print = true) {
             {
                 std::string project = *q.project;
                 if (meta.count(project)) {
-                    std::vector<std::string>& docs = meta[project];
+                    DOCDS& docs = meta[project];
                     rapidjson::Document &updates = *q.with;
                     update( docs, updates, q.where, q.limit, fs);
                     meta[project] = docs;
@@ -868,7 +878,6 @@ void execute(Parsing::Query &q, META &meta, FILESYSTEM &fs, bool print = true) {
             std::cout << "Done!  Took " << 1000 * time << " milliseconds." << std::endl;
         }
     }
-    //dumpToFile(meta_fname, meta);
 }
 
 std::vector<std::string> split(const char *str, char c = ' ') {
@@ -933,7 +942,7 @@ int main(int argc, char **argv) {
     Storage::Filesystem *fs = new Storage::Filesystem(data_fname);
     META *meta;
     File meta_file = fs->open_file("__DB_METADATA__");
-    Storage::HerpmapReader<std::vector<std::string>,Num_Buckets> meta_reader(meta_file, fs);
+    Storage::HerpmapReader<DOCDS,Num_Buckets> meta_reader(meta_file, fs);
     if (meta_file.size > 0) {
         //meta = new std::map<std::string, std::string>(meta_reader.read());
         meta = new META(meta_reader.read());
@@ -1013,7 +1022,7 @@ int main(int argc, char **argv) {
 
 end:
 
-    Storage::HerpmapWriter<std::vector<std::string>,Num_Buckets> meta_writer(meta_file, fs);
+    Storage::HerpmapWriter<DOCDS,Num_Buckets> meta_writer(meta_file, fs);
     meta_writer.write(*meta);
     std::cout << "Goodbye!" << std::endl;
     free(buf);
