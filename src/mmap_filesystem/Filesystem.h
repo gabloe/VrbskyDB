@@ -11,6 +11,7 @@
 #include <unistd.h>
 #include <iostream>
 #include <vector>
+#include <mutex>
 
 const uint64_t BLOCK_SIZE  = 64;
 const uint64_t BLOCKS_PER_PAGE = 1024;
@@ -20,6 +21,11 @@ const uint64_t PAGESIZE = BLOCK_SIZE_ACTUAL * BLOCKS_PER_PAGE;
 #ifndef UNUSED
 #define UNUSED(X)
 #endif
+
+enum lock_t {
+	WRITE,
+	READ
+};
 
 struct Block {
 	uint64_t id;
@@ -118,10 +124,13 @@ namespace Storage {
 		bool deleteFile(File*);
 		std::vector<std::string> getFilenames();
 		//std::map<std::string, uint64_t> getFileMap();
-        Storage::HerpHash<std::string,uint64_t> getFileMap();
+	        Storage::HerpHash<std::string,uint64_t> getFileMap();
 		void compact();
 		uint64_t getNumPages();
 		uint64_t getNumFiles();
+
+		void Lock(lock_t, std::string);
+		void Unlock(lock_t, std::string);
 
 	protected:
 		Metadata metadata;
@@ -146,6 +155,9 @@ namespace Storage {
 		uint64_t calculateSize(Block);
 		void chainPage(uint64_t);
 		void addToFreeList(uint64_t);
+		std::map<std::string, std::mutex> write_locks;
+		std::map<std::string, std::mutex> read_locks;
+		std::mutex next_lock;
 	};
 }
 

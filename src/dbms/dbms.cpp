@@ -19,9 +19,13 @@
 #include "../mmap_filesystem/HerpmapWriter.h"
 #include "../mmap_filesystem/HerpmapReader.h"
 
+#include "../threading/ThreadPool.h"
+
 #include <pretty.h>
 #include <UUID.h>
 #include <linenoise/linenoise.h>
+
+ThreadPool pool(128);
 
 /*
  *      appendDocToProject ---
@@ -969,7 +973,7 @@ int main(int argc, char **argv) {
             Parsing::Parser p(line);
             Parsing::Query *query = p.parse();
             if (query) {
-                execute( *query, *meta, *fs, false);
+               	execute( *query, *meta, *fs, false);
                 count++;
                 percent = (double)count / total;
                 delete query;

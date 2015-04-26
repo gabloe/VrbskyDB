@@ -8,14 +8,12 @@
 #include <vector>
 #include <algorithm>
 #include <cmath>
+#include <thread>
 
 #include "../assert/Assert.h"
 #include "Filesystem.h"
 #include "HerpmapReader.h"
 #include "HerpmapWriter.h"
-//#include "HashmapReader.h"
-//#include "HashmapWriter.h"
-
 
 #define printJunk(MSG) {   \
     std::cout << MSG << std::endl;\
@@ -32,7 +30,7 @@
    Constructor--
    Checks if the filesystem and metadata exist.  If not, it creates an initial page of data.
    If the files exist, load the metadata.
-   */
+*/
 
 Storage::Filesystem::Filesystem(std::string data_): data_fname(data_) {
     // Initialize the filesystem
@@ -50,9 +48,31 @@ Storage::Filesystem::Filesystem(std::string data_): data_fname(data_) {
     initFilesystem(create_initial);
 }
 
+void Storage::Filesystem::Lock(lock_t type, std::string fname) {
+	switch (type) {
+	case READ:
+		read_locks[fname].lock();
+		break;
+	case WRITE:
+		write_locks[fname].lock();
+		break;
+	}
+}
+
+void Storage::Filesystem::Unlock(lock_t type, std::string fname) {
+	switch (type) {
+	case READ:
+		read_locks[fname].unlock();
+		break;
+	case WRITE:
+		write_locks[fname].unlock();
+		break;
+	}
+}
+
 /*
    Calculates the total size used by a chain of blocks.
-   */
+*/
 
 uint64_t Storage::Filesystem::calculateSize(Block b) {
     uint64_t size = 0;
@@ -167,6 +187,10 @@ void Storage::Filesystem::compact() {
 #if ALT 
 void Storage::Filesystem::write(File *file, const char *data, uint64_t len) {
     uint64_t to_write = len;
+
+    Lock(WRITE, file->name); 
+    Lock(READ, file->name); 
+
     uint64_t pos = 0;
     Block block = loadBlock(file->block);
 
@@ -205,6 +229,8 @@ void Storage::Filesystem::write(File *file, const char *data, uint64_t len) {
     // Write last block
     writeBlock(block);
     file->size = len;
+    Unlock(READ, file->name); 
+    Unlock(WRITE, file->name); 
 }
 #else
 void Storage::Filesystem::write(File *file, const char *data, uint64_t len) {
@@ -282,6 +308,9 @@ char *Storage::Filesystem::read(File *file) {
     if (file->size == 0) {
         return NULL;
     }
+
+    Lock(READ, file->name);
+
     char *buffer = (char*)malloc(file->size + 1);
     uint64_t read_size = 0;
     Block block = loadBlock(file->block);
@@ -296,6 +325,7 @@ char *Storage::Filesystem::read(File *file) {
         }
     }
     buffer[file->size] = 0;
+    Unlock(READ, file->name);
     return buffer;
 }
 
@@ -388,7 +418,6 @@ void Storage::Filesystem::growFilesystem() {
 
     // Add page to free list
     addToFreeList(firstBlock);
-    //writeMetadata();
 }
 
 /*
@@ -397,6 +426,8 @@ void Storage::Filesystem::growFilesystem() {
    */
 
 uint64_t Storage::Filesystem::getBlock() {
+
+    next_lock.lock();
 
     // Free list is empty.  Grow the filesystem.
     if (metadata.firstFree == 0) {
@@ -414,6 +445,8 @@ uint64_t Storage::Filesystem::getBlock() {
     b.next = 0;
     b.used_space = 0;
     writeBlock(b);
+
+    next_lock.unlock();
 
     return bid;
 }
@@ -521,7 +554,6 @@ void Storage::Filesystem::readMetadata() {
    */
 
 void Storage::Filesystem::writeMetadata() {
-
     // variables
     uint64_t size,pos,files_size;
     HerpmapWriter<uint64_t> writer(metadata.file, this);
