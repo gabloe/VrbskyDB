@@ -118,7 +118,7 @@ void Storage::Filesystem::compact() {
         const std::string& key = it->first;
 
         // Don't copy over the metadata
-        if (key.compare("_METADATA_") == 0) {
+        if (key.compare("__METADATA__") == 0) {
             continue;
         }
 
@@ -129,6 +129,7 @@ void Storage::Filesystem::compact() {
         std::cout << "Compacting: " << ceil(100 * (long double)pos / oldNumFiles) << "% done.\r";
         pos++;
     }
+    std::cout << "Number of files " << pos << std::endl;
     std::cout << std::endl;
     uint64_t newNumPages = fs->getNumPages();
     uint64_t newNumFiles = fs->getNumFiles();

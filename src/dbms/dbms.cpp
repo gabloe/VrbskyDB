@@ -939,10 +939,8 @@ int main(int argc, char **argv) {
     File meta_file = fs->open_file("__DB_METADATA__");
     Storage::HerpmapReader<DOCDS,Num_Buckets> meta_reader(meta_file, fs);
     if (meta_file.size > 0) {
-        //meta = new std::map<std::string, std::string>(meta_reader.read());
         meta = new META(meta_reader.read());
     } else {
-        //meta = new std::map<std::string, std::string>();
         meta = new META();
 
     }
