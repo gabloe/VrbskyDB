@@ -56,17 +56,10 @@ void appendDocToProject(std::string &project, std::string &doc, META &meta) {
  *
  */
 
-void insertDocument(rapidjson::Document &doc, std::string &project, META &meta, FILESYSTEM &fs) {
-    std::string docUUID = newUUID();
-
-    rapidjson::Value dID(docUUID.c_str(), doc.GetAllocator());
-    doc.AddMember("_doc", dID, doc.GetAllocator());
-    std::string data = toString(&doc);
-
+void insertDocument(std::string& docUUID, std::string &doc, std::string &project, META &meta, FILESYSTEM &fs) {
     // Insert this row into the DB
     File file = fs.open_file(docUUID.c_str());
-    fs.write(&file, data.c_str(), data.size());
-
+    fs.write(&file, doc.c_str(), doc.size());
     appendDocToProject(project, docUUID, meta);
 }
 
@@ -122,14 +115,18 @@ void insertDocuments(rapidjson::Document &docs, std::string &pname, META &meta, 
 
     // If it's an array of documents.  Iterate over them and insert each document.
     if (docs.GetType() == rapidjson::kArrayType) {
-        for (rapidjson::SizeType i = 0; i < docs.Size(); ++i) {
-            rapidjson::Document d;
-            std::string data = toString(&docs[i]);
-            d.Parse(data.c_str());
-            insertDocument(d, pname, meta, fs);
+        for( auto it = docs.MemberBegin() ; it != docs.MemberEnd() ; it++ ) {
+            rapidjson::Value& val = it->value;
+            std::string docUUID = newUUID();
+            val.AddMember( "_doc" , rapidjson::Value( docUUID.c_str() , docs.GetAllocator()) , docs.GetAllocator() );
+            std::string data = toString( &(it->value));
+            insertDocument( docUUID , data , pname, meta, fs);
         }
     } else if (docs.GetType() == rapidjson::kObjectType) {
-        insertDocument(docs, pname, meta, fs);
+        std::string docUUID = newUUID();
+        docs.AddMember( "_doc" , rapidjson::Value( docUUID.c_str() , docs.GetAllocator()) , docs.GetAllocator() );
+        std::string data = toString(&docs);
+        insertDocument( docUUID , data , pname, meta, fs);
     }
 }
 
@@ -526,6 +523,7 @@ void update(DOCDS& docs, rapidjson::Document &updates, rapidjson::Document *wher
     if (limit == 0) return;
 
     int num = 0;
+    rapidjson::Document doc;
 
     // Iterate over every document
     for (auto docID = docs.begin(); docID != docs.end(); ++docID) {
@@ -533,12 +531,10 @@ void update(DOCDS& docs, rapidjson::Document &updates, rapidjson::Document *wher
         const std::string &name = *docID;
         File file1 = fs.open_file( name );
         char *c = fs.read(&file1);
-        std::string docTxt = std::string(c,file1.size);
+        doc.Parse(c);
         free(c);
 
         // Parse the document
-        rapidjson::Document doc;
-        doc.Parse(docTxt.c_str());
 
         if (where) {
             rapidjson::Document &whereDoc = *where;
@@ -599,6 +595,7 @@ void ddelete(DOCDS& docs, rapidjson::Document &origFields, rapidjson::Document *
         }
         */
     }
+    rapidjson::Document doc;
 
     // Iterate over every document
     auto docID = docs.begin();
@@ -609,7 +606,6 @@ void ddelete(DOCDS& docs, rapidjson::Document &origFields, rapidjson::Document *
         char *c = fs.read(&file1);
 
         // Parse the document
-        rapidjson::Document doc;
         doc.Parse(c);
         free(c);
 
@@ -678,6 +674,7 @@ rapidjson::Document select(DOCDS &docs, rapidjson::Document &origFields, rapidjs
     }
 
     int num = 0;
+    rapidjson::Document doc;
 
     // Create Aggregator object
     Aggregator *aggregator = new Aggregator();
@@ -688,12 +685,10 @@ rapidjson::Document select(DOCDS &docs, rapidjson::Document &origFields, rapidjs
         std::string& dID = *docID;
         File file = fs.open_file(dID);
         char *c = fs.read(&file);
-        std::string docTxt(c,file.size);
-        free(c);
 
         // Parse the document
-        rapidjson::Document doc;
-        doc.Parse(docTxt.c_str());
+        doc.Parse(c);
+        free(c);
 
         rapidjson::Value docVal;
         docVal.SetObject();
