@@ -1053,17 +1053,6 @@ rapidjson::Document processFields(rapidjson::Document &doc, rapidjson::Document 
         std::cout << "\n";
     }
 
-            while(1) {
-                uint64_t n = pool.numTasks();
-                std::cout << n << "\r";
-                if (n == 0) {
-                    break;
-                }
-            }
-
-            std::cout << "\n";
-        }
-
         std::cout << "Welcome to VrbskyDB v" << MAJOR_VERSION << "." << MINOR_VERSION  << std::endl;
 
         if (file_exists(queryLogFile.c_str())) {
