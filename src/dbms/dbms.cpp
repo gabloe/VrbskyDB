@@ -1039,7 +1039,7 @@ int main(int argc, char **argv) {
 	while(1) {
 		uint64_t n = pool.numTasks();
 		std::cout << n << "\r";
-		if (n == 1) {
+		if (n < 1) {
 			break;
 		}
         }

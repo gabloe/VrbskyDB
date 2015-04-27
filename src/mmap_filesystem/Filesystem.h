@@ -153,6 +153,7 @@ namespace Storage {
 		void chainPage(uint64_t);
 		void addToFreeList(uint64_t);
 		std::mutex next_lock;
+		std::mutex grow_lock;
 		std::mutex freelist_lock;
 		std::mutex read_lock;
 		std::mutex write_lock;

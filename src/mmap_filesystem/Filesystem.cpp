@@ -277,9 +277,7 @@ void Storage::Filesystem::write(File *file, const char *data, uint64_t len) {
 #endif
 
 void Storage::Filesystem::addToFreeList(uint64_t block) {
-    static std::mutex m;
-    std::lock_guard<std::mutex> lock(m);
-
+    freelist_lock.lock();
     if (metadata.firstFree == 0) {
         SET_FREE(metadata.firstFree,block);
     } else {
@@ -292,6 +290,7 @@ void Storage::Filesystem::addToFreeList(uint64_t block) {
         SET_FREE(metadata.firstFree,block);
         writeBlock(b);
     }
+    freelist_lock.unlock();
 }
 
 std::vector<std::string> Storage::Filesystem::getFilenames() {
@@ -414,9 +413,7 @@ void Storage::Filesystem::writeBlock(Block block) {
    */
 
 void Storage::Filesystem::growFilesystem() {
-    static std::mutex m;
-    std::lock_guard<std::mutex> lock(m);
-
+    grow_lock.lock();
     posix_fallocate(filesystem.fd, PAGESIZE * filesystem.numPages, PAGESIZE * (filesystem.numPages+1));
     filesystem.data = (char*)t_mremap(filesystem.fd,
             filesystem.data,
@@ -435,6 +432,7 @@ void Storage::Filesystem::growFilesystem() {
 
     // Add page to free list
     addToFreeList(firstBlock);
+    grow_lock.unlock();
 }
 
 /*
@@ -443,11 +441,9 @@ void Storage::Filesystem::growFilesystem() {
    */
 
 uint64_t Storage::Filesystem::getBlock() {
-
-    static std::mutex m;
-    std::lock_guard<std::mutex> lock(m);
-
     // Free list is empty.  Grow the filesystem.
+    next_lock.lock();
+
     if (metadata.firstFree == 0) {
         growFilesystem();
     }
@@ -464,6 +460,7 @@ uint64_t Storage::Filesystem::getBlock() {
     b.used_space = 0;
     writeBlock(b);
 
+    next_lock.unlock();
     return bid;
 }
 
