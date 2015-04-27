@@ -1026,6 +1026,17 @@ int main(int argc, char **argv) {
             printf("%.1f%% done.\r", ceil(percent*100));
         }
 
+	std::cout << std::endl;
+
+	
+	while(1) {
+		uint64_t n = pool.numTasks();
+		std::cout << n << "\r";
+		if (n == 1) {
+			break;
+		}
+        }
+
         std::cout << "\n";
     }
 
