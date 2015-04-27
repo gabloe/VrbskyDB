@@ -21,6 +21,7 @@ public:
     uint64_t numTasks();
     ~ThreadPool();
 private:
+    uint64_t tasksRemaining;
     // need to keep track of threads so we can join them
     std::vector< std::thread > workers;
     // the task queue
@@ -33,12 +34,12 @@ private:
 };
 
 inline uint64_t ThreadPool::numTasks() {
-	return tasks.size();
+    return tasksRemaining;
 }
 
 // the constructor just launches some amount of workers
 inline ThreadPool::ThreadPool(size_t threads)
-    :   stop(false)
+    :   stop(false) , tasksRemaining(0)
 {
     for(size_t i = 0;i<threads;++i)
         workers.emplace_back(
@@ -57,8 +58,11 @@ inline ThreadPool::ThreadPool(size_t threads)
                         task = std::move(this->tasks.front());
                         this->tasks.pop();
                     }
-
                     task();
+                    {
+                    std::unique_lock<std::mutex> lock(queue_mutex);
+                    --tasksRemaining;
+                    }
                 }
             }
         );
@@ -83,6 +87,7 @@ auto ThreadPool::enqueue(F&& f, Args&&... args)
         if(stop)
             throw std::runtime_error("enqueue on stopped ThreadPool");
 
+        ++tasksRemaining;
         tasks.emplace([task](){ (*task)(); });
     }
     condition.notify_one();
