@@ -22,6 +22,7 @@ public:
     ~ThreadPool();
 private:
     ThreadPool() = delete;
+    bool stop;
     uint64_t tasksRemaining;
     // need to keep track of threads so we can join them
     std::vector< std::thread > workers;
@@ -31,7 +32,6 @@ private:
     // synchronization
     std::mutex queue_mutex;
     std::condition_variable condition;
-    bool stop;
 };
 
 inline uint64_t ThreadPool::numTasks() {
