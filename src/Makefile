@@ -1,11 +1,7 @@
 OUT=../bin/
 OBJECTS=./objects/
 CC=g++
-<<<<<<< HEAD
-CFLAGS=--std=c++11 -O3 -Wall -Wextra -g -lpthread
-=======
 CFLAGS=-pthread --std=c++11 -O3 -Wall -Wextra -g
->>>>>>> b3dd3e73557b848b2a6383e009812b35d4d14ba2
 INCLUDE_DIR = ./include/
 INCLUDES += -I $(INCLUDE_DIR)
 systemName = $(shell uname)
