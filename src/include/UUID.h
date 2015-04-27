@@ -7,8 +7,6 @@ extern "C"
 #endif
 }
 
-#define UUID_ALT
-
 #ifdef UUID_ALT
 std::string newUUID() {
 	static uint64_t i;

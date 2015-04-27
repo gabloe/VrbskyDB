@@ -126,8 +126,8 @@ namespace Storage {
 		uint64_t getNumPages();
 		uint64_t getNumFiles();
 
-		void Lock(lock_t, File);
-		void Unlock(lock_t, File);
+		void Lock(lock_t);
+		void Unlock(lock_t);
 
 	protected:
 		Metadata metadata;
@@ -153,8 +153,9 @@ namespace Storage {
 		void chainPage(uint64_t);
 		void addToFreeList(uint64_t);
 		std::mutex next_lock;
-		std::map<std::string, std::mutex> read_locks;
-		std::map<std::string, std::mutex> write_locks;
+		std::mutex freelist_lock;
+		std::mutex read_lock;
+		std::mutex write_lock;
 	};
 }
 

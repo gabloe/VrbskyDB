@@ -4,6 +4,6 @@
 #define CONFIG_H_
 
 #define RAPIDJSON_SSE2
-#define THREADING 0
+#define THREADING 1
 
 #endif

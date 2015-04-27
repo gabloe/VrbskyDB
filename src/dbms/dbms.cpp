@@ -31,7 +31,7 @@
 #include <linenoise/linenoise.h>
 
 #if THREADING
-ThreadPool pool(32);
+ThreadPool pool(1);
 #endif
 
 std::ostream&
