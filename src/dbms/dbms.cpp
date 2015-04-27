@@ -1,3 +1,6 @@
+
+#include "../include/config.h"
+
 #include <fstream> 
 #include <sstream> 
 #include <limits>
@@ -7,13 +10,11 @@
 #include <math.h>
 #include <ctime>
 #include <cstring>
-#include <thread>
 #include <stdarg.h>
 
 #include "dbms.h"
 #include "Aggregator.h"
 
-//#include "../hashing/Hash.h"
 #include "../parsing/Parser.h"
 #include "../parsing/Scanner.h"
 #include "../mmap_filesystem/Filesystem.h"
@@ -21,13 +22,17 @@
 #include "../mmap_filesystem/HerpmapWriter.h"
 #include "../mmap_filesystem/HerpmapReader.h"
 
+#if THREADING
 #include "../threading/ThreadPool.h"
+#endif
 
 #include <pretty.h>
 #include <UUID.h>
 #include <linenoise/linenoise.h>
 
+#if THREADING
 ThreadPool pool(32);
+#endif
 
 std::ostream&
 PRINT_ONE(std::ostream& os)
@@ -998,8 +1003,6 @@ int main(int argc, char **argv) {
     std::string queryLogFile("queries.log");
     uint64_t origNumFiles = fs->getNumFiles();
 
-    std::vector<std::thread> threads;
-
     if (argc > 1) {
         std::ifstream dataFile;
         dataFile.open(argv[1]);
@@ -1017,9 +1020,13 @@ int main(int argc, char **argv) {
             Parsing::Parser p(line);
             Parsing::Query *query = p.parse();
             if (query) {
-//		pool.enqueue( [=] {
+#if THREADING
+		pool.enqueue( [=] {
+#endif
 			execute(query, meta, fs, false);
-//		});
+#if THREADING
+		});
+#endif
                 count++;
                 percent = (double)count / total;
             }
@@ -1055,9 +1062,13 @@ int main(int argc, char **argv) {
             // If the query parses, add it to a log.
             linenoiseHistoryAdd(buf);
             linenoiseHistorySave(queryLogFile.c_str());
-//	    pool.enqueue( [=] {
+#if THREADING
+	    pool.enqueue( [=] {
+#endif
 		execute(query, meta, fs);
-//	    });
+#if THREADING
+	    });
+#endif
         }
         free(buf);
     }

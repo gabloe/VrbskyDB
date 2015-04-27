@@ -4,9 +4,7 @@
 #include <string>
 #include <sys/stat.h>
 #include <sys/mman.h>
-//#include <map>
 #include "../storage/HerpHash.h"
-#include <assert.h>
 #include <fcntl.h>
 #include <unistd.h>
 #include <iostream>
@@ -123,8 +121,7 @@ namespace Storage {
 		void write(File*, const char*, uint64_t);
 		bool deleteFile(File*);
 		std::vector<std::string> getFilenames();
-		//std::map<std::string, uint64_t> getFileMap();
-	        Storage::HerpHash<std::string,uint64_t> getFileMap();
+        Storage::HerpHash<std::string,uint64_t> getFileMap();
 		void compact();
 		uint64_t getNumPages();
 		uint64_t getNumFiles();
