@@ -919,7 +919,6 @@ void execute(Parsing::Query *q, META *m, FILESYSTEM *f, bool print = true) {
         }
     }
     delete q;
-    std::cout << std::endl;
 }
 
 std::vector<std::string> split(const char *str, char c = ' ') {
