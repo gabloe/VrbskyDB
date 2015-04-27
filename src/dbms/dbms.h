@@ -1,12 +1,8 @@
 #ifndef DBMS_H_
 #define DBMS_H_
 
-#define RAPIDJSON_SSE2
-
-#include <rapidjson/document.h>
-#include <vector>
 #include <list>
-#include "../parsing/Parser.h"
+
 #include "../mmap_filesystem/Filesystem.h"
 #include "../storage/HerpHash.h"
 
@@ -21,8 +17,6 @@
 typedef std::list<std::string> DOCDS;
 
 const uint64_t Num_Buckets = 2048;
-
-//void execute(Parsing::Query &, Storage::LinearHash<std::string> &);
 
 typedef Storage::HerpHash<std::string,DOCDS, Num_Buckets> META;
 typedef Storage::Filesystem FILESYSTEM;

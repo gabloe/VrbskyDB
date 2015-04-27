@@ -1,3 +1,6 @@
+
+#include "../include/config.h"
+
 #include <sys/mman.h>
 #include <iostream>
 #include <cstdlib>
@@ -8,7 +11,6 @@
 #include <vector>
 #include <algorithm>
 #include <cmath>
-#include <thread>
 
 #include "../assert/Assert.h"
 #include "Filesystem.h"
@@ -30,7 +32,7 @@
    Constructor--
    Checks if the filesystem and metadata exist.  If not, it creates an initial page of data.
    If the files exist, load the metadata.
-*/
+   */
 
 Storage::Filesystem::Filesystem(std::string data_): data_fname(data_) {
     // Initialize the filesystem
@@ -49,6 +51,7 @@ Storage::Filesystem::Filesystem(std::string data_): data_fname(data_) {
 }
 
 void Storage::Filesystem::Lock(lock_t type) {
+#if THREADING
 	switch (type) {
 	case READ:
 		read_lock.lock();
@@ -57,6 +60,7 @@ void Storage::Filesystem::Lock(lock_t type) {
 		write_lock.lock();
 		break;
 	}
+#endif
 }
 
 /*
@@ -64,6 +68,7 @@ void Storage::Filesystem::Lock(lock_t type) {
 */
 
 void Storage::Filesystem::Unlock(lock_t type) {
+#if THREADING
 	switch (type) {
 	case READ:
 		read_lock.unlock();
@@ -72,11 +77,12 @@ void Storage::Filesystem::Unlock(lock_t type) {
 		write_lock.unlock();
 		break;
 	}
+#endif
 }
 
 /*
    Calculates the total size used by a chain of blocks.
-*/
+   */
 
 uint64_t Storage::Filesystem::calculateSize(Block b) {
     uint64_t size = 0;
@@ -370,7 +376,7 @@ Block Storage::Filesystem::loadBlock(uint64_t blockID) {
     memcpy(block.buffer, filesystem.data + pos, BLOCK_SIZE);
     pos += BLOCK_SIZE;
 
-    assert(pos-offset == BLOCK_SIZE_ACTUAL);
+    Assert("We did something wrong idk?" , pos-offset == BLOCK_SIZE_ACTUAL);
 
     return block;
 }
