@@ -48,30 +48,30 @@ Storage::Filesystem::Filesystem(std::string data_): data_fname(data_) {
     initFilesystem(create_initial);
 }
 
-void Storage::Filesystem::Lock(lock_t type, File f) {
-	#ifdef junk
+void Storage::Filesystem::Lock(lock_t type) {
 	switch (type) {
 	case READ:
-		read_locks[f.name].lock();
+		read_lock.lock();
 		break;
 	case WRITE:
-		write_locks[f.name].lock();
+		write_lock.lock();
 		break;
 	}
-	#endif
 }
 
-void Storage::Filesystem::Unlock(lock_t type, File f) {
-	#ifdef junk
+/*
+   Calculates the total size used by a chain of blocks.
+*/
+
+void Storage::Filesystem::Unlock(lock_t type) {
 	switch (type) {
 	case READ:
-		read_locks[f.name].unlock();
+		read_lock.unlock();
 		break;
 	case WRITE:
-		write_locks[f.name].unlock();
+		write_lock.unlock();
 		break;
 	}
-	#endif
 }
 
 /*
@@ -192,8 +192,8 @@ void Storage::Filesystem::compact() {
 void Storage::Filesystem::write(File *file, const char *data, uint64_t len) {
     uint64_t to_write = len;
 
-    Lock(WRITE, *file); 
-    Lock(READ, *file); 
+    Lock(WRITE); 
+    Lock(READ); 
 
     uint64_t pos = 0;
     Block block = loadBlock(file->block);
@@ -234,8 +234,8 @@ void Storage::Filesystem::write(File *file, const char *data, uint64_t len) {
     writeBlock(block);
     file->size = len;
 
-    Unlock(READ, *file); 
-    Unlock(WRITE, *file); 
+    Unlock(READ); 
+    Unlock(WRITE); 
 }
 #else
 void Storage::Filesystem::write(File *file, const char *data, uint64_t len) {
@@ -271,6 +271,9 @@ void Storage::Filesystem::write(File *file, const char *data, uint64_t len) {
 #endif
 
 void Storage::Filesystem::addToFreeList(uint64_t block) {
+    static std::mutex m;
+    std::lock_guard<std::mutex> lock(m);
+
     if (metadata.firstFree == 0) {
         SET_FREE(metadata.firstFree,block);
     } else {
@@ -314,7 +317,7 @@ char *Storage::Filesystem::read(File *file) {
         return NULL;
     }
 
-    Lock(READ, *file);
+    Lock(READ);
 
     char *buffer = (char*)malloc(file->size + 1);
     uint64_t read_size = 0;
@@ -330,7 +333,7 @@ char *Storage::Filesystem::read(File *file) {
         }
     }
     buffer[file->size] = 0;
-    Unlock(READ, *file);
+    Unlock(READ);
     return buffer;
 }
 
@@ -405,6 +408,9 @@ void Storage::Filesystem::writeBlock(Block block) {
    */
 
 void Storage::Filesystem::growFilesystem() {
+    static std::mutex m;
+    std::lock_guard<std::mutex> lock(m);
+
     posix_fallocate(filesystem.fd, PAGESIZE * filesystem.numPages, PAGESIZE * (filesystem.numPages+1));
     filesystem.data = (char*)t_mremap(filesystem.fd,
             filesystem.data,
@@ -432,7 +438,8 @@ void Storage::Filesystem::growFilesystem() {
 
 uint64_t Storage::Filesystem::getBlock() {
 
-    next_lock.lock();
+    static std::mutex m;
+    std::lock_guard<std::mutex> lock(m);
 
     // Free list is empty.  Grow the filesystem.
     if (metadata.firstFree == 0) {
@@ -450,8 +457,6 @@ uint64_t Storage::Filesystem::getBlock() {
     b.next = 0;
     b.used_space = 0;
     writeBlock(b);
-
-    next_lock.unlock();
 
     return bid;
 }

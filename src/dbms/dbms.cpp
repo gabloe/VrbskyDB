@@ -27,7 +27,7 @@
 #include <UUID.h>
 #include <linenoise/linenoise.h>
 
-ThreadPool pool(32);
+ThreadPool pool(1);
 
 std::ostream&
 PRINT_ONE(std::ostream& os)
@@ -1017,9 +1017,9 @@ int main(int argc, char **argv) {
             Parsing::Parser p(line);
             Parsing::Query *query = p.parse();
             if (query) {
-//		pool.enqueue( [=] {
+		pool.enqueue( [=] {
 			execute(query, meta, fs, false);
-//		});
+		});
                 count++;
                 percent = (double)count / total;
             }
@@ -1055,9 +1055,9 @@ int main(int argc, char **argv) {
             // If the query parses, add it to a log.
             linenoiseHistoryAdd(buf);
             linenoiseHistorySave(queryLogFile.c_str());
-//	    pool.enqueue( [=] {
+	    pool.enqueue( [=] {
 		execute(query, meta, fs);
-//	    });
+	    });
         }
         free(buf);
     }
