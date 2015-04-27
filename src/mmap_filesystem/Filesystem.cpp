@@ -48,26 +48,30 @@ Storage::Filesystem::Filesystem(std::string data_): data_fname(data_) {
     initFilesystem(create_initial);
 }
 
-void Storage::Filesystem::Lock(lock_t type, std::string fname) {
+void Storage::Filesystem::Lock(lock_t type, File f) {
+	#ifdef junk
 	switch (type) {
 	case READ:
-		read_locks[fname].lock();
+		read_locks[f.name].lock();
 		break;
 	case WRITE:
-		write_locks[fname].lock();
+		write_locks[f.name].lock();
 		break;
 	}
+	#endif
 }
 
-void Storage::Filesystem::Unlock(lock_t type, std::string fname) {
+void Storage::Filesystem::Unlock(lock_t type, File f) {
+	#ifdef junk
 	switch (type) {
 	case READ:
-		read_locks[fname].unlock();
+		read_locks[f.name].unlock();
 		break;
 	case WRITE:
-		write_locks[fname].unlock();
+		write_locks[f.name].unlock();
 		break;
 	}
+	#endif
 }
 
 /*
@@ -188,8 +192,8 @@ void Storage::Filesystem::compact() {
 void Storage::Filesystem::write(File *file, const char *data, uint64_t len) {
     uint64_t to_write = len;
 
-    Lock(WRITE, file->name); 
-    Lock(READ, file->name); 
+    Lock(WRITE, *file); 
+    Lock(READ, *file); 
 
     uint64_t pos = 0;
     Block block = loadBlock(file->block);
@@ -229,8 +233,9 @@ void Storage::Filesystem::write(File *file, const char *data, uint64_t len) {
     // Write last block
     writeBlock(block);
     file->size = len;
-    Unlock(READ, file->name); 
-    Unlock(WRITE, file->name); 
+
+    Unlock(READ, *file); 
+    Unlock(WRITE, *file); 
 }
 #else
 void Storage::Filesystem::write(File *file, const char *data, uint64_t len) {
@@ -309,7 +314,7 @@ char *Storage::Filesystem::read(File *file) {
         return NULL;
     }
 
-    Lock(READ, file->name);
+    Lock(READ, *file);
 
     char *buffer = (char*)malloc(file->size + 1);
     uint64_t read_size = 0;
@@ -325,7 +330,7 @@ char *Storage::Filesystem::read(File *file) {
         }
     }
     buffer[file->size] = 0;
-    Unlock(READ, file->name);
+    Unlock(READ, *file);
     return buffer;
 }
 
