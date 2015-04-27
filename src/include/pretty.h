@@ -28,7 +28,8 @@ inline std::string toPrettyString(const rapidjson::Document *doc) {
     rapidjson::StringBuffer out;
     rapidjson::PrettyWriter<rapidjson::StringBuffer> writer(out);
     doc->Accept(writer);
-    return out.GetString();
+    std::string ret = out.GetString();
+    return ret;
 }
 
 inline std::string toPrettyString(const std::string doc) {

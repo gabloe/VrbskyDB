@@ -7,6 +7,8 @@
 #include <math.h>
 #include <ctime>
 #include <cstring>
+#include <thread>
+#include <stdarg.h>
 
 #include "dbms.h"
 #include "Aggregator.h"
@@ -25,7 +27,37 @@
 #include <UUID.h>
 #include <linenoise/linenoise.h>
 
-ThreadPool pool(128);
+ThreadPool pool(32);
+
+std::ostream&
+PRINT_ONE(std::ostream& os)
+{
+    return os;
+}
+
+template <class A0, class ...Args>
+std::ostream&
+PRINT_ONE(std::ostream& os, const A0& a0, const Args& ...args)
+{
+    os << a0;
+    return PRINT_ONE(os, args...);
+}
+
+template <class ...Args>
+std::ostream&
+PRINT(std::ostream& os, const Args& ...args)
+{
+    return PRINT_ONE(os, args...);
+}
+
+template <class ...Args>
+std::ostream&
+PRINT(const Args& ...args)
+{
+    static std::mutex m;
+    std::lock_guard<std::mutex> _(m);
+    return PRINT(std::cout, args...);
+}
 
 /*
  *      appendDocToProject ---
@@ -117,18 +149,20 @@ void updateProjectList(std::string &pname, META &meta) {
 void insertDocuments(rapidjson::Document &docs, std::string &pname, META &meta, FILESYSTEM &fs) {
     updateProjectList(pname, meta);
 
+    rapidjson::Document::AllocatorType &allocator = docs.GetAllocator();
+
     // If it's an array of documents.  Iterate over them and insert each document.
     if (docs.GetType() == rapidjson::kArrayType) {
         for( auto it = docs.MemberBegin() ; it != docs.MemberEnd() ; it++ ) {
             rapidjson::Value& val = it->value;
             std::string docUUID = newUUID();
-            val.AddMember( "_doc" , rapidjson::Value( docUUID.c_str() , docs.GetAllocator()) , docs.GetAllocator() );
+            val.AddMember( "_doc" , rapidjson::Value( docUUID.c_str() , allocator) , allocator );
             std::string data = toString( &(it->value));
             insertDocument( docUUID , data , pname, meta, fs);
         }
     } else if (docs.GetType() == rapidjson::kObjectType) {
         std::string docUUID = newUUID();
-        docs.AddMember( "_doc" , rapidjson::Value( docUUID.c_str() , docs.GetAllocator()) , docs.GetAllocator() );
+        docs.AddMember( "_doc" , rapidjson::Value( docUUID.c_str() , allocator) , allocator );
         std::string data = toString(&docs);
         insertDocument( docUUID , data , pname, meta, fs);
     }
@@ -788,52 +822,59 @@ rapidjson::Document select(DOCDS &docs, rapidjson::Document &origFields, rapidjs
  *
  */
 
-void execute(Parsing::Query &q, META &meta, FILESYSTEM &fs, bool print = true) {
+void execute(Parsing::Query *q, META *m, FILESYSTEM *f, bool print = true) {
     clock_t start, end;
     start = std::clock();
-    switch (q.command) {
+
+    META &meta = *m;
+    FILESYSTEM &fs = *f;
+
+    switch (q->command) {
         case Parsing::CREATE:
             {
                 // TODO: Create an index...
-                q.print();
+                //q.print();
                 break;
             }
         case Parsing::INSERT:
             {
-                rapidjson::Document &docs = *q.with;
-                std::string& project = *q.project;
                 // Insert documents in docs into project.
-                insertDocuments(docs, project, meta, fs);
+		if (q->with) {
+    			rapidjson::Document with;
+			with.CopyFrom(*(q->with), with.GetAllocator());
+                	insertDocuments(with, *q->project, meta, fs);
+		}
                 break;
             }
         case Parsing::SELECT:
             {
-                std::string project = *q.project;
+                std::string project = *q->project;
                 if (meta.count(project) > 0) {
-                    rapidjson::Document data = select(meta[project], *q.fields, q.where, q.limit, fs);
+                    rapidjson::Document data = select(meta[project], *q->fields, q->where, q->limit, fs);
                     if (data.HasMember("_result")) {
                         rapidjson::Value &array = data["_result"];
                         if (array.Size() == 0) {
-                            std::cout << "Result Empty!" << std::endl;	
+			    PRINT("Result Empty!\r\n");
                         } else {
-                            std::cout << toPrettyString(&data) << std::endl;
-                            std::cout << array.Size() << " records returned." << std::endl; 
+			    std::string pretty_data = toPrettyString(&data);
+			    PRINT(pretty_data, "\r\n");
+			    PRINT(array.Size(), " records returned.\r\n");
                         }
                     }
                 } else {
-                    std::cout << "Project '" << project << "' does not exist!" << std::endl;
+		    PRINT("Project '", project, "' does not exist!\r\n");
                 }
                 break;
             }
         case Parsing::DELETE:
             {
-                std::string project = *q.project;
+                std::string project = *q->project;
                 if (meta.count(project)) {
                     DOCDS& docs = meta[project];
-                    ddelete(docs, *q.fields, q.where, q.limit, fs);
+                    ddelete(docs, *q->fields, q->where, q->limit, fs);
                     //meta[project] = docs;
                 } else {
-                    std::cout << "Project '" << project << "' does not exist!" << std::endl;
+		    PRINT("Project '", project, "' does not exist!\r\n");
                 }
                 break;
             }
@@ -842,41 +883,43 @@ void execute(Parsing::Query &q, META &meta, FILESYSTEM &fs, bool print = true) {
                 std::string key("__PROJECTS__");
                 if (meta.count(key)) {
                     DOCDS& list = meta[key];
-                    std::cout << "[" << std::endl;
+		    PRINT("[\r\n");
                     for (auto it = list.begin() ; it != list.end() ; ++it) {
-                        std::cout << "\t" << *it << std::endl;
+		        PRINT(*it, "\n");
                     }
-                    std::cout << "]" << std::endl;
+		    PRINT("]\r\n");
                 } else {
-                    std::cout << "No projects found!" << std::endl;
+		    PRINT("No projects found!\r\n");
                 }
                 break;
             }
         case Parsing::UPDATE:
             {
-                std::string project = *q.project;
+                std::string project = *q->project;
                 if (meta.count(project)) {
                     DOCDS& docs = meta[project];
-                    rapidjson::Document &updates = *q.with;
-                    update( docs, updates, q.where, q.limit, fs);
+                    rapidjson::Document &updates = *q->with;
+                    update( docs, updates, q->where, q->limit, fs);
                     meta[project] = docs;
                 } else {
-                    std::cout << "Project '" << project << "' does not exist!" << std::endl;
+		    PRINT("Project '", project, "' does not exist!\r\n");
                 }
                 break;
             }
         default:
-            std::cout << "Command not recognized." << std::endl;
+	    PRINT("Command not recognized!\r\n");
     }
     if (print) {
         end = std::clock();
         double time = (double)(end - start) / CLOCKS_PER_SEC;
         if( time > 1.0 ) {
-            std::cout << "Done!  Took " << time << " seconds." << std::endl;
+	    PRINT("Done!  Took ", time, " seconds.\n");
         }else {
-            std::cout << "Done!  Took " << 1000 * time << " milliseconds." << std::endl;
+	    PRINT("Done!  Took ", 1000 * time, " milliseonds.\n");
         }
     }
+    delete q;
+    std::cout << std::endl;
 }
 
 std::vector<std::string> split(const char *str, char c = ' ') {
@@ -956,6 +999,8 @@ int main(int argc, char **argv) {
     std::string queryLogFile("queries.log");
     uint64_t origNumFiles = fs->getNumFiles();
 
+    std::vector<std::thread> threads;
+
     if (argc > 1) {
         std::ifstream dataFile;
         dataFile.open(argv[1]);
@@ -973,13 +1018,15 @@ int main(int argc, char **argv) {
             Parsing::Parser p(line);
             Parsing::Query *query = p.parse();
             if (query) {
-               	execute( *query, *meta, *fs, false);
+		pool.enqueue( [=] {
+			execute(query, meta, fs, false);
+		});
                 count++;
                 percent = (double)count / total;
-                delete query;
             }
             printf("%.1f%% done.\r", ceil(percent*100));
         }
+
         std::cout << "\n";
     }
 
@@ -993,7 +1040,6 @@ int main(int argc, char **argv) {
         out.close();
     }
 
-    linenoiseSetMultiLine(1);
     linenoiseSetCompletionCallback(completion);
 
     std::cout << "Enter a query (q to quit):" << std::endl;
@@ -1010,10 +1056,10 @@ int main(int argc, char **argv) {
             // If the query parses, add it to a log.
             linenoiseHistoryAdd(buf);
             linenoiseHistorySave(queryLogFile.c_str());
-            execute( *query, *meta, *fs );
-            delete query;
+	    pool.enqueue( [=] {
+		execute(query, meta, fs);
+	    });
         }
-        std::cout << std::endl;
         free(buf);
     }
 
