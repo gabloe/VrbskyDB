@@ -2,7 +2,7 @@
 #define THREAD_POOL_H
 
 #include <vector>
-#include <queue>
+#include <list>
 #include <memory>
 #include <thread>
 #include <mutex>
@@ -27,7 +27,7 @@ private:
     // need to keep track of threads so we can join them
     std::vector< std::thread > workers;
     // the task queue
-    std::queue< std::function<void()> > tasks;
+    std::list< std::function<void()> > tasks;
     
     // synchronization
     std::mutex queue_mutex;
@@ -56,8 +56,9 @@ inline ThreadPool::ThreadPool(size_t threads)
                             [this]{ return this->stop || !this->tasks.empty(); });
                         if(this->stop && this->tasks.empty())
                             return;
-                        task = std::move(this->tasks.front());
-                        this->tasks.pop();
+                        task = tasks.front();
+                        this->tasks.pop_front(); //std::move(this->tasks.front());
+                        //this->tasks.pop();
                     }
                     task();
                     {
@@ -88,8 +89,9 @@ auto ThreadPool::enqueue(F&& f, Args&&... args)
         if(stop)
             throw std::runtime_error("enqueue on stopped ThreadPool");
 
+        //tasks.emplace([task](){ (*task)(); });
+        tasks.push_back( [task](){ (*task)(); } );
         ++tasksRemaining;
-        tasks.emplace([task](){ (*task)(); });
     }
     condition.notify_one();
     return res;

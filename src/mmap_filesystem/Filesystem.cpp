@@ -385,6 +385,7 @@ Block Storage::Filesystem::loadBlock(uint64_t blockID) {
    */
 
 void Storage::Filesystem::writeBlock(Block block) {
+    grow_lock.lock();
     uint64_t id = block.id - 1;
 
     // How can this even happen?
@@ -406,6 +407,7 @@ void Storage::Filesystem::writeBlock(Block block) {
     pos += BLOCK_SIZE;
 
     msync(filesystem.data + id * BLOCK_SIZE_ACTUAL, BLOCK_SIZE_ACTUAL, MS_SYNC);
+    grow_lock.unlock();
 }
 
 /*
@@ -413,7 +415,6 @@ void Storage::Filesystem::writeBlock(Block block) {
    */
 
 void Storage::Filesystem::growFilesystem() {
-    grow_lock.lock();
     posix_fallocate(filesystem.fd, PAGESIZE * filesystem.numPages, PAGESIZE * (filesystem.numPages+1));
     filesystem.data = (char*)t_mremap(filesystem.fd,
             filesystem.data,
@@ -432,7 +433,6 @@ void Storage::Filesystem::growFilesystem() {
 
     // Add page to free list
     addToFreeList(firstBlock);
-    grow_lock.unlock();
 }
 
 /*
