@@ -21,6 +21,7 @@ public:
     uint64_t numTasks();
     ~ThreadPool();
 private:
+    ThreadPool() = delete;
     uint64_t tasksRemaining;
     // need to keep track of threads so we can join them
     std::vector< std::thread > workers;

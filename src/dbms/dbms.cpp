@@ -1017,7 +1017,7 @@ rapidjson::Document processFields(rapidjson::Document &doc, rapidjson::Document 
                     while(1) {
                         uint64_t n = pool.numTasks();
                         std::cout << n << "\r";
-                        if (n == 0) {
+                        if (n < 1) {
                             break;
                         }
                     }
@@ -1042,21 +1042,10 @@ rapidjson::Document processFields(rapidjson::Document &doc, rapidjson::Document 
 
             std::cout << std::endl;
 
-	while(1) {
-		uint64_t n = pool.numTasks();
-		std::cout << n << "\r";
-		if (n < 1) {
-			break;
-		}
-        }
-
-        std::cout << "\n";
-    }
-
             while(1) {
                 uint64_t n = pool.numTasks();
                 std::cout << n << "\r";
-                if (n == 0) {
+                if (n < 1) {
                     break;
                 }
             }
