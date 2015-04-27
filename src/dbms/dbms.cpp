@@ -998,8 +998,6 @@ int main(int argc, char **argv) {
     std::string queryLogFile("queries.log");
     uint64_t origNumFiles = fs->getNumFiles();
 
-    std::vector<std::thread> threads;
-
     if (argc > 1) {
         std::ifstream dataFile;
         dataFile.open(argv[1]);
