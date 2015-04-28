@@ -13,7 +13,7 @@
 
 const uint64_t BLOCK_SIZE  = 64;
 const uint64_t BLOCKS_PER_PAGE = 1024;
-const uint64_t BLOCK_SIZE_ACTUAL = 3 * sizeof(uint64_t) + BLOCK_SIZE;
+const uint64_t BLOCK_SIZE_ACTUAL = 4 * sizeof(uint64_t) + BLOCK_SIZE;
 const uint64_t PAGESIZE = BLOCK_SIZE_ACTUAL * BLOCKS_PER_PAGE;
 
 #ifndef UNUSED
@@ -29,6 +29,7 @@ struct Block {
 	uint64_t id;
 	uint64_t used_space;
 	uint64_t next;
+    uint64_t next_file;
 	char buffer[BLOCK_SIZE];
 };
 
@@ -121,13 +122,13 @@ namespace Storage {
 		void write(File*, const char*, uint64_t);
 		bool deleteFile(File*);
 		std::vector<std::string> getFilenames();
-        Storage::HerpHash<std::string,uint64_t> getFileMap();
+	        Storage::HerpHash<std::string,uint64_t> getFileMap();
 		void compact();
 		uint64_t getNumPages();
 		uint64_t getNumFiles();
 
-		void Lock(lock_t);
-		void Unlock(lock_t);
+		void Lock(lock_t, File*);
+		void Unlock(lock_t, File*);
 
 	protected:
 		Metadata metadata;
@@ -152,11 +153,14 @@ namespace Storage {
 		uint64_t calculateSize(Block);
 		void chainPage(uint64_t);
 		void addToFreeList(uint64_t);
+		void createLockIfNotExists(lock_t, std::string);
+
 		std::mutex next_lock;
-		std::mutex grow_lock;
 		std::mutex freelist_lock;
-		std::mutex read_lock;
-		std::mutex write_lock;
+		std::mutex metadata_lock;
+
+		Storage::HerpHash<std::string,std::mutex*> read_locks;
+		Storage::HerpHash<std::string,std::mutex*> write_locks;
 	};
 }
 
