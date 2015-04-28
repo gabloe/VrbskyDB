@@ -403,7 +403,7 @@ Block Storage::Filesystem::loadBlock(uint64_t blockID) {
     memcpy(block.buffer, filesystem.data + pos, BLOCK_SIZE);
     pos += BLOCK_SIZE;
 
-    Assert("We did something wrong idk?" , pos-offset == BLOCK_SIZE_ACTUAL);
+    Assert("We did something wrong idk?" , (pos - offset) == BLOCK_SIZE_ACTUAL);
 #endif
     return block;
 }

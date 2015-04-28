@@ -11,7 +11,7 @@
 #include <vector>
 #include <mutex>
 
-const uint64_t BLOCK_SIZE  = 64;
+const uint64_t BLOCK_SIZE  = 256;
 #ifdef EXPERIMENTAL
 const uint64_t HEADER_SIZE = 3 * sizeof(uint64_t);
 #else
