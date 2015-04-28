@@ -22,15 +22,16 @@
 #include "../mmap_filesystem/HerpmapWriter.h"
 #include "../mmap_filesystem/HerpmapReader.h"
 
-#if THREADING
-#include "../threading/ThreadPool.h"
-#endif
-
 #include <pretty.h>
 #include <UUID.h>
 #include <linenoise/linenoise.h>
 
+void execute(Parsing::Query *q, META *m, FILESYSTEM *f, bool print); 
+
 #if THREADING
+
+#include "../threading/ThreadPool.h"
+
 ThreadPool pool(NUM_THREADS);
 
 void waitToFinish() {
@@ -42,8 +43,16 @@ void waitToFinish() {
         }
     }
 }
+void handle(Parsing::Query *q, META *m, FILESYSTEM *f, bool print = true) {
+    pool.enqueue( [=] {
+            execute(query, meta, fs, print);
+            });
+}
 #else
-    void waitToFinish() {}
+void waitToFinish() {}
+void handle(Parsing::Query *q, META *m, FILESYSTEM *f, bool print = true) {
+    execute( q , m , f , print );
+}
 #endif
 
     std::ostream&
@@ -1029,13 +1038,7 @@ rapidjson::Document processFields(rapidjson::Document &doc, rapidjson::Document 
                 Parsing::Parser p(line);
                 Parsing::Query *query = p.parse();
                 if (query) {
-#if THREADING
-                    pool.enqueue( [=] {
-#endif
-                            execute(query, meta, fs, false);
-#if THREADING
-                            });
-#endif
+                    handle( query , meta , fs , false );
                     count++;
                     percent = (double)count / total;
                 }
@@ -1073,13 +1076,7 @@ rapidjson::Document processFields(rapidjson::Document &doc, rapidjson::Document 
                 // If the query parses, add it to a log.
                 linenoiseHistoryAdd(buf);
                 linenoiseHistorySave(queryLogFile.c_str());
-#if THREADING
-                pool.enqueue( [=] {
-#endif
-                        execute(query, meta, fs);
-#if THREADING
-                        });
-#endif
+                handle(query, meta, fs);
             }
             free(buf);
         }

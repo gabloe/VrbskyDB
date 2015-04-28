@@ -387,8 +387,9 @@ Block Storage::Filesystem::loadBlock(uint64_t blockID) {
     uint64_t offset = id * BLOCK_SIZE_ACTUAL;
     uint64_t pos = offset;
 
+#if EXPERIMENTAL
     memcpy( reinterpret_cast<char*>( &block ) , filesystem.data + pos , BLOCK_SIZE_ACTUAL );
-    /*
+#else
 
     memcpy(&block.id, filesystem.data + pos, sizeof(uint64_t));
     pos += sizeof(uint64_t);
@@ -401,9 +402,9 @@ Block Storage::Filesystem::loadBlock(uint64_t blockID) {
 
     memcpy(block.buffer, filesystem.data + pos, BLOCK_SIZE);
     pos += BLOCK_SIZE;
-    */
 
-    //Assert("We did something wrong idk?" , pos-offset == BLOCK_SIZE_ACTUAL);
+    Assert("We did something wrong idk?" , pos-offset == BLOCK_SIZE_ACTUAL);
+#endif
     return block;
 }
 
@@ -418,11 +419,13 @@ void Storage::Filesystem::writeBlock(Block block) {
     while (id >= filesystem.numPages * BLOCKS_PER_PAGE) {
         growFilesystem();
     }
-
     uint64_t pos = id * BLOCK_SIZE_ACTUAL;
+
+#if EXPERIMENTAL
+
     memcpy( filesystem.data + pos , reinterpret_cast<char*>( &block ) , BLOCK_SIZE_ACTUAL );
 
-    /*
+#else
     memcpy(filesystem.data + pos, &block.id, sizeof(uint64_t));
     pos += sizeof(uint64_t);
 
@@ -434,7 +437,7 @@ void Storage::Filesystem::writeBlock(Block block) {
 
     memcpy(filesystem.data + pos, block.buffer, BLOCK_SIZE);
     pos += BLOCK_SIZE;
-    */
+#endif
 
     msync(filesystem.data + pos , BLOCK_SIZE_ACTUAL, MS_SYNC);
 

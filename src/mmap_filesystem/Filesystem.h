@@ -12,7 +12,11 @@
 #include <mutex>
 
 const uint64_t BLOCK_SIZE  = 64;
+#ifdef EXPERIMENTAL
+const uint64_t HEADER_SIZE = 3 * sizeof(uint64_t);
+#else
 const uint64_t HEADER_SIZE = 4 * sizeof(uint64_t);
+#endif
 const uint64_t BLOCK_SIZE_ACTUAL = HEADER_SIZE + BLOCK_SIZE;
 const uint64_t BLOCKS_PER_PAGE = 1024;
 const uint64_t PAGESIZE = BLOCK_SIZE_ACTUAL * BLOCKS_PER_PAGE;
@@ -30,7 +34,9 @@ struct Block {
 	uint64_t id;
 	uint64_t used_space;
 	uint64_t next;
+#ifdef EXPERIMENTAL
     uint64_t next_file;
+#endif
 	char buffer[BLOCK_SIZE];
 };
 
