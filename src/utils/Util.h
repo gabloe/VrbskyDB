@@ -8,7 +8,15 @@
 #include <vector>
 #include <string>
 
-namespace Storage {
+    static void Write64( char *buffer,  uint64_t value ) {
+        char *herp = reinterpret_cast<char*>(&value);
+        std::copy( herp , herp + sizeof(uint64_t) , buffer );
+    }
+
+    static uint64_t Read64(const char *buffer) {
+        return *reinterpret_cast<const uint64_t*>(buffer);
+    }
+
 
     static void Write64( char *buffer , uint64_t &pos , uint64_t value ) {
         char *herp = reinterpret_cast<char*>(&value);
@@ -142,7 +150,5 @@ namespace Storage {
             }
         };
 
-
-}
 
 #endif

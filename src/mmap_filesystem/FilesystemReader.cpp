@@ -14,6 +14,7 @@ int main(int argc, char **argv) {
 	uint64_t bid = 0;
 	uint64_t usedSpace = 0;
 	uint64_t next = 0;
+	uint64_t nextFile = 0;
 	uint64_t numPages;
 	uint64_t numFiles;
 	uint64_t firstFree;
@@ -21,6 +22,7 @@ int main(int argc, char **argv) {
 	in.read(reinterpret_cast<char*>(&bid), sizeof(uint64_t));
 	in.read(reinterpret_cast<char*>(&usedSpace), sizeof(uint64_t));
 	in.read(reinterpret_cast<char*>(&next), sizeof(uint64_t));
+	in.read(reinterpret_cast<char*>(&nextFile), sizeof(uint64_t));
 	in.read(data, BLOCK_SIZE);
 	memcpy(&numPages, data, sizeof(uint64_t));
 	memcpy(&numFiles, data + sizeof(uint64_t), sizeof(uint64_t));
@@ -39,12 +41,14 @@ int main(int argc, char **argv) {
 			in.read(reinterpret_cast<char*>(&bid), sizeof(uint64_t));
 			in.read(reinterpret_cast<char*>(&usedSpace), sizeof(uint64_t));
 			in.read(reinterpret_cast<char*>(&next), sizeof(uint64_t));
+			in.read(reinterpret_cast<char*>(&nextFile), sizeof(uint64_t));
 			in.read(data, BLOCK_SIZE);
 			if (usedSpace > 0) {
 				std::cout << "Block:" << std::endl;
 				std::cout << "\tBlock ID: " << bid << std::endl;
 				std::cout << "\tUsed space: " << usedSpace << std::endl;
 				std::cout << "\tNext: " << next << std::endl;
+				std::cout << "\tNext file: " << nextFile << std::endl;
 				std::cout << "\tData: " << data << std::endl;
 			}
 		}

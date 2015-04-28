@@ -301,7 +301,9 @@ void Storage::Filesystem::write(File *file, const char *data, uint64_t len) {
 #endif
 
 void Storage::Filesystem::addToFreeList(uint64_t block) {
+#if THREADING
     freelist_lock.lock();
+#endif
     if (metadata.firstFree == 0) {
         SET_FREE(metadata.firstFree,block);
     } else {
@@ -314,7 +316,9 @@ void Storage::Filesystem::addToFreeList(uint64_t block) {
         SET_FREE(metadata.firstFree,block);
         writeBlock(b);
     }
+#if THREADING
     freelist_lock.unlock();
+#endif
 }
 
 std::vector<std::string> Storage::Filesystem::getFilenames() {
@@ -475,7 +479,9 @@ void Storage::Filesystem::growFilesystem() {
 
 uint64_t Storage::Filesystem::getBlock() {
     // Free list is empty.  Grow the filesystem.
+#if THREADING
     next_lock.lock();
+#endif
 
     if (metadata.firstFree == 0) {
         growFilesystem();
@@ -493,7 +499,9 @@ uint64_t Storage::Filesystem::getBlock() {
     b.used_space = 0;
     writeBlock(b);
 
+#if THREADING
     next_lock.unlock();
+#endif
     return bid;
 }
 
@@ -560,10 +568,13 @@ void Storage::Filesystem::initMetadata() {
    */
 
 void Storage::Filesystem::readMetadata() {
+#if THREADING
     metadata_lock.lock();
+#endif
     uint64_t pos = 0;
-    uint64_t offset = 4 * sizeof(uint64_t); // Skip ID, next, and length
-    filesystem.numPages = Read64( filesystem.data , offset );
+    //uint64_t offset = HEADER_SIZE; // Skip block metadata
+
+    filesystem.numPages = Read64( filesystem.data + HEADER_SIZE );
 
     if (filesystem.numPages > 1) {
         filesystem.data = (char*)t_mremap(filesystem.fd,
@@ -577,7 +588,6 @@ void Storage::Filesystem::readMetadata() {
         }
     }
 
-
     Block b = loadBlock(1);
     uint64_t metadata_size = calculateSize(b);
 
@@ -588,13 +598,13 @@ void Storage::Filesystem::readMetadata() {
     metadata.numFiles = Read64( buffer , pos );
     metadata.firstFree = Read64( buffer , pos );
 
-    //printJunk("ReadMetaData");
-
     Assert( "position is wrong" , pos == 3 * sizeof(uint64_t) );
     HerpmapReader<uint64_t> reader(metadata.file, this);
     metadata.files = reader.read_buffer(buffer, pos, metadata_size);
     free(buffer);
+#if THREADING
     metadata_lock.unlock();
+#endif
 }
 
 /*
@@ -603,7 +613,9 @@ void Storage::Filesystem::readMetadata() {
 
 void Storage::Filesystem::writeMetadata() {
     // variables
+#if THREADING 
     metadata_lock.lock();
+#endif
     uint64_t size,pos,files_size;
     HerpmapWriter<uint64_t> writer(metadata.file, this);
     char *files,*buf;
@@ -620,10 +632,10 @@ void Storage::Filesystem::writeMetadata() {
     Write64(buf , pos , filesystem.numPages);
     Write64(buf , pos , metadata.numFiles);
     Write64(buf , pos , metadata.firstFree);
+
     WriteRaw(buf, pos , files , files_size );
 
     uint64_t test = filesystem.numPages + metadata.firstFree + metadata.numFiles;
-    //printJunk("writeMetadata");
     write(&metadata.file, buf, size);
     test -= (filesystem.numPages + metadata.firstFree + metadata.numFiles);
 
@@ -632,12 +644,14 @@ void Storage::Filesystem::writeMetadata() {
         Write64(buf , pos , filesystem.numPages);
         Write64(buf , pos , metadata.numFiles);
         Write64(buf , pos , metadata.firstFree);
-        //printJunk("writeMetadata2");
+
         write(&metadata.file, buf, size);
     }
     free(files);
     delete[] buf;
+#if THREADING
     metadata_lock.unlock();
+#endif
 }
 
 /*

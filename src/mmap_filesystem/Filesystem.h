@@ -1,6 +1,8 @@
 #ifndef _FILESYSTEM_H_
 #define _FILESYSTEM_H_
 
+#include "../include/config.h"
+
 #include <string>
 #include <sys/stat.h>
 #include <sys/mman.h>
@@ -9,7 +11,10 @@
 #include <unistd.h>
 #include <iostream>
 #include <vector>
+
+#if THREADING
 #include <mutex>
+#endif
 
 const uint64_t BLOCK_SIZE  = 256;
 #ifdef EXPERIMENTAL
@@ -162,12 +167,14 @@ namespace Storage {
 		void addToFreeList(uint64_t);
 		void createLockIfNotExists(lock_t, std::string);
 
+#if THREADING
 		std::mutex next_lock;
 		std::mutex freelist_lock;
 		std::mutex metadata_lock;
 
 		Storage::HerpHash<std::string,std::mutex*> read_locks;
 		Storage::HerpHash<std::string,std::mutex*> write_locks;
+#endif
 	};
 }
 

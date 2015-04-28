@@ -21,6 +21,7 @@
 
 #include "../mmap_filesystem/HerpmapWriter.h"
 #include "../mmap_filesystem/HerpmapReader.h"
+#include "../utils/Util.h"
 
 #include <pretty.h>
 #include <UUID.h>
@@ -80,9 +81,19 @@ template <class ...Args>
     std::ostream&
 PRINT(const Args& ...args)
 {
+#if THREADING
     static std::mutex m;
     std::lock_guard<std::mutex> _(m);
+#endif
     return PRINT(std::cout, args...);
+}
+
+uint64_t theUUID = 0;
+
+std::string getUUID() {
+    std::string ret(std::to_string(theUUID));
+    ++theUUID;
+    return ret;
 }
 
 /*
@@ -181,13 +192,13 @@ void insertDocuments(rapidjson::Document &docs, std::string &pname, META &meta, 
     if (docs.GetType() == rapidjson::kArrayType) {
         for( auto it = docs.MemberBegin() ; it != docs.MemberEnd() ; it++ ) {
             rapidjson::Value& val = it->value;
-            std::string docUUID = newUUID();
+            std::string docUUID = getUUID();
             val.AddMember( "_doc" , rapidjson::Value( docUUID.c_str() , allocator) , allocator );
             std::string data = toString( &(it->value));
             insertDocument( docUUID , data , pname, meta, fs);
         }
     } else if (docs.GetType() == rapidjson::kObjectType) {
-        std::string docUUID = newUUID();
+        std::string docUUID = getUUID();
         docs.AddMember( "_doc" , rapidjson::Value( docUUID.c_str() , allocator) , allocator );
         std::string data = toString(&docs);
         insertDocument( docUUID , data , pname, meta, fs);
@@ -1001,8 +1012,12 @@ rapidjson::Document processFields(rapidjson::Document &doc, rapidjson::Document 
 
     int main(int argc, char **argv) {
         std::string data_fname("data.db");
+        char buffer[sizeof(uint64_t)];
 
+        // Start up the file system
         Storage::Filesystem *fs = new Storage::Filesystem(data_fname);
+
+        // Get the meta data
         META *meta;
         File meta_file = fs->open_file("__DB_METADATA__");
         Storage::HerpmapReader<DOCDS,Num_Buckets> meta_reader(meta_file, fs);
@@ -1010,7 +1025,15 @@ rapidjson::Document processFields(rapidjson::Document &doc, rapidjson::Document 
             meta = new META(meta_reader.read());
         } else {
             meta = new META();
+        }
 
+        // Get the UUID that needs to be used
+        File uuid = fs->open_file( "HERP_UUID" );
+        if( uuid.size > 0) {
+            char *data = fs->read( &uuid );  
+            theUUID = Read64(data);
+            free(data);
+        }else {
         }
 
         int count = 0;
@@ -1082,6 +1105,9 @@ rapidjson::Document processFields(rapidjson::Document &doc, rapidjson::Document 
         }
 
 end:
+
+        Write64(buffer,theUUID);
+        fs->write( &uuid , &buffer[0] , sizeof(uint64_t) );
 
         Storage::HerpmapWriter<DOCDS,Num_Buckets> meta_writer(meta_file, fs);
         meta_writer.write(*meta);
