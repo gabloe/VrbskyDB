@@ -121,13 +121,13 @@ namespace Storage {
 		void write(File*, const char*, uint64_t);
 		bool deleteFile(File*);
 		std::vector<std::string> getFilenames();
-        Storage::HerpHash<std::string,uint64_t> getFileMap();
+	        Storage::HerpHash<std::string,uint64_t> getFileMap();
 		void compact();
 		uint64_t getNumPages();
 		uint64_t getNumFiles();
 
-		void Lock(lock_t);
-		void Unlock(lock_t);
+		void Lock(lock_t, File*);
+		void Unlock(lock_t, File*);
 
 	protected:
 		Metadata metadata;
@@ -152,11 +152,14 @@ namespace Storage {
 		uint64_t calculateSize(Block);
 		void chainPage(uint64_t);
 		void addToFreeList(uint64_t);
+		void createLockIfNotExists(lock_t, std::string);
+
 		std::mutex next_lock;
-		std::mutex grow_lock;
 		std::mutex freelist_lock;
-		std::mutex read_lock;
-		std::mutex write_lock;
+		std::mutex metadata_lock;
+
+		Storage::HerpHash<std::string,std::mutex*> read_locks;
+		Storage::HerpHash<std::string,std::mutex*> write_locks;
 	};
 }
 

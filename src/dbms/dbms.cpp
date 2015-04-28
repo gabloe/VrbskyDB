@@ -1014,6 +1014,7 @@ rapidjson::Document processFields(rapidjson::Document &doc, rapidjson::Document 
                 line.clear();
                 std::getline(dataFile, line);
                 if (line.compare("q") == 0) {
+#if THREADING
                     while(1) {
                         uint64_t n = pool.numTasks();
                         std::cout << n << "\r";
@@ -1021,6 +1022,7 @@ rapidjson::Document processFields(rapidjson::Document &doc, rapidjson::Document 
                             break;
                         }
                     }
+#endif
                     std::cout << std::endl;
                     goto end;
                 }
@@ -1041,7 +1043,7 @@ rapidjson::Document processFields(rapidjson::Document &doc, rapidjson::Document 
             }
 
             std::cout << std::endl;
-
+#if THREADING
             while(1) {
                 uint64_t n = pool.numTasks();
                 std::cout << n << "\r";
@@ -1049,7 +1051,7 @@ rapidjson::Document processFields(rapidjson::Document &doc, rapidjson::Document 
                     break;
                 }
             }
-
+#endif
             std::cout << "\n";
         }
 

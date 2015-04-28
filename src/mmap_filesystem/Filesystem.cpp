@@ -50,14 +50,34 @@ Storage::Filesystem::Filesystem(std::string data_): data_fname(data_) {
     initFilesystem(create_initial);
 }
 
-void Storage::Filesystem::Lock(lock_t type) {
-#if THREADING
+void Storage::Filesystem::createLockIfNotExists(lock_t type, std::string name) {
 	switch (type) {
 	case READ:
-		read_lock.lock();
+		{
+		if (read_locks.count(name) == 0) {
+			read_locks[name] = new std::mutex();
+		}
+		break;
+		}
+	case WRITE:
+		{
+		if (write_locks.count(name) == 0) {
+			write_locks[name] = new std::mutex();
+		}
+		break;
+		}
+	}
+}
+
+void Storage::Filesystem::Lock(lock_t type, File *f) {
+#if THREADING
+	createLockIfNotExists(type, f->name);
+	switch (type) {
+	case READ:
+		read_locks[f->name]->lock();		
 		break;
 	case WRITE:
-		write_lock.lock();
+		write_locks[f->name]->lock();
 		break;
 	}
 #endif
@@ -67,14 +87,14 @@ void Storage::Filesystem::Lock(lock_t type) {
    Calculates the total size used by a chain of blocks.
 */
 
-void Storage::Filesystem::Unlock(lock_t type) {
+void Storage::Filesystem::Unlock(lock_t type, File *f) {
 #if THREADING
 	switch (type) {
 	case READ:
-		read_lock.unlock();
+		read_locks[f->name]->unlock();
 		break;
 	case WRITE:
-		write_lock.unlock();
+		write_locks[f->name]->unlock();
 		break;
 	}
 #endif
@@ -198,8 +218,8 @@ void Storage::Filesystem::compact() {
 void Storage::Filesystem::write(File *file, const char *data, uint64_t len) {
     uint64_t to_write = len;
 
-    Lock(WRITE); 
-    Lock(READ); 
+    Lock(WRITE, file); 
+    Lock(READ, file); 
 
     uint64_t pos = 0;
     Block block = loadBlock(file->block);
@@ -240,8 +260,8 @@ void Storage::Filesystem::write(File *file, const char *data, uint64_t len) {
     writeBlock(block);
     file->size = len;
 
-    Unlock(READ); 
-    Unlock(WRITE); 
+    Unlock(READ, file); 
+    Unlock(WRITE, file); 
 }
 #else
 void Storage::Filesystem::write(File *file, const char *data, uint64_t len) {
@@ -322,7 +342,7 @@ char *Storage::Filesystem::read(File *file) {
         return NULL;
     }
 
-    Lock(READ);
+    Lock(READ, file);
 
     char *buffer = (char*)malloc(file->size + 1);
     uint64_t read_size = 0;
@@ -338,7 +358,7 @@ char *Storage::Filesystem::read(File *file) {
         }
     }
     buffer[file->size] = 0;
-    Unlock(READ);
+    Unlock(READ, file);
     return buffer;
 }
 
@@ -376,7 +396,6 @@ Block Storage::Filesystem::loadBlock(uint64_t blockID) {
     pos += BLOCK_SIZE;
 
     Assert("We did something wrong idk?" , pos-offset == BLOCK_SIZE_ACTUAL);
-
     return block;
 }
 
@@ -385,7 +404,6 @@ Block Storage::Filesystem::loadBlock(uint64_t blockID) {
    */
 
 void Storage::Filesystem::writeBlock(Block block) {
-    grow_lock.lock();
     uint64_t id = block.id - 1;
 
     // How can this even happen?
@@ -407,7 +425,6 @@ void Storage::Filesystem::writeBlock(Block block) {
     pos += BLOCK_SIZE;
 
     msync(filesystem.data + id * BLOCK_SIZE_ACTUAL, BLOCK_SIZE_ACTUAL, MS_SYNC);
-    grow_lock.unlock();
 }
 
 /*
@@ -527,6 +544,7 @@ void Storage::Filesystem::initMetadata() {
    */
 
 void Storage::Filesystem::readMetadata() {
+    metadata_lock.lock();
     uint64_t pos = 0;
     uint64_t offset = 3 * sizeof(uint64_t); // Skip ID, next, and length
     filesystem.numPages = Read64( filesystem.data , offset );
@@ -560,6 +578,7 @@ void Storage::Filesystem::readMetadata() {
     HerpmapReader<uint64_t> reader(metadata.file, this);
     metadata.files = reader.read_buffer(buffer, pos, metadata_size);
     free(buffer);
+    metadata_lock.unlock();
 }
 
 /*
@@ -568,6 +587,7 @@ void Storage::Filesystem::readMetadata() {
 
 void Storage::Filesystem::writeMetadata() {
     // variables
+    metadata_lock.lock();
     uint64_t size,pos,files_size;
     HerpmapWriter<uint64_t> writer(metadata.file, this);
     char *files,*buf;
@@ -601,6 +621,7 @@ void Storage::Filesystem::writeMetadata() {
     }
     free(files);
     delete[] buf;
+    metadata_lock.unlock();
 }
 
 /*
