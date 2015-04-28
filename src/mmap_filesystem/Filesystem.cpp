@@ -195,11 +195,12 @@ void Storage::Filesystem::compact() {
 #define ALT 1
 
 #if ALT 
+// We assume that there is already space
 void Storage::Filesystem::write(File *file, const char *data, uint64_t len) {
     uint64_t to_write = len;
 
-    Lock(WRITE); 
-    Lock(READ); 
+    //Lock(WRITE); 
+    //Lock(READ); 
 
     uint64_t pos = 0;
     Block block = loadBlock(file->block);
@@ -240,8 +241,8 @@ void Storage::Filesystem::write(File *file, const char *data, uint64_t len) {
     writeBlock(block);
     file->size = len;
 
-    Unlock(READ); 
-    Unlock(WRITE); 
+    //Unlock(READ); 
+    //Unlock(WRITE); 
 }
 #else
 void Storage::Filesystem::write(File *file, const char *data, uint64_t len) {
@@ -407,6 +408,7 @@ void Storage::Filesystem::writeBlock(Block block) {
     pos += BLOCK_SIZE;
 
     msync(filesystem.data + id * BLOCK_SIZE_ACTUAL, BLOCK_SIZE_ACTUAL, MS_SYNC);
+
     grow_lock.unlock();
 }
 
