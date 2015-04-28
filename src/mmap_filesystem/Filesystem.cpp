@@ -392,7 +392,8 @@ Block Storage::Filesystem::loadBlock(uint64_t blockID) {
     uint64_t pos = offset;
 
 #if EXPERIMENTAL
-    memcpy( reinterpret_cast<char*>( &block ) , filesystem.data + pos , BLOCK_SIZE_ACTUAL );
+    memcpy( reinterpret_cast<char*>( &block ) , filesystem.data + pos , HEADER_SIZE );
+    memcpy( reinterpret_cast<char*>( block.buffer ) , filesystem.data + pos + HEADER_SIZE , BLOCK_SIZE );
 #else
 
     memcpy(&block.id, filesystem.data + pos, sizeof(uint64_t));
@@ -427,7 +428,8 @@ void Storage::Filesystem::writeBlock(Block block) {
 
 #if EXPERIMENTAL
 
-    memcpy( filesystem.data + pos , reinterpret_cast<char*>( &block ) , BLOCK_SIZE_ACTUAL );
+    memcpy( filesystem.data + pos , reinterpret_cast<char*>( &block ) , HEADER_SIZE );
+    memcpy( filesystem.data + pos + HEADER_SIZE , reinterpret_cast<char*>( block.buffer ) , BLOCK_SIZE );
 
 #else
     memcpy(filesystem.data + pos, &block.id, sizeof(uint64_t));
