@@ -50,6 +50,7 @@ Storage::Filesystem::Filesystem(std::string data_): data_fname(data_) {
     initFilesystem(create_initial);
 }
 
+#if THREADING
 void Storage::Filesystem::createLockIfNotExists(lock_t type, std::string name) {
 	switch (type) {
 	case READ:
@@ -70,7 +71,6 @@ void Storage::Filesystem::createLockIfNotExists(lock_t type, std::string name) {
 }
 
 void Storage::Filesystem::Lock(lock_t type, File *f) {
-#if THREADING
 	createLockIfNotExists(type, f->name);
 	switch (type) {
 	case READ:
@@ -80,15 +80,9 @@ void Storage::Filesystem::Lock(lock_t type, File *f) {
 		write_locks[f->name]->lock();
 		break;
 	}
-#endif
 }
 
-/*
-   Calculates the total size used by a chain of blocks.
-*/
-
 void Storage::Filesystem::Unlock(lock_t type, File *f) {
-#if THREADING
 	switch (type) {
 	case READ:
 		read_locks[f->name]->unlock();
@@ -97,8 +91,17 @@ void Storage::Filesystem::Unlock(lock_t type, File *f) {
 		write_locks[f->name]->unlock();
 		break;
 	}
-#endif
 }
+#else
+void Storage::Filesystem::createLockIfNotExists(lock_t, std::string) {}
+void Storage::Filesystem::Lock(lock_t, File*) {}
+void Storage::Filesystem::Unlock(lock_t, File*) {}
+#endif
+
+/*
+   Calculates the total size used by a chain of blocks.
+*/
+
 
 /*
    Calculates the total size used by a chain of blocks.

@@ -12,8 +12,9 @@
 #include <mutex>
 
 const uint64_t BLOCK_SIZE  = 64;
+const uint64_t HEADER_SIZE = 4 * sizeof(uint64_t);
+const uint64_t BLOCK_SIZE_ACTUAL = HEADER_SIZE + BLOCK_SIZE;
 const uint64_t BLOCKS_PER_PAGE = 1024;
-const uint64_t BLOCK_SIZE_ACTUAL = 4 * sizeof(uint64_t) + BLOCK_SIZE;
 const uint64_t PAGESIZE = BLOCK_SIZE_ACTUAL * BLOCKS_PER_PAGE;
 
 #ifndef UNUSED

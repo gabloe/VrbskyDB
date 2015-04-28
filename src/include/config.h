@@ -5,6 +5,6 @@
 
 #define RAPIDJSON_SSE2
 #define THREADING 0
-#define NUM_THREADS 1
+#define NUM_THREADS 0
 
 #endif

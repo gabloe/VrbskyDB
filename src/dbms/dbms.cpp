@@ -32,6 +32,18 @@
 
 #if THREADING
 ThreadPool pool(NUM_THREADS);
+
+void waitToFinish() {
+    while(1) {
+        uint64_t n = pool.numTasks();
+        std::cout << n << "\r";
+        if (n < 1) {
+            break;
+        }
+    }
+}
+#else
+    void waitToFinish() {}
 #endif
 
     std::ostream&
@@ -632,12 +644,8 @@ rapidjson::Document processFields(rapidjson::Document &doc, rapidjson::Document 
                 selectAll = true;
                 break;
             }
-            /*
-               if (val.compare("*") == 0) {
-               selectAll = true;
-               }
-               */
         }
+
         rapidjson::Document doc;
 
         // Iterate over every document
@@ -1014,15 +1022,7 @@ rapidjson::Document processFields(rapidjson::Document &doc, rapidjson::Document 
                 line.clear();
                 std::getline(dataFile, line);
                 if (line.compare("q") == 0) {
-#if THREADING
-                    while(1) {
-                        uint64_t n = pool.numTasks();
-                        std::cout << n << "\r";
-                        if (n < 1) {
-                            break;
-                        }
-                    }
-#endif
+                    waitToFinish();
                     std::cout << std::endl;
                     goto end;
                 }
@@ -1043,15 +1043,7 @@ rapidjson::Document processFields(rapidjson::Document &doc, rapidjson::Document 
             }
 
             std::cout << std::endl;
-#if THREADING
-            while(1) {
-                uint64_t n = pool.numTasks();
-                std::cout << n << "\r";
-                if (n < 1) {
-                    break;
-                }
-            }
-#endif
+            waitToFinish();
             std::cout << "\n";
         }
 
