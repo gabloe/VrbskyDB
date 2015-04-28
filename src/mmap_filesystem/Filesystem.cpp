@@ -571,10 +571,11 @@ void Storage::Filesystem::readMetadata() {
 #if THREADING
     metadata_lock.lock();
 #endif
-    uint64_t pos = 0;
-    //uint64_t offset = HEADER_SIZE; // Skip block metadata
+    uint64_t pos = HEADER_SIZE;
 
-    filesystem.numPages = Read64( filesystem.data + HEADER_SIZE );
+    filesystem.numPages = Read64( filesystem.data, pos );
+
+    pos = 0;
 
     if (filesystem.numPages > 1) {
         filesystem.data = (char*)t_mremap(filesystem.fd,
@@ -594,13 +595,15 @@ void Storage::Filesystem::readMetadata() {
     metadata.file = File("__METADATA__", 1, metadata_size);
 
     char *buffer = read(&metadata.file);
+
     filesystem.numPages = Read64( buffer , pos );
-    metadata.numFiles = Read64( buffer , pos );
-    metadata.firstFree = Read64( buffer , pos );
+    metadata.numFiles   = Read64( buffer , pos );
+    metadata.firstFree  = Read64( buffer , pos );
 
     Assert( "position is wrong" , pos == 3 * sizeof(uint64_t) );
     HerpmapReader<uint64_t> reader(metadata.file, this);
     metadata.files = reader.read_buffer(buffer, pos, metadata_size);
+
     free(buffer);
 #if THREADING
     metadata_lock.unlock();

@@ -1012,7 +1012,6 @@ rapidjson::Document processFields(rapidjson::Document &doc, rapidjson::Document 
 
     int main(int argc, char **argv) {
         std::string data_fname("data.db");
-        char buffer[sizeof(uint64_t)];
 
         // Start up the file system
         Storage::Filesystem *fs = new Storage::Filesystem(data_fname);
@@ -1031,9 +1030,9 @@ rapidjson::Document processFields(rapidjson::Document &doc, rapidjson::Document 
         File uuid = fs->open_file( "HERP_UUID" );
         if( uuid.size > 0) {
             char *data = fs->read( &uuid );  
-            theUUID = Read64(data);
+            theUUID = *reinterpret_cast<uint64_t*>(data);
+            std::cout << "Retrieved " << theUUID << " as starting UUID" << std::endl;
             free(data);
-        }else {
         }
 
         int count = 0;
@@ -1106,8 +1105,7 @@ rapidjson::Document processFields(rapidjson::Document &doc, rapidjson::Document 
 
 end:
 
-        Write64(buffer,theUUID);
-        fs->write( &uuid , &buffer[0] , sizeof(uint64_t) );
+        fs->write( &uuid , reinterpret_cast<char*>(&theUUID) , sizeof(uint64_t) );
 
         Storage::HerpmapWriter<DOCDS,Num_Buckets> meta_writer(meta_file, fs);
         meta_writer.write(*meta);
