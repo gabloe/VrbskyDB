@@ -25,6 +25,10 @@ namespace Parsing {
 	const std::string UpdateWithArgs[] = {"WHERE", "LIMIT"};
 	const std::string ShowArgs[] = {"PROJECTS", "INDEXES"};
 
+#ifdef DELETE
+#undef DELETE
+#endif
+	
 	enum Command {
 		CREATE = 0,
 		INSERT = 1,

@@ -13,9 +13,7 @@ namespace Storage {
     template <typename KEY, typename VALUE, uint64_t Buckets = 1024>
         class HerpHash {
 
-            typedef typename std::array<std::map<KEY,VALUE>* , Buckets>::iterator ITER;
-            typedef typename std::map<KEY,VALUE>::iterator IN;
-
+			
             public:
 
             class HerpIterator;
@@ -109,10 +107,16 @@ namespace Storage {
                 return HerpIterator( maps.end() , maps.end() );
             }
 
-            class HerpIterator : public std::iterator<std::input_iterator_tag,std::pair<KEY,VALUE> > {
+			template<typename K, typename V>
+            class HerpIterator : public std::iterator<std::input_iterator_tag,std::pair<K,V> > {
                 public:
+				
+					typedef typename std::array<std::map<K,V>* , Buckets>::iterator ITER;
+					typedef typename std::map<K,V>::iterator INNER;
+			
+				
                     ITER curr,end;
-                    IN m_curr, m_end;
+                    INNER m_curr, m_end;
 
                     void m_next() {
                         if( curr == end ) return;
@@ -154,7 +158,7 @@ namespace Storage {
                         return operator++();
                     }
 
-                    std::pair<const KEY,VALUE>* operator->() const {
+                    std::pair<const K,V>* operator->() const {
                         return &(*m_curr);
                     }
 
@@ -168,15 +172,15 @@ namespace Storage {
                         return !(operator==(rhs));
                     }
 
-                    std::pair<const KEY,VALUE>* operator*() {
+                    std::pair<const K,V>* operator*() {
                         return m_curr;
                     }
 
-                    KEY first() {
+                    K first() {
                         return m_curr->first;
                     }
 
-                    VALUE second() {
+                    V second() {
                         return m_curr->second;
                     }
 
