@@ -13,7 +13,9 @@ namespace Storage {
     template <typename KEY, typename VALUE, uint64_t Buckets = 1024>
         class HerpHash {
 
-			
+            typedef typename std::array<std::map<KEY,VALUE>* , Buckets>::iterator ITER;
+            typedef typename std::map<KEY,VALUE>::iterator INNER;
+
             public:
 
             class HerpIterator;
@@ -107,84 +109,79 @@ namespace Storage {
                 return HerpIterator( maps.end() , maps.end() );
             }
 
-			template<typename K, typename V>
-            class HerpIterator : public std::iterator<std::input_iterator_tag,std::pair<K,V> > {
-                public:
-				
-					typedef typename std::array<std::map<K,V>* , Buckets>::iterator ITER;
-					typedef typename std::map<K,V>::iterator INNER;
-			
-				
-                    ITER curr,end;
-                    INNER m_curr, m_end;
+                class HerpIterator : public std::iterator<std::input_iterator_tag,std::pair<KEY,VALUE> > {
+                    public:
 
-                    void m_next() {
-                        if( curr == end ) return;
+                        ITER curr,end;
+                        INNER m_curr, m_end;
 
-                        while( m_curr == m_end ) {
-                            ++curr;
-                            if( curr == end ) {
-                                break;
+                        void m_next() {
+                            if( curr == end ) return;
+
+                            while( m_curr == m_end ) {
+                                ++curr;
+                                if( curr == end ) {
+                                    break;
+                                }
+                                auto c = *curr;
+                                m_curr = c->begin();
+                                m_end = c->end();
                             }
+                        }
+
+                        HerpIterator( ITER curr, ITER end ) : curr(curr) , end(end) {
+                            if( curr == end ) return;
                             auto c = *curr;
                             m_curr = c->begin();
                             m_end = c->end();
-                        }
-                    }
-
-                    HerpIterator( ITER curr, ITER end ) : curr(curr) , end(end) {
-                        if( curr == end ) return;
-                        auto c = *curr;
-                        m_curr = c->begin();
-                        m_end = c->end();
-                        m_next();
-                    }
-
-                    HerpIterator( const HerpIterator& other) : 
-                        curr(other.curr), end(other.end),
-                        m_curr(other.m_curr), m_end(other.m_end) {}
-
-                    HerpIterator& operator++() {
-                        // Done, just leave
-                        if( curr != end ) { 
-                            ++m_curr;
-                            if( m_curr == m_end ) m_next();
+                            m_next();
                         }
 
-                        return *this;
-                    }
+                        HerpIterator( const HerpIterator& other) : 
+                            curr(other.curr), end(other.end),
+                            m_curr(other.m_curr), m_end(other.m_end) {}
 
-                    HerpIterator& operator++(int) {
-                        return operator++();
-                    }
+                        HerpIterator& operator++() {
+                            // Done, just leave
+                            if( curr != end ) { 
+                                ++m_curr;
+                                if( m_curr == m_end ) m_next();
+                            }
 
-                    std::pair<const K,V>* operator->() const {
-                        return &(*m_curr);
-                    }
+                            return *this;
+                        }
 
-                    bool operator==(const HerpIterator& rhs) {
-                        if( curr != rhs.curr ) return false;    // Not at some position
-                        if( curr == end ) return true;         // We are at the end, don't check iter
-                        return m_curr == rhs.m_curr;
-                    }
+                        HerpIterator& operator++(int) {
+                            return operator++();
+                        }
 
-                    bool operator!=(const HerpIterator& rhs) {
-                        return !(operator==(rhs));
-                    }
+                        std::pair<const KEY,VALUE>* operator->() const {
+                            return &(*m_curr);
+                        }
 
-                    std::pair<const K,V>* operator*() {
-                        return m_curr;
-                    }
+                        bool operator==(const HerpIterator& rhs) {
+                            if( curr != rhs.curr ) return false;    // Not at some position
+                            if( curr == end ) return true;         // We are at the end, don't check iter
+                            return m_curr == rhs.m_curr;
+                        }
 
-                    K first() {
-                        return m_curr->first;
-                    }
+                        bool operator!=(const HerpIterator& rhs) {
+                            return !(operator==(rhs));
+                        }
 
-                    V second() {
-                        return m_curr->second;
-                    }
+                        std::pair<const KEY,VALUE>* operator*() {
+                            return m_curr;
+                        }
 
-            };
+                        KEY first() {
+                            return m_curr->first;
+                        }
+
+                        VALUE second() {
+                            return m_curr->second;
+                        }
+
+                };
 
         };
 };
