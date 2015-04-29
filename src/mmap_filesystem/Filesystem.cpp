@@ -567,7 +567,7 @@ void Storage::Filesystem::initMetadata() {
 
 /*
    Read the metadata into memory.
-   */
+*/
 
 void Storage::Filesystem::readMetadata() {
 #if THREADING

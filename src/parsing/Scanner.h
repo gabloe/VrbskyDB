@@ -2,6 +2,7 @@
 #define _SCANNER_H_
 
 #include <string>
+#include <cstdlib>
 
 #define SKIPWHITESPACE()							\
 {										\

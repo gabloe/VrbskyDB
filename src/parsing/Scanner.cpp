@@ -4,6 +4,8 @@
 
 #include "Scanner.h"
 
+#include <cstdlib>
+
 #define append(BUF,POS,VAL) {           \
     if(POS==len) {                      \
         len = 2 * len;                  \
