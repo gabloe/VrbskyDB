@@ -3,9 +3,18 @@
 
 #include "../include/config.h"
 
+#if defined(_WIN32) || defined(_WINNT)
+
+#include "port/winmap.cpp"
+
+#else
+
+#include <sys/mman.h>
+
+#endif
+
 #include <string>
 #include <sys/stat.h>
-#include <sys/mman.h>
 #include "../storage/HerpHash.h"
 #include <fcntl.h>
 #include <unistd.h>
