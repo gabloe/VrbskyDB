@@ -24,12 +24,6 @@
     <ClInclude Include="dbms\dbms.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="include\linenoise\linenoise.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="include\linenoise\utf8.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
     <ClInclude Include="include\rapidjson\error\en.h">
       <Filter>Header Files</Filter>
     </ClInclude>
@@ -156,18 +150,18 @@
     <ClInclude Include="storage\HerpHash.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="include\linenoise\linenoise.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="include\linenoise\utf8.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="dbms\Aggregator.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="dbms\dbms.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="include\linenoise\linenoise.c">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="include\linenoise\utf8.c">
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="mmap_filesystem\port\winmap.cpp">
@@ -180,6 +174,12 @@
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="parsing\Scanner.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="include\linenoise\linenoise.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="include\linenoise\utf8.c">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>

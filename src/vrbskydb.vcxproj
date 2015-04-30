@@ -51,6 +51,9 @@
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <AdditionalDependencies>Rpcrt4.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
+    <ProjectReference>
+      <UseLibraryDependencyInputs>true</UseLibraryDependencyInputs>
+    </ProjectReference>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
     <ClCompile>
@@ -118,7 +121,9 @@
   <ItemGroup>
     <ClCompile Include="dbms\Aggregator.cpp" />
     <ClCompile Include="dbms\dbms.cpp" />
-    <ClCompile Include="include\linenoise\linenoise.c" />
+    <ClCompile Include="include\linenoise\linenoise.c">
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">false</ExcludedFromBuild>
+    </ClCompile>
     <ClCompile Include="include\linenoise\utf8.c" />
     <ClCompile Include="mmap_filesystem\Filesystem.cpp" />
     <ClCompile Include="mmap_filesystem\port\winmap.cpp" />

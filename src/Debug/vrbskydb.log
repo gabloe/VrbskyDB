@@ -1,5 +1,148 @@
-﻿Build started 4/29/2015 7:41:30 PM.
+﻿Build started 4/29/2015 9:04:38 PM.
+     1>Project "C:\Users\Gabriel\Source\Repos\NoSQL-Project\src\vrbskydb.vcxproj" on node 2 (Build target(s)).
+     1>ClCompile:
+         C:\Program Files (x86)\Microsoft Visual Studio 12.0\VC\bin\CL.exe /c /ZI /nologo /W3 /WX- /sdl- /Od /Oy- /D _MBCS /Gm /EHsc /RTC1 /MDd /GS /fp:precise /Zc:wchar_t /Zc:forScope /Fo"Debug\\" /Fd"Debug\vc120.pdb" /Gd /TP /analyze- /errorReport:prompt dbms\dbms.cpp mmap_filesystem\port\winmap.cpp
+         dbms.cpp
+     1>c:\users\gabriel\source\repos\nosql-project\src\utils\util.h(35): warning C4244: 'argument' : conversion from 'uint64_t' to 'unsigned int', possible loss of data
+     1>c:\users\gabriel\source\repos\nosql-project\src\utils\util.h(65): warning C4244: 'argument' : conversion from 'uint64_t' to 'unsigned int', possible loss of data
+     1>c:\users\gabriel\source\repos\nosql-project\src\utils\util.h(95): warning C4244: 'initializing' : conversion from 'uint64_t' to 'int', possible loss of data
+     1>c:\users\gabriel\source\repos\nosql-project\src\utils\util.h(129): warning C4244: 'initializing' : conversion from 'uint64_t' to 'int', possible loss of data
+     1>c:\users\gabriel\source\repos\nosql-project\src\dbms\dbms.cpp(837): warning C4996: 'localtime': This function or variable may be unsafe. Consider using localtime_s instead. To disable deprecation, use _CRT_SECURE_NO_WARNINGS. See online help for details.
+                 c:\program files (x86)\microsoft visual studio 12.0\vc\include\time.inl(112) : see declaration of 'localtime'
+     1>c:\users\gabriel\source\repos\nosql-project\src\storage\herphash.h(51): warning C4244: 'argument' : conversion from 'uint64_t' to 'std::array<std::map<KEY,VALUE,std::less<_Kty>,std::allocator<std::pair<const _Kty,_Ty>>> *,1024>::size_type', possible loss of data
+                 with
+                 [
+                     KEY=std::string
+         ,            VALUE=uint64_t
+         ,            _Kty=std::string
+         ,            _Ty=uint64_t
+                 ]
+                 c:\users\gabriel\source\repos\nosql-project\src\storage\herphash.h(49) : while compiling class template member function 'Storage::HerpHash<std::string,uint64_t,0x0400>::~HerpHash(void)'
+                 c:\users\gabriel\source\repos\nosql-project\src\dbms\dbms.cpp(1133) : see reference to function template instantiation 'Storage::HerpHash<std::string,uint64_t,0x0400>::~HerpHash(void)' being compiled
+                 c:\users\gabriel\source\repos\nosql-project\src\mmap_filesystem\filesystem.h(128) : see reference to class template instantiation 'Storage::HerpHash<std::string,uint64_t,0x0400>' being compiled
+     1>c:\users\gabriel\source\repos\nosql-project\src\storage\herphash.h(37): warning C4244: 'argument' : conversion from 'uint64_t' to 'std::array<std::map<KEY,VALUE,std::less<_Kty>,std::allocator<std::pair<const _Kty,_Ty>>> *,2048>::size_type', possible loss of data
+                 with
+                 [
+                     KEY=std::string
+         ,            VALUE=DOCDS
+         ,            _Kty=std::string
+         ,            _Ty=DOCDS
+                 ]
+                 c:\users\gabriel\source\repos\nosql-project\src\storage\herphash.h(35) : while compiling class template member function 'Storage::HerpHash<std::string,DOCDS,0x0800>::HerpHash(void)'
+                 c:\users\gabriel\source\repos\nosql-project\src\dbms\dbms.cpp(1025) : see reference to function template instantiation 'Storage::HerpHash<std::string,DOCDS,0x0800>::HerpHash(void)' being compiled
+                 c:\users\gabriel\source\repos\nosql-project\src\dbms\dbms.cpp(54) : see reference to class template instantiation 'Storage::HerpHash<std::string,DOCDS,0x0800>' being compiled
+     1>c:\users\gabriel\source\repos\nosql-project\src\storage\herphash.h(43): warning C4244: 'argument' : conversion from 'uint64_t' to 'std::array<std::map<KEY,VALUE,std::less<_Kty>,std::allocator<std::pair<const _Kty,_Ty>>> *,2048>::size_type', possible loss of data
+                 with
+                 [
+                     KEY=std::string
+         ,            VALUE=DOCDS
+         ,            _Kty=std::string
+         ,            _Ty=DOCDS
+                 ]
+                 c:\users\gabriel\source\repos\nosql-project\src\storage\herphash.h(41) : while compiling class template member function 'Storage::HerpHash<std::string,DOCDS,0x0800>::HerpHash(const Storage::HerpHash<std::string,DOCDS,0x0800> &)'
+                 c:\users\gabriel\source\repos\nosql-project\src\dbms\dbms.cpp(1110) : see reference to function template instantiation 'Storage::HerpHash<std::string,DOCDS,0x0800>::HerpHash(const Storage::HerpHash<std::string,DOCDS,0x0800> &)' being compiled
+     1>c:\users\gabriel\source\repos\nosql-project\src\storage\herphash.h(45): warning C4244: 'argument' : conversion from 'uint64_t' to 'std::array<std::map<KEY,VALUE,std::less<_Kty>,std::allocator<std::pair<const _Kty,_Ty>>> *,2048>::size_type', possible loss of data
+                 with
+                 [
+                     KEY=std::string
+         ,            VALUE=DOCDS
+         ,            _Kty=std::string
+         ,            _Ty=DOCDS
+                 ]
+     1>c:\users\gabriel\source\repos\nosql-project\src\storage\herphash.h(51): warning C4244: 'argument' : conversion from 'uint64_t' to 'std::array<std::map<KEY,VALUE,std::less<_Kty>,std::allocator<std::pair<const _Kty,_Ty>>> *,2048>::size_type', possible loss of data
+                 with
+                 [
+                     KEY=std::string
+         ,            VALUE=DOCDS
+         ,            _Kty=std::string
+         ,            _Ty=DOCDS
+                 ]
+                 c:\users\gabriel\source\repos\nosql-project\src\storage\herphash.h(49) : while compiling class template member function 'Storage::HerpHash<std::string,DOCDS,0x0800>::~HerpHash(void)'
+                 c:\users\gabriel\source\repos\nosql-project\src\dbms\dbms.cpp(1110) : see reference to function template instantiation 'Storage::HerpHash<std::string,DOCDS,0x0800>::~HerpHash(void)' being compiled
+     1>c:\users\gabriel\source\repos\nosql-project\src\storage\herphash.h(32): warning C4244: 'argument' : conversion from 'uint64_t' to 'std::array<std::map<KEY,VALUE,std::less<_Kty>,std::allocator<std::pair<const _Kty,_Ty>>> *,2048>::size_type', possible loss of data
+                 with
+                 [
+                     KEY=std::string
+         ,            VALUE=DOCDS
+         ,            _Kty=std::string
+         ,            _Ty=DOCDS
+                 ]
+                 c:\users\gabriel\source\repos\nosql-project\src\storage\herphash.h(31) : while compiling class template member function 'std::map<KEY,VALUE,std::less<_Kty>,std::allocator<std::pair<const _Kty,_Ty>>> &Storage::HerpHash<KEY,VALUE,0x0800>::Which(const KEY &)'
+                 with
+                 [
+                     KEY=std::string
+         ,            VALUE=DOCDS
+         ,            _Kty=std::string
+         ,            _Ty=DOCDS
+                 ]
+                 c:\users\gabriel\source\repos\nosql-project\src\storage\herphash.h(66) : see reference to function template instantiation 'std::map<KEY,VALUE,std::less<_Kty>,std::allocator<std::pair<const _Kty,_Ty>>> &Storage::HerpHash<KEY,VALUE,0x0800>::Which(const KEY &)' being compiled
+                 with
+                 [
+                     KEY=std::string
+         ,            VALUE=DOCDS
+         ,            _Kty=std::string
+         ,            _Ty=DOCDS
+                 ]
+     1>c:\users\gabriel\source\repos\nosql-project\src\storage\herphash.h(57): warning C4244: 'argument' : conversion from 'uint64_t' to 'std::array<std::map<KEY,VALUE,std::less<_Kty>,std::allocator<std::pair<const _Kty,_Ty>>> *,2048>::size_type', possible loss of data
+                 with
+                 [
+                     KEY=std::string
+         ,            VALUE=DOCDS
+         ,            _Kty=std::string
+         ,            _Ty=DOCDS
+                 ]
+                 c:\users\gabriel\source\repos\nosql-project\src\storage\herphash.h(55) : while compiling class template member function 'Storage::HerpHash<std::string,DOCDS,0x0800> &Storage::HerpHash<std::string,DOCDS,0x0800>::operator =(const Storage::HerpHash<std::string,DOCDS,0x0800> &)'
+                 c:\users\gabriel\source\repos\nosql-project\src\mmap_filesystem\herpmapreader.h(37) : see reference to function template instantiation 'Storage::HerpHash<std::string,DOCDS,0x0800> &Storage::HerpHash<std::string,DOCDS,0x0800>::operator =(const Storage::HerpHash<std::string,DOCDS,0x0800> &)' being compiled
+     1>c:\users\gabriel\source\repos\nosql-project\src\storage\herphash.h(58): warning C4244: 'argument' : conversion from 'uint64_t' to 'std::array<std::map<KEY,VALUE,std::less<_Kty>,std::allocator<std::pair<const _Kty,_Ty>>> *,2048>::size_type', possible loss of data
+                 with
+                 [
+                     KEY=std::string
+         ,            VALUE=DOCDS
+         ,            _Kty=std::string
+         ,            _Ty=DOCDS
+                 ]
+     1>c:\users\gabriel\source\repos\nosql-project\src\storage\herphash.h(60): warning C4244: 'argument' : conversion from 'uint64_t' to 'std::array<std::map<KEY,VALUE,std::less<_Kty>,std::allocator<std::pair<const _Kty,_Ty>>> *,2048>::size_type', possible loss of data
+                 with
+                 [
+                     KEY=std::string
+         ,            VALUE=DOCDS
+         ,            _Kty=std::string
+         ,            _Ty=DOCDS
+                 ]
+     1>c:\program files (x86)\microsoft visual studio 12.0\vc\include\xutility(2132): warning C4996: 'std::_Copy_impl': Function call with parameters that may be unsafe - this call relies on the caller to check that the passed values are correct. To disable this warning, use -D_SCL_SECURE_NO_WARNINGS. See documentation on how to use Visual C++ 'Checked Iterators'
+                 c:\program files (x86)\microsoft visual studio 12.0\vc\include\xutility(2113) : see declaration of 'std::_Copy_impl'
+                 c:\users\gabriel\source\repos\nosql-project\src\utils\util.h(14) : see reference to function template instantiation '_OutIt std::copy<char*,char*>(_InIt,_InIt,_OutIt)' being compiled
+                 with
+                 [
+                     _OutIt=char *
+         ,            _InIt=char *
+                 ]
+                 c:\program files (x86)\microsoft visual studio 12.0\vc\include\xutility(2113) : see declaration of 'std::_Copy_impl'
+         Generating Code...
+         Skipping... (no relevant changes detected)
+         winmap.cpp
+         C:\Program Files (x86)\Microsoft Visual Studio 12.0\VC\bin\CL.exe /c /ZI /nologo /W3 /WX- /sdl- /Od /Oy- /D _MBCS /Gm /EHsc /RTC1 /MDd /GS /fp:precise /Zc:wchar_t /Zc:forScope /Fo"Debug\\" /Fd"Debug\vc120.pdb" /Gd /TC /analyze- /errorReport:prompt include\linenoise\linenoise.c
+         linenoise.c
+     1>c:\users\gabriel\source\repos\nosql-project\src\include\linenoise\linenoise.c(919): warning C4996: 'strncpy': This function or variable may be unsafe. Consider using strncpy_s instead. To disable deprecation, use _CRT_SECURE_NO_WARNINGS. See online help for details.
+                 c:\program files (x86)\microsoft visual studio 12.0\vc\include\string.h(195) : see declaration of 'strncpy'
+     1>c:\users\gabriel\source\repos\nosql-project\src\include\linenoise\linenoise.c(1254): warning C4996: '_snprintf': This function or variable may be unsafe. Consider using _snprintf_s instead. To disable deprecation, use _CRT_SECURE_NO_WARNINGS. See online help for details.
+                 c:\program files (x86)\microsoft visual studio 12.0\vc\include\stdio.h(346) : see declaration of '_snprintf'
+     1>c:\users\gabriel\source\repos\nosql-project\src\include\linenoise\linenoise.c(1569): warning C4996: 'fopen': This function or variable may be unsafe. Consider using fopen_s instead. To disable deprecation, use _CRT_SECURE_NO_WARNINGS. See online help for details.
+                 c:\program files (x86)\microsoft visual studio 12.0\vc\include\stdio.h(211) : see declaration of 'fopen'
+     1>c:\users\gabriel\source\repos\nosql-project\src\include\linenoise\linenoise.c(1604): warning C4996: 'fopen': This function or variable may be unsafe. Consider using fopen_s instead. To disable deprecation, use _CRT_SECURE_NO_WARNINGS. See online help for details.
+                 c:\program files (x86)\microsoft visual studio 12.0\vc\include\stdio.h(211) : see declaration of 'fopen'
+       Link:
+         C:\Program Files (x86)\Microsoft Visual Studio 12.0\VC\bin\link.exe /ERRORREPORT:PROMPT /OUT:"C:\Users\Gabriel\Source\Repos\NoSQL-Project\src\Debug\vrbskydb.exe" /INCREMENTAL /NOLOGO Rpcrt4.lib kernel32.lib user32.lib gdi32.lib winspool.lib comdlg32.lib advapi32.lib shell32.lib ole32.lib oleaut32.lib uuid.lib odbc32.lib odbccp32.lib /MANIFEST /MANIFESTUAC:"level='asInvoker' uiAccess='false'" /manifest:embed /DEBUG /PDB:"C:\Users\Gabriel\Source\Repos\NoSQL-Project\src\Debug\vrbskydb.pdb" /TLBID:1 /DYNAMICBASE /NXCOMPAT /IMPLIB:"C:\Users\Gabriel\Source\Repos\NoSQL-Project\src\Debug\vrbskydb.lib" /MACHINE:X86 Debug\Aggregator.obj
+         Debug\dbms.obj
+         Debug\utf8.obj
+         Debug\Filesystem.obj
+         Debug\winmap.obj
+         Debug\Parser.obj
+         Debug\Scanner.obj
+         Debug\linenoise.obj
+         vrbskydb.vcxproj -> C:\Users\Gabriel\Source\Repos\NoSQL-Project\src\Debug\vrbskydb.exe
+     1>Done Building Project "C:\Users\Gabriel\Source\Repos\NoSQL-Project\src\vrbskydb.vcxproj" (Build target(s)).
 
 Build succeeded.
 
-Time Elapsed 00:00:00.06
+Time Elapsed 00:00:04.46
