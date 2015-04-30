@@ -13,10 +13,10 @@ We want to be able to scale our database across multiple nodes as well among mul
 
 Compilation:
 -------------------
-## On Windows
-Open the Visual Studio 2013 solution and build :)
+### On Windows
+Open the Visual Studio 2013 solution and build
 
-## On Apple OSX and Linux
+### On Apple OSX and Linux
 cd into the src directory and run make
 
 Interface with User
