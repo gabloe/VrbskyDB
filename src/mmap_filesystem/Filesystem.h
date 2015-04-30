@@ -98,7 +98,7 @@ inline void *bsd_mremap(int fd, void *old_address, size_t old_size, size_t new_s
 #elif defined(_WIN32) || defined(_WINNT)
 #define MREMAP_MAYMOVE 0
 inline int win_fallocate(int fd, off_t offset, off_t size) {
-	return 0;
+	return SetFileValidData(fd, offset + size);
 }
 inline void *win_mremap(int fd, void *old_address, size_t old_size, size_t new_size, int flags) {
 	return mmap(old_address, new_size, PROT_READ | PROT_WRITE, MAP_SHARED, fd, 0);
