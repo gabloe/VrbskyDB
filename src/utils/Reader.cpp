@@ -6,11 +6,12 @@
 #include <cstring>
 #include <array>
 #include <cassert>
+#include <string>
 
 
 #define moveAndTest(stream,pos ) {  \
     pos += 8;                       \
-    assert( stream.tellg() == pos );\
+    assert( (uint64_t)stream.tellg() == pos );\
 }
 
 const uint64_t blockSize = 1024;
@@ -78,7 +79,6 @@ void readBlock( std::fstream &stream , uint64_t block , FileStatus &status ) {
     std::cout << "-----------------------------------------" << std::endl;
 }
 
-
 uint64_t read(std::fstream &stream , FileStatus &status , char* buffer , size_t length  ) {
     uint64_t pos = 0;
     while( pos < length ) {
@@ -96,7 +96,7 @@ uint64_t read(std::fstream &stream , FileStatus &status , char* buffer , size_t 
 }
 
 void printFiles( std::fstream &stream, FileSystem &fs ) {
-    int block = fs.metadata_start;
+    uint64_t block = fs.metadata_start;
     FileStatus status;
     readBlock( stream , block , status  );
 

@@ -25,7 +25,7 @@ int main(int argc, char *argv[]) {
 
     // Displaying everything
     for( auto iter = lol.begin() ; iter != lol.end() ; ++iter ) {
-        std::pair<std::string,int> pair = *iter;
+        std::pair<std::string,int> pair = **iter;
         std::cout << pair.first << ": " << pair.second << std::endl;
     }
     return 0;

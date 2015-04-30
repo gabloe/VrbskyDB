@@ -4,20 +4,19 @@
 #include "../include/config.h"
 
 #if defined(_WIN32) || defined(_WINNT)
-
+#define NOMINMAX
 #include "port/winmap.cpp"
-
+typedef int mode_t;
+#include <stdlib.h>
 #else
-
 #include <sys/mman.h>
-
+#include <unistd.h>
 #endif
 
 #include <string>
 #include <sys/stat.h>
 #include "../storage/HerpHash.h"
 #include <fcntl.h>
-#include <unistd.h>
 #include <iostream>
 #include <vector>
 
@@ -25,7 +24,8 @@
 #include <mutex>
 #endif
 
-const uint64_t BLOCK_SIZE  = 256;
+const uint64_t BLOCK_SIZE = 256;
+
 #ifdef EXPERIMENTAL
 const uint64_t HEADER_SIZE = 3 * sizeof(uint64_t);
 #else
@@ -95,6 +95,16 @@ inline void *bsd_mremap(int fd, void *old_address, size_t old_size, size_t new_s
 #define posix_fallocate bsd_fallocate
 #define t_mremap bsd_mremap
 #define MREMAP_MAYMOVE 0
+#elif defined(_WIN32) || defined(_WINNT)
+#define MREMAP_MAYMOVE 0
+inline int win_fallocate(int fd, off_t offset, off_t size) {
+	return 0;
+}
+inline void *win_mremap(int fd, void *old_address, size_t old_size, size_t new_size, int flags) {
+	return mmap(old_address, new_size, PROT_READ | PROT_WRITE, MAP_SHARED, fd, 0);
+}
+#define t_mremap win_mremap
+#define posix_fallocate win_fallocate
 #else
 inline void *linux_mremap(int UNUSED(fd), void *old_address, size_t old_size, size_t new_size, int flags) {
 	return mremap(old_address, old_size, new_size, flags);
