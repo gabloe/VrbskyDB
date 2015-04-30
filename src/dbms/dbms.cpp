@@ -889,7 +889,8 @@ rapidjson::Document processFields(rapidjson::Document &doc, rapidjson::Document 
                                 PRINT("Result Empty!\r\n");
                             } else {
                                 std::string pretty_data = toPrettyString(&data);
-                                PRINT(pretty_data, "\r\n");
+								printf( "%s\n" , pretty_data.c_str() );
+                                //PRINT(pretty_data, "\r\n");
                                 PRINT(array.Size(), " records returned.\r\n");
                             }
                         }
@@ -1010,6 +1011,9 @@ rapidjson::Document processFields(rapidjson::Document &doc, rapidjson::Document 
     }
 
     int main(int argc, char **argv) {
+		std::ios_base::sync_with_stdio(false);
+		std::cin.tie(NULL);
+		
         std::string data_fname("data.db");
 
         // Start up the file system

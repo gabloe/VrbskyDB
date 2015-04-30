@@ -39,7 +39,7 @@ namespace Parsing {
             append(buffer,buf_pos,t);
 		}
         // Null terminate
-        buffer[buf_pos] = '\0';
+		append(buffer, buf_pos, '\0');
         return buffer;
 		//return std::string( buffer, buf_pos );
 	}
@@ -100,7 +100,7 @@ namespace Parsing {
 		if (numOpen != numClosed) {
 			throw std::runtime_error("SCAN ERROR: Unmatched braces.");
 		}
-        buffer[buf_pos] = '\0';
+		append(buffer, buf_pos, '\0');
         return buffer;
 		//return std::string( buffer , buf_pos );;
 	}

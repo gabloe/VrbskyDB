@@ -444,7 +444,7 @@ void Storage::Filesystem::writeBlock(Block block) {
 #endif
 
 #if defined(_WIN32) || defined(_WINNT)
-	FlushViewOfFile(filesystem.data + pos, BLOCK_SIZE_ACTUAL);
+	//FlushViewOfFile(filesystem.data + pos, BLOCK_SIZE_ACTUAL);
 #else
     msync(filesystem.data + pos , BLOCK_SIZE_ACTUAL, MS_SYNC);
 #endif
