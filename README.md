@@ -13,7 +13,7 @@ We want to be able to scale our database across multiple nodes as well among mul
 
 Compilation:
 -------------------
-### On Windows
+### On Microsoft Windows
 * Open the Visual Studio 2013 solution and build
 
 ### On Apple OSX and Linux
@@ -48,7 +48,5 @@ Interface with User
 * SELECT field [, field] IN p_name WHERE {};
 * SELECT * FROM People;
 * SELECT * FROM People WHERE { "fName": "Jerf"};
-
-SELECT * FROM People WHERE { "age" : { "#gt" : 5 } };
-
-SELECT * FROM People WHERE { "spouse" : { "fName" : "Mildred" } };
+* SELECT * FROM People WHERE { "age" : { "#gt" : 5 } };
+* SELECT * FROM People WHERE { "spouse" : { "fName" : "Mildred" } };
