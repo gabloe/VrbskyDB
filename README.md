@@ -1,7 +1,7 @@
 
 
-VrbskyDB NoSQL Database Management System
-=========================================
+VrbskyDB Database Management System
+===================================
 
 We have implemented a NoSQL database which supports a rich query language.
 The language supports CRUD as well as some analytical operations, i.e max, min, average, etc.
