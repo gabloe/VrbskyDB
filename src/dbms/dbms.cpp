@@ -1,4 +1,3 @@
-
 #include "../include/config.h"
 
 #include <fstream> 
@@ -838,7 +837,7 @@ rapidjson::Document processFields(rapidjson::Document &doc, rapidjson::Document 
         timeinfo = localtime (&rawtime);
 
         char buffer[80];
-        strftime(buffer,80,"%F %X",timeinfo);
+        strftime(buffer,80,"%Y-%m-%d %X",timeinfo);
 
         // Add timestamp to result
         rapidjson::Value tstamp(buffer, result.GetAllocator());

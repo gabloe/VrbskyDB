@@ -28,7 +28,7 @@ int main(int argc, char *argv[]) {
     uint64_t seen = 0;
 
     for( auto iter = lol.begin() ; iter != lol.end() ; ++iter ) {
-        std::pair<const std::string,uint64_t>& kvp = *iter;
+        std::pair<const std::string,uint64_t>& kvp = **iter;
         Assert( "Already saw" , !check[kvp.second] );
         ++seen;
         check[kvp.second] = true;

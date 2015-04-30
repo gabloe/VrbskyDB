@@ -1,11 +1,9 @@
 
 #include "../include/config.h"
 
-#include <sys/mman.h>
 #include <iostream>
 #include <cstdlib>
 #include <fcntl.h>
-#include <unistd.h>
 #include <stdio.h>
 #include <string.h>
 #include <vector>
@@ -445,7 +443,11 @@ void Storage::Filesystem::writeBlock(Block block) {
     pos += BLOCK_SIZE;
 #endif
 
+#if defined(_WIN32) || defined(_WINNT)
+	FlushViewOfFile(filesystem.data + pos, BLOCK_SIZE_ACTUAL);
+#else
     msync(filesystem.data + pos , BLOCK_SIZE_ACTUAL, MS_SYNC);
+#endif
 
 }
 

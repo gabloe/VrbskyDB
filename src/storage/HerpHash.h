@@ -170,7 +170,7 @@ namespace Storage {
                         }
 
                         std::pair<const KEY,VALUE>* operator*() {
-                            return m_curr;
+                            return &(*m_curr);
                         }
 
                         KEY first() {
