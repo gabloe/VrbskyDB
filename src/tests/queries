@@ -1,0 +1,13 @@
+INSERT INTO herp WITH [ { "Hello" : "World" } , {"Hello" : "Moto" } ];
+INSERT INTO herp WITH { "Hello" : "World" };
+UPDATE p_name WITH { "A": "B" } WHERE { "C": "D" };
+UPDATE herp WITH { "Hello" : "Goodbye" } WHERE { "Hello" : "Moto" } LIMIT 1;
+DELETE * FROM p_name WHERE { "A": "B" } LIMIT 2;
+DELETE * FROM People WHERE { "fName" : "Todd" };
+CREATE INDEX ON [ "A", "B", "C" ];
+SELECT * FROM People;
+SELECT * FROM People WHERE { "fName": "Jerf"};
+SELECT * FROM People WHERE { "age" : { "#gt" : 5 } };
+SELECT * FROM People WHERE { "spouse" : { "fName" : "Mildred" } };
+SELECT A, SUM(A) from Derp;
+SELECT A, SUM(A) from Derp WHERE { "B": 2 };
