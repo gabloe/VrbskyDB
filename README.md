@@ -14,39 +14,40 @@ We want to be able to scale our database across multiple nodes as well among mul
 
 Interface with User
 -------------------
+## Insert
 
-### Query Language
-#### Create a project and/or document
-<ul>
-<li>create document <b>PNAME</b>.<b>DNAME</b>;</li>
-<li>create document <b>PNAME</b>.<b>DNAME</b> with value <b>JSON</b>;</li>
-<li>create project <b>PNAME</b>;</li>
-<li>create project <b>PNAME</b> with documents (<b>DNAME_1</b>, <b>DNAME_2</b>, ... , <b>DNAME_N</b>);</li>
-</ul>
+**Inserts automatically create a project if it does not exist.**
 
-#### Show available projects or documents
-<ul>
-<li>show projects;</li>
-<li>show documents in <b>PNAME</b>;</li>
-</ul>
+INSERT INTO herp WITH { "Hello" : "World" };
 
-#### Delete a document or project
-<ul>
-<li>delete project <b>PNAME</b>;</li>
-<li>delete document <b>PNAME</b>.<b>DNAME</b>;</li>
-</ul>
+INSERT INTO herp WITH [ { "Hello" : "World" } , {"Hello" : "Moto" } ];	% Insert two records into herp
 
-Under Construction!
 
-Data Retrieval
--------------------
+## Update
 
-Operations on Data
--------------------
+UPDATE p_name WITH { json } WHERE { criteria } 
 
-Load balancing
--------------------
+UPDATE herp WITH { "Hello" : "Goodbye" } WHERE { "Hello" : "Moto" } LIMIT 1;
 
-Data storage
--------------------
+## Delete
 
+DELETE FROM p_name WHERE { criteria } [ LIMIT number ]
+
+DELETE FROM People WHERE { "fName" : "Todd" };
+
+## Create Index
+
+CREATE INDEX ON [ field1 , field2 , ... ];
+
+## Find
+
+SELECT field [, field] IN p_name;
+SELECT field [, field] IN p_name WHERE {};
+
+SELECT * FROM People;
+
+SELECT * FROM People WHERE { "fName": "Jerf"};
+
+SELECT * FROM People WHERE { "age" : { "#gt" : 5 } };
+
+SELECT * FROM People WHERE { "spouse" : { "fName" : "Mildred" } };
