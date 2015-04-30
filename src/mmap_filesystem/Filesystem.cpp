@@ -15,6 +15,26 @@
 #include "HerpmapReader.h"
 #include "HerpmapWriter.h"
 
+void printError() {
+	
+    //Get the error message, if any.
+    DWORD errorMessageID = ::GetLastError();
+	if (errorMessageID == 0)
+		return;
+
+    LPSTR messageBuffer = nullptr;
+    size_t size = FormatMessageA(FORMAT_MESSAGE_ALLOCATE_BUFFER | FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS,
+                                 NULL, errorMessageID, MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT), (LPSTR)&messageBuffer, 0, NULL);
+
+    std::string message(messageBuffer, size);
+
+    //Free the buffer.
+    LocalFree(messageBuffer);
+
+	std::cout << message << std::endl;
+
+}
+
 #define printJunk(MSG) {   \
     std::cout << MSG << std::endl;\
     std::cout << "\tNumPages: " << filesystem.numPages << std::endl;\
@@ -197,8 +217,26 @@ void Storage::Filesystem::compact() {
 
     // Close the old filesystem
     close(filesystem.fd);
+#if defined(_WIN32)
+	if (!UnmapViewOfFile(filesystem.data)) {
+		printError();
+	}
+
+	if (!FlushViewOfFile(filesystem.data, filesystem.numPages * PAGESIZE)) {
+		printError();
+	}
+
+	if (!DeleteFile(data_fname.c_str())) {
+		printError();
+	}
+	
+	if (!MoveFile("_compact.db", data_fname.c_str())) {
+		printError();
+	}
+#else
     std::remove(data_fname.c_str());
     std::rename("_compact.db", data_fname.c_str());
+#endif
 
     filesystem.fd = open(data_fname.c_str(), O_RDWR | O_CREAT, (mode_t)0644);
     if (!filesystem.fd) {
