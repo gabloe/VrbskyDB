@@ -119,7 +119,7 @@ extern "C" {
    typedef signed int        int32_t;
    typedef unsigned char     uint8_t;
    typedef unsigned short    uint16_t;
-   typedef unsigned int      uint32_t;
+   typedef uint64_t      uint32_t;
 #else
    typedef signed __int8     int8_t;
    typedef signed __int16    int16_t;
@@ -158,7 +158,7 @@ typedef uint64_t  uint_fast64_t;
    typedef unsigned __int64  uintptr_t;
 #else // _WIN64 ][
    typedef _W64 signed int   intptr_t;
-   typedef _W64 unsigned int uintptr_t;
+   typedef _W64 uint64_t uintptr_t;
 #endif // _WIN64 ]
 
 // 7.18.1.5 Greatest-width integer types

@@ -92,7 +92,7 @@
                 return ret;
             }
             static const char* Bytes( std::list<std::string> &er ) {
-                int length = Type::Size(er);
+                uint64_t length = Type::Size(er);
                 char *buff = new char[length];
                 uint64_t pos = 0;
                 for( auto i = er.begin() ; i != er.end() ; ++i ) {
@@ -126,7 +126,7 @@
                 return ret;
             }
             static const char* Bytes( std::vector<std::string> &er ) {
-                int length = Type::Size(er);
+                uint64_t length = Type::Size(er);
                 char *buff = new char[length];
                 uint64_t pos = 0;
                 for( auto i = er.begin() ; i != er.end() ; ++i ) {
