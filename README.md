@@ -25,9 +25,9 @@ Interface with User
 
 **Inserts automatically create a project if it does not exist.**
 
-INSERT INTO herp WITH { "Hello" : "World" };
+* INSERT INTO herp WITH { "Hello" : "World" };
 
-INSERT INTO herp WITH [ { "Hello" : "World" } , {"Hello" : "Moto" } ];	% Insert two records into herp
+* INSERT INTO herp WITH [ { "Hello" : "World" } , {"Hello" : "Moto" } ];	% Insert two records into herp
 
 ### Update
 
