@@ -7,12 +7,14 @@ We have implemented a NoSQL database which supports a rich query language.
 The language supports CRUD as well as some analytical operations, i.e max, min, average, etc.
 We implement a memory-mapped filesystem for efficient disk operations.
 
-Future improvements:
---------------------
+Future improvements
+-------------------
+
 We want to be able to scale our database across multiple nodes as well among multiple concurrent users.
 
-Compilation:
--------------------
+Compilation Instructions
+------------------------
+
 ### On Microsoft Windows
 * Open the Visual Studio 2013 solution and build
 
