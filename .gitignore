@@ -6,3 +6,7 @@ bin/
 *.out
 *.o
 *.sdf
+src/Release
+*.psess
+*.vsp
+src/x64/
