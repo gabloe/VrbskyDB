@@ -20,9 +20,6 @@ LINENOISE:
 MMAP_FS:
 	make -C mmap_filesystem
 
-OST:
-	make -C os
-
 PARSINGT:
 	make -C parsing
 
@@ -41,10 +38,8 @@ $(OBJECTS):
 
 clean:
 	make -C parsing clean
-	make -C os clean
 	make -C dbms clean
 	make -C tests clean
-
 	rm -rf $(OBJECTS)
 	rm -rf $(OUT)
 
