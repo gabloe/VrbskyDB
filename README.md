@@ -1,12 +1,15 @@
 
 
-NoSQL Database System Project
-=============================
+VrbskyDB NoSQL Database System Project
+======================================
 
-We want to implements a NoSQL database which supports a rich query language.
-The language should support CRUD as well as some analytical operations, i.e max, min, average, etc.
+We have implemented a NoSQL database which supports a rich query language.
+The language supports CRUD as well as some analytical operations, i.e max, min, average, etc.
+We implement a memory-mapped filesystem for efficient disk operations.
+
+Future improvements:
+--------------------
 We want to be able to scale our database across multiple nodes as well among multiple concurrent users.
-Additionally we want to use efficient an efficient data storage sub-system as well.
 
 
 Interface with User
