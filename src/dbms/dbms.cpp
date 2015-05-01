@@ -1034,7 +1034,9 @@ rapidjson::Document processFields(rapidjson::Document &doc, rapidjson::Document 
         if( uuid.size > 0) {
             char *data = fs->read( &uuid );  
             theUUID = *reinterpret_cast<uint64_t*>(data);
+#ifdef HERP
             std::cout << "Retrieved " << theUUID << " as starting UUID" << std::endl;
+#endif
             free(data);
         }
 
