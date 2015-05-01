@@ -208,16 +208,19 @@ void Storage::Filesystem::compact() {
     Storage::HerpHash<std::string,uint64_t> newFiles = fs->getFileMap();
     fs->shutdown();
 
-    // Unmap the old filesystem
-    munmap(filesystem.data, filesystem.numPages * PAGESIZE);
+    
+    
 
     metadata.files = newFiles;
     filesystem.numPages = newNumPages; 
     metadata.numFiles = newNumFiles; 
 
     // Close the old filesystem
-    close(filesystem.fd);
+	close(filesystem.fd);
+
 #if defined(_WIN32)
+
+	// Unmap the old filesystem
 	if (!UnmapViewOfFile(filesystem.data)) {
 		printError();
 	}
@@ -234,6 +237,8 @@ void Storage::Filesystem::compact() {
 		printError();
 	}
 #else
+	// Unmap the old filesystem
+	munmap(filesystem.data, filesystem.numPages * PAGESIZE);
     std::remove(data_fname.c_str());
     std::rename("_compact.db", data_fname.c_str());
 #endif
