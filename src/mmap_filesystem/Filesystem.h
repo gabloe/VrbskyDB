@@ -145,7 +145,7 @@ inline bool file_exists(std::string fname) {
 namespace Storage {
 	class Filesystem {
 	public:
-		Filesystem(std::string);
+		Filesystem(const std::string);
 		void shutdown();
 		File open_file(const char*);
 		File open_file(const std::string&);

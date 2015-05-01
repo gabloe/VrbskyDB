@@ -1,12 +1,10 @@
-#include <immap_filesystemtream>
+#include <iostream>
 
-#include "../mmap_filesystem/FileSystem.h"
-#include "../mmap_filesystem/File.h"
-#include "../mmap_filesystem/FileWriter.h"
+#include "../mmap_filesystem/Filesystem.h"
 
 int main( void ) {
     const std::string FileName = "test.dat";
-    Storage::FileSystem fs( FileName );
+    Storage::Filesystem fs( FileName );
     fs.shutdown();
 
     return 0;

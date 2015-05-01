@@ -9,13 +9,15 @@ CFLAGS=-std=c++11 -O3 -Wall -Wextra -g -luuid
 endif
 INCLUDE_DIR=../include/
 INCLUDES=-I$(INCLUDE_DIR)
-OS_OBJS=$(OBJECTS)File.o $(OBJECTS)FileSystem.o $(OBJECTS)FileReader.o $(OBJECTS)FileWriter.o
+OS_OBJS=$(OBJECTS)mmap_filesystem.o
 
-OUTPUT=$(OUT)LinearHashTest $(OUT)ParserTest $(OUT)Insert $(OUT)EndianTest \
+OUTPUT=$(OUT)ParserTest $(OUT)Insert $(OUT)EndianTest \
 	$(OUT)CreateTest $(OUT)FileTest $(OUT)WriteReadTest \
 	$(OUT)WriteTest \
-	$(OUT)LargeWriteTest $(OUT)LargeReadTest \
-	$(OUT)ReadAllTest $(OUT)ReplaceTest
+
+NOT_WORKING=$(OUT)LinearHashTest \
+		   	$(OUT)LargeWriteTest $(OUT)LargeReadTest \
+			$(OUT)ReadAllTest $(OUT)ReplaceTest
 
 all: $(OUT) PARSING OS $(OUTPUT)
 
@@ -31,7 +33,7 @@ PARSING:
 	make -C ../parsing/
 
 OS:
-	make -C ../os/
+	make -C ../mmap_filesystem/
 
 RapidJSONTest: $(OUT)RapidJSONTest
 

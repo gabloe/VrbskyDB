@@ -54,7 +54,7 @@ void printError() {
    If the files exist, load the metadata.
    */
 
-Storage::Filesystem::Filesystem(std::string data_): data_fname(data_) {
+Storage::Filesystem::Filesystem(const std::string data_): data_fname(data_) {
     // Initialize the filesystem
     bool create_initial = false;
     if (!file_exists(data_)) {

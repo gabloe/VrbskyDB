@@ -3,29 +3,24 @@
 #include <string>
 #include <cassert>
 
-#include "../os/FileSystem.h"
-#include "../os/File.h"
-#include "../os/FileWriter.h"
-#include "../os/FileReader.h"
+#include "../mmap_filesystem/Filesystem.h"
 
 int main(void) {
     char data[] = {"Hello"};
-    char test[] = {"     "};
-    os::FileSystem fs( "test.dat" );
+    char *test;
+    Storage::Filesystem fs( "test.dat" );
 
-    os::File &first = fs.open( "TEST" );
-    os::FileWriter out( first );
-    out.write( sizeof(data) , data );
+    File first = fs.open_file( "TEST" );
+    fs.write( &first , data , sizeof(data) );
     assert(first.size == sizeof(data));
-    out.close();
 
-    os::File& second = fs.open( "TEST" );
+    File second = fs.open_file( "TEST" );
     assert(second.size == sizeof(data));
-    os::FileReader in( second );
-    in.read( sizeof(test) , test );
-    in.close();
+
+    test = fs.read( &second );
 
     for( size_t i = 0 ; i < sizeof(data) ; ++i ) assert( data[i] == test[i] );
+    free(test);
 
     fs.shutdown();
     return 0;
