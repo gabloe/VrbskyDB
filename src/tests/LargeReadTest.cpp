@@ -1,15 +1,14 @@
 #include <cassert>
 #include <string>
 
-#include "../os/FileReader.h"
-#include "../os/FileWriter.h"
+#include "../mmap_filesystem/FileReader.h"
+#include "../mmap_filesystem/FileWriter.h"
 
 const size_t DataSize = 2 * 1024;
 
 void writeData() {
-    os::FileSystem fs( "test.dat" );
-    os::File& file = fs.open( "TEST" );
-    os::FileWriter writer( file );
+    Storage::FileSystem fs( "test.dat" );
+    File& file = fs.open_file( "TEST" );
 
     char *data = new char[DataSize];
     char c = 'a';
@@ -20,22 +19,19 @@ void writeData() {
             c = 'a';
         }
     }
-    writer.write( DataSize , data );
-    delete[] data;
+    fs.write( &file , data , DataSize );
     assert( file.size == DataSize );
-    writer.close();
+    delete[] data;
     fs.shutdown();
 }
 
 void readData() {
-    os::FileSystem fs( "test.dat" );
-    os::File& file = fs.open( "TEST" );
-    os::FileReader reader( file );
+    Storage::FileSystem fs( "test.dat" );
+    File& file = fs.open_file( "TEST" );
 
     assert(file.size == DataSize);
 
-    char *data = new char[DataSize];
-    assert(reader.read( DataSize , data ) == 0);
+    char *data = fs.read( &file );
 
     char c = 'a';
     for( size_t i = 0 ; i < DataSize ; ++i ) {
@@ -45,29 +41,6 @@ void readData() {
             c = 'a';
         }
     }
-    delete[] data;
-    reader.close();
-    fs.shutdown();
-}
-
-void singleByteReadData() {
-    os::FileSystem fs( "test.dat" );
-    os::File& file = fs.open( "TEST" );
-    os::FileReader reader( file );
-
-    assert(file.size == DataSize);
-
-    char c = 'a';
-    for( size_t i = 0 ; i < DataSize ; ++i ) {
-        char t = 0;
-        reader.read( 1 , &t );
-        assert( t == c );
-        ++c;
-        if( c > 'z' ) {
-            c = 'a';
-        }
-    }
-    reader.close();
     fs.shutdown();
 }
 
@@ -75,6 +48,5 @@ void singleByteReadData() {
 int main() {
     writeData();
     readData();
-    singleByteReadData();
     return 0;
 }

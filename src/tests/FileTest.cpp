@@ -1,14 +1,14 @@
 #include <iostream>
 
-#include "../os/FileSystem.h"
-#include "../os/File.h"
-#include "../os/FileWriter.h"
+#include "../mmap_filesystem/FileSystem.h"
+#include "../mmap_filesystem/File.h"
+#include "../mmap_filesystem/FileWriter.h"
 #include "../assert/Assert.h"
 
 int main( void ) {
     const std::string FileName = "test.dat";
-    os::FileSystem fs( FileName );
-    os::File &f = fs.open( "TEST" );
+    Storage::FileSystem fs( FileName );
+    File f = fs.open_file( "TEST" );
     Assert( "File is not empty" , f.size == 0 );
     fs.shutdown();
 

@@ -15,6 +15,7 @@
 #include "HerpmapReader.h"
 #include "HerpmapWriter.h"
 
+#if defined(_WIN32)
 void printError() {
 	
     //Get the error message, if any.
@@ -34,6 +35,7 @@ void printError() {
 	std::cout << message << std::endl;
 
 }
+#endif
 
 #define printJunk(MSG) {   \
     std::cout << MSG << std::endl;\
