@@ -918,7 +918,7 @@ rapidjson::Document processFields(rapidjson::Document &doc, rapidjson::Document 
                         DOCDS& list = meta[key];
                         PRINT("[\r\n");
                         for (auto it = list.begin() ; it != list.end() ; ++it) {
-                            PRINT(*it, "\n");
+                            PRINT("\t", *it, "\n");
                         }
                         PRINT("]\r\n");
                     } else {
