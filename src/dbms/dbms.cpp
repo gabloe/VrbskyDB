@@ -1088,6 +1088,7 @@ rapidjson::Document processFields(rapidjson::Document &doc, rapidjson::Document 
         }
 
         linenoiseSetCompletionCallback(completion);
+	linenoiseSetMultiLine(1);
 
         std::cout << "Enter a query (q to quit):" << std::endl;
         while (1) {
