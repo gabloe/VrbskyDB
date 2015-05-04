@@ -189,11 +189,11 @@ void insertDocuments(rapidjson::Document &docs, std::string &pname, META &meta, 
 
     // If it's an array of documents.  Iterate over them and insert each document.
     if (docs.GetType() == rapidjson::kArrayType) {
-        for( auto it = docs.MemberBegin() ; it != docs.MemberEnd() ; it++ ) {
-            rapidjson::Value& val = it->value;
+        for( auto it = docs.Begin() ; it != docs.End() ; it++ ) {
+            rapidjson::Value& val = *it;
             std::string docUUID = getUUID();
             val.AddMember( "_doc" , rapidjson::Value( docUUID.c_str() , allocator) , allocator );
-            std::string data = toString( &(it->value));
+            std::string data = toString( &val );
             insertDocument( docUUID , data , pname, meta, fs);
         }
     } else if (docs.GetType() == rapidjson::kObjectType) {
