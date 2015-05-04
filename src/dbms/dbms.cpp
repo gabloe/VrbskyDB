@@ -889,7 +889,7 @@ rapidjson::Document processFields(rapidjson::Document &doc, rapidjson::Document 
                                 PRINT("Result Empty!\r\n");
                             } else {
                                 std::string pretty_data = toPrettyString(&data);
-								printf( "%s\n" , pretty_data.c_str() );
+                                printf( "%s\n" , pretty_data.c_str() );
                                 //PRINT(pretty_data, "\r\n");
                                 PRINT(array.Size(), " records returned.\r\n");
                             }
@@ -1010,11 +1010,18 @@ rapidjson::Document processFields(rapidjson::Document &doc, rapidjson::Document 
         }
     }
 
+    bool done( std::string &blurp ) {
+        return blurp[blurp.size()-1] == ';';
+    }
+
+    /********************************/
+    // MAIN METHOD
     int main(int argc, char **argv) {
-		//std::ios_base::sync_with_stdio(false);
-		//std::cin.tie(NULL);
-		
+        //std::ios_base::sync_with_stdio(false);
+        //std::cin.tie(NULL);
+
         std::string data_fname("data.db");
+        linenoiseSetMultiLine(1);
 
         // Start up the file system
         Storage::Filesystem *fs = new Storage::Filesystem(data_fname);
@@ -1056,13 +1063,19 @@ rapidjson::Document processFields(rapidjson::Document &doc, rapidjson::Document 
             double percent = 0;
             while (dataFile.good()) {
                 line.clear();
-                std::getline(dataFile, line);
-                if (line.compare("q") == 0) {
+                std::string buffer;
+                std::getline(dataFile, line );
+                buffer += line;
+                while( !done(buffer) ) {
+                    std::getline(dataFile, line );
+                    buffer += line;
+                }
+                if (buffer.compare("q") == 0) {
                     waitToFinish();
                     std::cout << std::endl;
                     goto end;
                 }
-                Parsing::Parser p(line);
+                Parsing::Parser p(buffer);
                 Parsing::Query *query = p.parse();
                 if (query) {
                     handle( query , meta , fs , false );
@@ -1088,7 +1101,6 @@ rapidjson::Document processFields(rapidjson::Document &doc, rapidjson::Document 
         }
 
         linenoiseSetCompletionCallback(completion);
-	linenoiseSetMultiLine(1);
 
         std::cout << "Enter a query (q to quit):" << std::endl;
         while (1) {
@@ -1096,8 +1108,13 @@ rapidjson::Document processFields(rapidjson::Document &doc, rapidjson::Document 
             if (buf == NULL || strcmp(buf, "q") == 0) {
                 break;
             }
-
             std::string q(buf);
+
+            while( !done(q) ) {
+                buf = linenoise("...> ");
+                q += " " + std::string(buf);
+            }
+
             Parsing::Parser p(q);
             Parsing::Query *query = p.parse();
             if (query) {
