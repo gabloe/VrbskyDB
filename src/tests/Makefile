@@ -11,7 +11,7 @@ INCLUDE_DIR=../include/
 INCLUDES=-I$(INCLUDE_DIR)
 OS_OBJS=$(OBJECTS)mmap_filesystem.o
 
-OUTPUT=$(OUT)ParserTest $(OUT)Insert $(OUT)EndianTest \
+OUTPUT=$(OUT)ParserTest $(OUT)BulkInsert $(OUT)Insert $(OUT)EndianTest \
 	$(OUT)CreateTest $(OUT)FileTest $(OUT)WriteReadTest \
 	$(OUT)WriteTest \
 
@@ -81,6 +81,9 @@ $(OUT)CreateTest: ./CreateTest.cpp
 
 $(OUT)Insert: ./Insert.cpp
 	$(CC) $(CFLAGS) $(INCLUDES) $(OS_OBJS) ./Insert.cpp -o $(OUT)Insert
+
+$(OUT)BulkInsert: ./BulkInsert.cpp
+	$(CC) $(CFLAGS) $(INCLUDES) $(OS_OBJS) ./BulkInsert.cpp -o $(OUT)BulkInsert
 
 $(OUT):
 	mkdir -p $(OUT)
