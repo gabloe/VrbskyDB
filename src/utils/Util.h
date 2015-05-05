@@ -66,6 +66,7 @@
             }
             static const char* Bytes( std::string &msg ) {
                 char *buff = new char[msg.size()];
+                std::copy( msg.begin(), msg.end() , buff );
                 return buff;
             }
             static const std::string Name() {

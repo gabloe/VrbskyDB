@@ -718,16 +718,11 @@ rapidjson::Document processFields(rapidjson::Document &doc, rapidjson::Document 
 
 
     // Select
-    rapidjson::Document select(DOCDS &docs, rapidjson::Document &origFields, rapidjson::Document *where, int limit, FILESYSTEM &fs) {
-        rapidjson::Document result;
-        result.SetObject();
+    bool select(DOCDS &docs, rapidjson::Document &origFields, rapidjson::Document *where, int limit, FILESYSTEM &fs) {
+
+        bool result = false;
 
         if (limit == 0) return result;
-
-        rapidjson::Value array;
-        array.SetArray();
-
-        array.Reserve(docs.size(), result.GetAllocator());
 
         bool selectAll = false;
 
@@ -744,7 +739,6 @@ rapidjson::Document processFields(rapidjson::Document &doc, rapidjson::Document 
         }
 
         int num = 0;
-        rapidjson::Document doc;
 
         // Create Aggregator object
         Aggregator *aggregator = new Aggregator();
@@ -757,8 +751,11 @@ rapidjson::Document processFields(rapidjson::Document &doc, rapidjson::Document 
             char *c = fs.read(&file);
 
             // Parse the document
+            rapidjson::Document doc;
             doc.Parse(c);
             free(c);
+
+            rapidjson::Document::AllocatorType &allocator = doc.GetAllocator();
 
             rapidjson::Value docVal;
             docVal.SetObject();
@@ -766,7 +763,7 @@ rapidjson::Document processFields(rapidjson::Document &doc, rapidjson::Document 
             if (where) {
                 rapidjson::Document &whereDoc = *where;
                 rapidjson::Document spare;
-                spare.CopyFrom(whereDoc, spare.GetAllocator());
+                spare.CopyFrom(whereDoc, allocator);
                 // Check if the document contains the values specified in where clause.
                 // If not, move on to the next document
                 if (!documentMatchesConditions(doc, spare)) {
@@ -778,9 +775,9 @@ rapidjson::Document processFields(rapidjson::Document &doc, rapidjson::Document 
             // Iterate over the desired fields
             if (selectAll) {
                 // Add every field of the document to the result
-                count += selectAllFields(&doc, &docVal, result.GetAllocator());
+                count += selectAllFields(&doc, &docVal, allocator);
             } else {
-                count += projectFields(&doc, &docVal, &fields, result.GetAllocator());
+                count += projectFields(&doc, &docVal, &fields, allocator);
             }
 
             // Iterate over the aggregates.  Process this document
@@ -795,12 +792,14 @@ rapidjson::Document processFields(rapidjson::Document &doc, rapidjson::Document 
                 if (!docVal.HasMember(aggVal["field"].GetString())) {
                     continue;
                 }
-                aggregator->handle(&docVal, &aggVal, result.GetAllocator());
+                result = true;
+                aggregator->handle(&docVal, &aggVal, allocator);
                 count = docVal.MemberBegin()==docVal.MemberEnd()?0:count;
             }
 
             if (count > 0) {
-                array.PushBack(docVal, result.GetAllocator());
+                std::cout << toString(&docVal) << std::endl;
+                result = true;
             }
 
             // If a limit is being used then we may need to preempt.
@@ -818,16 +817,13 @@ rapidjson::Document processFields(rapidjson::Document &doc, rapidjson::Document 
                 rapidjson::Value aggRes;
                 aggRes.SetObject();
                 std::string k_txt = func + '(' + field + ')';
-                rapidjson::Value k(k_txt.c_str(), result.GetAllocator());
-                rapidjson::Value v(res->result);
-                aggRes.AddMember(k, v, result.GetAllocator());
-                array.PushBack(aggRes, result.GetAllocator());
+                //rapidjson::Value k(k_txt.c_str(), a.GetAllocator());
+                //rapidjson::Value v(res->result);
+                std::cout << k_txt << ": " << res->result << std::endl;
                 delete res;
             }
         }
         delete aggregator;
-
-        result.AddMember("_result", array, result.GetAllocator());
 
         // Create a timestamp
         time_t rawtime;
@@ -840,8 +836,7 @@ rapidjson::Document processFields(rapidjson::Document &doc, rapidjson::Document 
         strftime(buffer,80,"%Y-%m-%d %X",timeinfo);
 
         // Add timestamp to result
-        rapidjson::Value tstamp(buffer, result.GetAllocator());
-        result.AddMember("_timestamp", tstamp, result.GetAllocator());
+        //std::cout << "_timestamp: " << std::string(buffer) << std::endl;
 
         return result;
     }
@@ -882,17 +877,8 @@ rapidjson::Document processFields(rapidjson::Document &doc, rapidjson::Document 
                 {
                     std::string project = *q->project;
                     if (meta.count(project) > 0) {
-                        rapidjson::Document data = select(meta[project], *q->fields, q->where, q->limit, fs);
-                        if (data.HasMember("_result")) {
-                            rapidjson::Value &array = data["_result"];
-                            if (array.Size() == 0) {
-                                PRINT("Result Empty!\r\n");
-                            } else {
-                                std::string pretty_data = toPrettyString(&data);
-                                printf( "%s\n" , pretty_data.c_str() );
-                                //PRINT(pretty_data, "\r\n");
-                                PRINT(array.Size(), " records returned.\r\n");
-                            }
+                        if( !select(meta[project], *q->fields, q->where, q->limit, fs) ) {
+                            PRINT("Result Empty!\r\n");
                         }
                     } else {
                         PRINT("Project '", project, "' does not exist!\r\n");
@@ -1066,14 +1052,16 @@ rapidjson::Document processFields(rapidjson::Document &doc, rapidjson::Document 
                 std::string buffer;
                 std::getline(dataFile, line );
                 buffer += line;
-                while( !done(buffer) ) {
-                    std::getline(dataFile, line );
-                    buffer += line;
-                }
+
                 if (buffer.compare("q") == 0) {
                     waitToFinish();
                     std::cout << std::endl;
                     goto end;
+                }
+
+                while( !done(buffer) ) {
+                    std::getline(dataFile, line );
+                    buffer += line;
                 }
                 Parsing::Parser p(buffer);
                 Parsing::Query *query = p.parse();

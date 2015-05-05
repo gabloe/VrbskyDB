@@ -706,5 +706,6 @@ void Storage::Filesystem::writeMetadata() {
 void Storage::Filesystem::shutdown() {
     writeMetadata();
     close(filesystem.fd);
+    msync( filesystem.data , filesystem.numPages * PAGESIZE , MS_SYNC );
     munmap(filesystem.data, filesystem.numPages * PAGESIZE);
 }
