@@ -80,10 +80,10 @@ $(OUT)CreateTest: ./CreateTest.cpp
 	$(CC) $(CFLAGS) $(INCLUDES) $(OS_OBJS) ./CreateTest.cpp -o $(OUT)CreateTest
 
 $(OUT)Insert: ./Insert.cpp
-	$(CC) $(CFLAGS) $(INCLUDES) $(OS_OBJS) ./Insert.cpp -o $(OUT)Insert
+	$(CC) $(CFLAGS) $(INCLUDES) ./Insert.cpp -o $(OUT)Insert
 
 $(OUT)BulkInsert: ./BulkInsert.cpp
-	$(CC) $(CFLAGS) $(INCLUDES) $(OS_OBJS) ./BulkInsert.cpp -o $(OUT)BulkInsert
+	$(CC) $(CFLAGS) $(INCLUDES) ./BulkInsert.cpp -o $(OUT)BulkInsert
 
 $(OUT):
 	mkdir -p $(OUT)

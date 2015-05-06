@@ -2,6 +2,7 @@
 #include <exception>
 #include <iostream>
 #include <string>
+#include <cstdlib>
 
 int main(int argc , char *argv[]) {
     int generate_count;
@@ -12,7 +13,7 @@ int main(int argc , char *argv[]) {
     }
 
     try {
-        generate_count = std::stoi( argv[1] );
+        generate_count = atoi( argv[1] );
     }catch (std::exception &e)  {
         std::cout << argv[1] << " is not a valid number" << std::endl;
         return -1;
