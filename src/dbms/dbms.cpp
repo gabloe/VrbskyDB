@@ -1007,7 +1007,7 @@ rapidjson::Document processFields(rapidjson::Document &doc, rapidjson::Document 
         //std::cin.tie(NULL);
 
         std::string data_fname("data.db");
-        linenoiseSetMultiLine(1);
+        //linenoiseSetMultiLine(1);
 
         // Start up the file system
         Storage::Filesystem *fs = new Storage::Filesystem(data_fname);

@@ -706,6 +706,10 @@ void Storage::Filesystem::writeMetadata() {
 void Storage::Filesystem::shutdown() {
     writeMetadata();
     close(filesystem.fd);
+#if defined(_WIN32)
+	FlushViewOfFile(filesystem.data, filesystem.numPages * PAGESIZE);
+#else
     msync( filesystem.data , filesystem.numPages * PAGESIZE , MS_SYNC );
+#endif
     munmap(filesystem.data, filesystem.numPages * PAGESIZE);
 }
