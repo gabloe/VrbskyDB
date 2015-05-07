@@ -12,6 +12,7 @@ Query parser for the NoSQL database management system.
 #include <cctype>
 #include "Scanner.h"
 #include "Parser.h"
+#include <stdexcept>
 
 bool icompare_pred(unsigned char a, unsigned char b)
 {
