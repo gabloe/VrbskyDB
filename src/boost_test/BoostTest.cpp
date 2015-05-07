@@ -26,7 +26,7 @@ int main(int argc, char *argv[])
 			data << line;
 			boost::property_tree::ptree pt;
 			boost::property_tree::read_json(data, pt);
-		//	write_json(std::cout,pt,true);
+			write_json(std::cout,pt,true);
 		}
 		catch (std::exception const& e)
 		{

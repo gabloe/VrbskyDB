@@ -1,6 +1,6 @@
 CPP=g++
-OPT=-O3 -Wall -Wextra
-INC += -I/opt/local/include
+OPT=-std=c++11 -O3 -Wall -Wextra
+INC += -I/opt/local/include -I ../include
 OUT =	CreateDocs \
 	BoostTest
 
