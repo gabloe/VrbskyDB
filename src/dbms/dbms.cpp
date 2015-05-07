@@ -195,6 +195,7 @@ void insertDocuments(rapidjson::Document &docs, std::string &pname, META &meta, 
             val.AddMember( "_doc" , rapidjson::Value( docUUID.c_str() , allocator) , allocator );
             std::string data = toString( &val );
             insertDocument( docUUID , data , pname, meta, fs);
+			val.RemoveMember( "_doc" );
         }
     } else if (docs.GetType() == rapidjson::kObjectType) {
         std::string docUUID = getUUID();

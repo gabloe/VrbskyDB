@@ -18,13 +18,13 @@ int main(int argc, char *argv[])
     std::string sep;
     for (int i = 0 ; i < numDocs ; ++i) {
 	std::stringstream data;
-	data << "{\"" << std::to_string(i) << "\" : {";
+	data << "{\"" << i << "\" : {";
 	sep = ",";
 	for (int j = 0 ; j < numFields ; ++j) {
 		if (j == numFields - 1) {
 			sep = "";
 		}
-		data << "\"" << std::to_string(i) << std::to_string(j) << "\" : " << std::to_string(j) << sep;
+		data << "\"" << i << j << "\" : " << j << sep;
 	}
 	data << "}}";
 	std::cout << data.str() << std::endl;
